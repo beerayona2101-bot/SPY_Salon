@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { MapPin, CheckCircle2, Sparkles, ChevronRight, ArrowLeft, Lock } from 'lucide-react';
 
-export default function BookPage() {
+function BookPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const preselectedService = searchParams.get('service') || '';
@@ -420,5 +420,17 @@ export default function BookPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function BookPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[70vh] flex items-center justify-center">
+        <div className="text-rosegold-400 text-sm animate-pulse">Loading reservation...</div>
+      </div>
+    }>
+      <BookPageInner />
+    </Suspense>
   );
 }
