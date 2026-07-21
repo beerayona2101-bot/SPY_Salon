@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-serif: 'Cinzel', 'Playfair Display', Georgia, serif;
+  --font-sans: 'Poppins', 'Inter', sans-serif;
+}
+
+body {
+  background-color: #0B0B0E;
+  color: #F8FAFC;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Luxury Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(19, 19, 26, 0.75);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(224, 169, 109, 0.15);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(224, 169, 109, 0.02) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(224, 169, 109, 0.2);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(224, 169, 109, 0.6);
+  box-shadow: 0 12px 35px -10px rgba(224, 169, 109, 0.35);
+  transform: translateY(-4px);
+}
+
+.rosegold-glass-card {
+  background: linear-gradient(135deg, rgba(224, 169, 109, 0.1) 0%, rgba(200, 134, 143, 0.04) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(224, 169, 109, 0.35);
+  transition: all 0.35s ease;
+}
+
+.rosegold-glass-card:hover {
+  border-color: rgba(224, 169, 109, 0.8);
+  box-shadow: 0 12px 40px -10px rgba(224, 169, 109, 0.45);
+}
+
+.rosegold-gradient-text {
+  background: linear-gradient(135deg, #FFF2E2 0%, #E5B287 40%, #E0A96D 70%, #C8868F 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rosegold-gradient-bg {
+  background: linear-gradient(135deg, #E5B287 0%, #E0A96D 50%, #C8868F 100%);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #FFF2E2 0%, #E5B287 50%, #C8868F 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #E5B287 0%, #E0A96D 50%, #C8868F 100%);
+}
+
+.purple-gradient-bg {
+  background: linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%);
+}
+
+/* Hide Scrollbar Completely Across All Browsers */
+::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+html, body, * {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
