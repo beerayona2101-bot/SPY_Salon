@@ -8,6 +8,7 @@ const appointmentSchema = new mongoose.Schema({
   branch: { type: String, required: true },
   service: { type: String, required: true },
   staffPreference: { type: String, default: 'Any Available Specialist' },
+  specialistName: { type: String, default: 'Any Available Specialist' },
   appointmentDate: { type: String, required: true },
   appointmentTime: { type: String, required: true },
   notes: { type: String },
@@ -16,10 +17,19 @@ const appointmentSchema = new mongoose.Schema({
     enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'], 
     default: 'Pending' 
   },
+  paymentMethod: {
+    type: String,
+    enum: ['UPI', 'Cash', 'Card', 'Not Selected'],
+    default: 'Cash'
+  },
   paymentStatus: {
     type: String,
     enum: ['Unpaid', 'Paid', 'Partial'],
     default: 'Unpaid'
+  },
+  paymentDetails: {
+    upiId: String,
+    transactionId: String
   }
 }, { timestamps: true });
 

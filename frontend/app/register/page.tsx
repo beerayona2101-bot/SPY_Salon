@@ -4,9 +4,12 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register } = useAuth();
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,41 +34,28 @@ export default function RegisterPage() {
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:5000/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          password: formData.password
-        })
-      });
-
-      const resData = await response.json();
-
-      if (resData.success) {
-        setSuccessMessage('Registration successful! Redirecting to login...');
-        if (resData.token) {
-          localStorage.setItem('spy_token', resData.token);
-          localStorage.setItem('spy_user', JSON.stringify(resData.user));
-        }
-        setTimeout(() => {
-          router.push('/login');
-        }, 1800);
-      } else {
-        setErrorMessage(resData.message || 'Registration failed');
-      }
-    } catch (err) {
-      // Offline fallback simulation
-      setSuccessMessage('Account created successfully! (Offline Demo Mode)');
-      localStorage.setItem('spy_user', JSON.stringify({ name: formData.name, email: formData.email }));
-      setTimeout(() => {
-        router.push('/login');
-      }, 1800);
-    } finally {
+    if (formData.password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
       setIsSubmitting(false);
+      return;
+    }
+
+    const res = await register({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      password: formData.password
+    });
+
+    setIsSubmitting(false);
+
+    if (res.success) {
+      setSuccessMessage(res.message);
+      setTimeout(() => {
+        router.push('/book');
+      }, 1200);
+    } else {
+      setErrorMessage(res.message);
     }
   };
 
@@ -76,18 +66,18 @@ export default function RegisterPage() {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[550px] h-[350px] bg-rosegold-500/15 blur-[150px] rounded-full pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-[350px] h-[250px] bg-purple-600/10 blur-[130px] rounded-full pointer-events-none" />
 
-      <div className="max-w-md w-full space-y-8 relative z-10">
+      <div className="max-w-md w-full space-y-6 relative z-10">
         
         {/* Header & Logo */}
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-white p-1.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
             <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
           </div>
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Join SPY Salon VIP</span>
           </div>
-          <h1 className="text-3xl font-bold font-serif text-white">Create Your Account</h1>
+          <h1 className="text-3xl font-bold font-serif text-white">Create Account</h1>
           <p className="text-gray-400 text-xs sm:text-sm">Enjoy instant online booking, member discounts, and priority concierge access.</p>
         </div>
 
@@ -176,7 +166,7 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -203,9 +193,9 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mt-2"
+              className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mt-2 cursor-pointer"
             >
-              <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
+              <span>{isSubmitting ? 'Creating Account...' : 'Register VIP Account'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

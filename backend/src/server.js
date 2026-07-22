@@ -8,6 +8,9 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const publicRoutes = require('./routes/publicRoutes');
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const userRoutes = require('./routes/userRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
 
 const app = express();
 
@@ -26,6 +29,9 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/user', userRoutes);
+app.use('/api/v1/employee', employeeRoutes);
 app.use('/api/v1', publicRoutes);
 
 const PORT = process.env.PORT || 5000;

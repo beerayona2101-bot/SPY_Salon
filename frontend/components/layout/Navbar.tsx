@@ -15,14 +15,20 @@ import {
   ShoppingBag, 
   Crown,
   PhoneCall,
-  X
+  X,
+  LayoutDashboard,
+  Bell
 } from 'lucide-react';
+
+import { useAuth } from '@/context/AuthContext';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
-  const [user, setUser] = useState<{ name?: string; email?: string; phone?: string; role?: string } | null>(null);
+  const { user, logout } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [userNotifs, setUserNotifs] = useState<any[]>([]);
   const [profileTab, setProfileTab] = useState<'schedules' | 'history'>('schedules');
 
   const pathname = usePathname();
@@ -30,24 +36,45 @@ export default function Navbar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
 
+  const fetchUserNotifs = async () => {
+    try {
+      const email = user?.email || '';
+      const phone = user?.phone || '';
+      const res = await fetch(`http://localhost:5000/api/v1/user/notifications?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+      const data = await res.json();
+      if (data.data) {
+        setUserNotifs(data.data);
+      }
+    } catch (e) {}
+  };
+
   useEffect(() => {
-    const checkUserAuth = () => {
-      const storedUser = localStorage.getItem('spy_user');
-      if (storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (e) {
-          setUser({ name: 'VIP Guest User' });
-        }
-      } else {
-        setUser(null);
+    fetchUserNotifs();
+    const intervalId = setInterval(fetchUserNotifs, 3000);
+    return () => clearInterval(intervalId);
+  }, [user]);
+
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Auto-close notification dropdown & profile modal when screen/route moves to another location
+  useEffect(() => {
+    setNotifDropdownOpen(false);
+    setProfileDropdownOpen(false);
+  }, [pathname]);
+
+  // Click-outside listener to smoothly close notification dropdown & profile modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifDropdownOpen(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
       }
     };
-
-    checkUserAuth();
-    window.addEventListener('storage', checkUserAuth);
-    return () => window.removeEventListener('storage', checkUserAuth);
-  }, [pathname]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -67,25 +94,10 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close profile modal when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setProfileDropdownOpen(false);
-      }
-    };
-    if (profileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [profileDropdownOpen]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('spy_user');
-    localStorage.removeItem('spy_token');
-    setUser(null);
+  const handleLogout = async () => {
+    await logout();
     setProfileDropdownOpen(false);
-    router.push('/');
+    router.replace('/');
   };
 
   const getInitials = (name?: string) => {
@@ -96,6 +108,31 @@ export default function Navbar() {
   };
 
   const isPricingOrOffersActive = pathname === '/pricing' || pathname === '/offers';
+  const isAdminUser = user?.role === 'admin' || user?.email?.includes('admin');
+  const isEmployeeUser = user?.role === 'employee';
+
+  const handleProfileButtonClick = () => {
+    if (isAdminUser) {
+      router.push('/admin');
+      return;
+    }
+    if (isEmployeeUser) {
+      router.push('/employee');
+      return;
+    }
+    setProfileDropdownOpen(!profileDropdownOpen);
+  };
+
+  const handleClearUserNotifs = async () => {
+    try {
+      await fetch('http://localhost:5000/api/v1/user/notifications/clear', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user?.email, phone: user?.phone })
+      });
+      setUserNotifs([]);
+    } catch (e) {}
+  };
 
   return (
     <>
@@ -133,19 +170,102 @@ export default function Navbar() {
                 <Link href="/contact" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/contact' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>Contact</Link>
               </div>
 
-              {/* Profile Avatar Button (Header - Visible on Mobile & Desktop) */}
-              <div className="flex items-center space-x-2">
+              {/* Notification Bell Icon & Profile Avatar / Executive Desk Button */}
+              <div className="flex items-center space-x-2.5">
+                
+                {/* NOTIFICATION BELL ICON RIGHT NEXT TO SIGN IN / PROFILE (ONLY WHEN LOGGED IN) */}
+                {user && !isAdminUser && !isEmployeeUser && (
+                  <div className="relative" ref={notifRef}>
+                    <button
+                      onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+                      className="p-2 sm:p-2.5 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-400 hover:text-white hover:border-rosegold-400 transition-all cursor-pointer relative"
+                      title="Customer Notifications & Updates"
+                    >
+                      <Bell className="w-4 h-4" />
+                      {userNotifs.length > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rosegold-500 text-dark-900 font-extrabold text-[9px] flex items-center justify-center animate-pulse shadow-glow-rosegold">
+                          {userNotifs.length}
+                        </span>
+                      )}
+                    </button>
+
+                    {/* NOTIFICATION DROPDOWN PANEL */}
+                    {notifDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-dark-900/95 border border-rosegold-500/40 backdrop-blur-2xl shadow-2xl p-4 space-y-3 z-[100] text-left animate-fadeIn">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                          <div className="flex items-center space-x-2">
+                            <Bell className="w-4 h-4 text-rosegold-400" />
+                            <h4 className="text-white font-serif font-bold text-sm">Notifications & Updates</h4>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {userNotifs.length > 0 && (
+                              <button
+                                onClick={handleClearUserNotifs}
+                                className="text-[10px] text-gray-400 hover:text-rosegold-400 font-bold underline cursor-pointer"
+                              >
+                                Clear All
+                              </button>
+                            )}
+                            <button onClick={() => setNotifDropdownOpen(false)} className="text-gray-400 hover:text-white text-xs cursor-pointer">✕</button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                          {userNotifs.length === 0 ? (
+                            <p className="text-xs text-gray-400 text-center py-4">No notifications yet.</p>
+                          ) : (
+                            userNotifs.map((n) => {
+                              const matchBookingId = n.message?.match(/SPY-\d+/)?.[0] || 'SPY-884920';
+                              return (
+                                <div 
+                                  key={n._id} 
+                                  className={`p-3 rounded-2xl border text-xs space-y-1 ${
+                                    n.type === 'warning' ? 'bg-amber-950/40 border-amber-500/40 text-amber-200' :
+                                    n.type === 'success' ? 'bg-green-950/40 border-green-500/40 text-green-200' :
+                                    'bg-dark-800 border-white/10 text-gray-200'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-bold">{n.title}</span>
+                                    <span className="text-[9px] text-gray-400 font-mono">
+                                      {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] opacity-90 leading-relaxed">{n.message}</p>
+                                  {n.title.includes('Reschedule') && (
+                                    <Link 
+                                      href={`/book?rescheduleId=${matchBookingId}`} 
+                                      onClick={() => setNotifDropdownOpen(false)}
+                                      className="inline-block text-[10px] text-rosegold-300 font-bold hover:underline pt-0.5"
+                                    >
+                                      Reschedule Slot Now (Pre-Paid) →
+                                    </Link>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {user ? (
                   <button
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    onClick={handleProfileButtonClick}
                     className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-dark-800 border border-rosegold-500/40 text-white font-medium text-xs hover:border-rosegold-400 transition-all shadow-glow-rosegold cursor-pointer"
-                    title="User Profile & History"
+                    title={isAdminUser ? 'Admin Control Center' : 'User Account'}
                   >
                     <div className="w-7 h-7 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold flex items-center justify-center text-[11px] shadow-sm shrink-0">
                       {getInitials(user.name)}
                     </div>
-                    <span className="font-serif font-bold text-xs truncate max-w-[90px] sm:max-w-[120px]">{user.name ? user.name.split(' ')[0] : 'Profile'}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-rosegold-400 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                    <span className="font-serif font-bold text-xs truncate max-w-[90px] sm:max-w-[120px]">
+                      {isAdminUser ? 'Admin Portal' : isEmployeeUser ? 'Staff Portal' : user.name ? user.name.split(' ')[0] : 'Profile'}
+                    </span>
+                    {!isAdminUser && !isEmployeeUser && (
+                      <ChevronDown className={`w-3.5 h-3.5 text-rosegold-400 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                    )}
                   </button>
                 ) : (
                   <Link 
@@ -163,8 +283,8 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* Profile Modal / Drawer Overlay (Works seamlessly on Mobile & Desktop) */}
-      {profileDropdownOpen && user && (
+      {/* Profile Modal / Drawer Overlay (For Customer Account Only) */}
+      {profileDropdownOpen && user && !isAdminUser && !isEmployeeUser && (
         <div className="fixed inset-0 z-[100] flex items-start justify-end p-4 pt-16 sm:pt-20 bg-black/60 backdrop-blur-sm animate-fadeIn">
           <div 
             ref={profileRef} 
@@ -234,19 +354,6 @@ export default function Navbar() {
                     <span>Tomorrow, 11:00 AM • Jubilee Hills Studio</span>
                   </p>
                 </div>
-
-                <div className="p-3.5 rounded-2xl bg-dark-800/80 border border-white/10 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white font-serif text-sm">Signature Keratin Hair Spa</span>
-                    <span className="text-[10px] font-bold text-rosegold-400 bg-rosegold-500/15 border border-rosegold-500/30 px-2 py-0.5 rounded-full">
-                      Scheduled
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-300 flex items-center space-x-1.5">
-                    <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                    <span>July 26, 03:30 PM • Jubilee Hills Studio</span>
-                  </p>
-                </div>
               </div>
             )}
 
@@ -260,29 +367,28 @@ export default function Navbar() {
                   </div>
                   <p className="text-xs text-gray-400">Completed on July 10 • 90 Min</p>
                 </div>
-
-                <div className="p-3.5 rounded-2xl bg-dark-800/80 border border-white/10 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white font-serif text-sm">Gel Couture Manicure</span>
-                    <span className="text-rosegold-400 font-bold font-serif text-sm">₹1,199</span>
-                  </div>
-                  <p className="text-xs text-gray-400">Completed on June 28 • 45 Min</p>
-                </div>
-
-                <div className="p-3 rounded-2xl bg-rosegold-500/10 border border-rosegold-500/30 text-center text-xs text-rosegold-300 font-semibold">
-                  🏆 Total VIP Points: <span className="font-extrabold text-white text-sm">450 Gold Points</span>
-                </div>
               </div>
             )}
 
-            {/* Logout Footer Button */}
+            {/* Quick Action Navigation Link */}
             <div className="pt-2 border-t border-white/10">
+              <Link
+                href="/profile"
+                onClick={() => setProfileDropdownOpen(false)}
+                className="py-2.5 px-3 rounded-xl bg-rosegold-500/15 text-rosegold-300 hover:text-white border border-rosegold-500/30 text-xs font-bold text-center block w-full"
+              >
+                Full Customer Profile Page →
+              </Link>
+            </div>
+
+            {/* Logout Footer Button */}
+            <div className="pt-1">
               <button
                 onClick={handleLogout}
                 className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 transition-colors border border-red-500/20 cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
-                <span>Sign Out of VIP Account</span>
+                <span>Sign Out to Landing Page</span>
               </button>
             </div>
 

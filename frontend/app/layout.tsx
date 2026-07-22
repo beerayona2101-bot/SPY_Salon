@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
+import AppLayout from '@/components/layout/AppLayout';
+import Providers from '@/components/Providers';
 
 export const metadata: Metadata = {
   title: 'SPY Salon | Luxury Beauty Studio, Hair & Spa Experience',
@@ -16,12 +16,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased bg-dark-900 text-gray-100 flex flex-col min-h-screen">
-        <Navbar />
-        <main className="flex-grow pt-20 pb-16 md:pb-0">
-          {children}
-        </main>
-        <Footer />
+      <body className="antialiased bg-dark-900 text-gray-100 min-h-screen">
+        <Providers>
+          <AppLayout>{children}</AppLayout>
+        </Providers>
       </body>
     </html>
   );

@@ -1,17 +1,4 @@
-const Service = require('../models/Service');
-const Branch = require('../models/Branch');
-const Offer = require('../models/Offer');
-const Appointment = require('../models/Appointment');
-
-// Mock fallback data to ensure smooth, immediate responses even offline or before seed DB
-const fallbackServices = [
-  { id: '1', name: 'Royal Gold Facial & Detox', category: 'Skin', price: 1499, discountPrice: 1299, durationMinutes: 60, rating: 4.9, reviewsCount: 128, description: '24K Gold infused exfoliation and deep pore cleansing treatment for radiant, glowing skin.', isPopular: true },
-  { id: '2', name: 'Signature Keratin Hair Spa', category: 'Hair', price: 2199, discountPrice: 1899, durationMinutes: 75, rating: 4.9, reviewsCount: 210, description: 'Deep conditioning keratin treatment to restore hair strength, shine, and silky smoothness.', isPopular: true },
-  { id: '3', name: 'Aroma Luxury Body Massage', category: 'Spa', price: 2499, discountPrice: 1999, durationMinutes: 90, rating: 5.0, reviewsCount: 95, description: 'Soothing full body Swedish & Aromatherapy massage with essential organic oils.', isPopular: true },
-  { id: '4', name: 'Gel Couture Manicure & Pedicure', category: 'Nails', price: 1199, discountPrice: 999, durationMinutes: 45, rating: 4.8, reviewsCount: 76, description: 'Nail shaping, cuticle care, scrub, and long-lasting premium gel color polish.', isPopular: false },
-  { id: '5', name: 'Bridal Glow & Makeover Package', category: 'Bridal', price: 8999, discountPrice: 7499, durationMinutes: 180, rating: 5.0, reviewsCount: 45, description: 'Complete HD bridal makeup, hair styling, skin prep, and saree/dupatta draping.', isPopular: true },
-  { id: '6', name: 'Beard Sculpting & Charcoal Wash', category: 'Grooming', price: 599, discountPrice: 499, durationMinutes: 30, rating: 4.7, reviewsCount: 88, description: 'Precision razor line-up, steam wash, charcoal mask, and beard oil nourishment.', isPopular: false }
-];
+const store = require('../data/store');
 
 const fallbackBranches = [
   { id: 'b1', name: 'SPY Salon - Flagship Jubilee Hills', code: 'JUB-01', address: 'Road No. 36, Jubilee Hills', city: 'Hyderabad', phone: '+91 98765 43210', email: 'jubilee@spysalon.com', operatingHours: '09:00 AM - 09:00 PM', rating: 4.9, isMainBranch: true },
@@ -25,89 +12,190 @@ const fallbackOffers = [
   { id: 'o3', title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: '2026-12-31' }
 ];
 
-// Get Services
+// Get Services (Reflects Admin Updates Live)
 exports.getServices = async (req, res) => {
-  try {
-    const services = await Service.find({ isActive: true }).lean();
-    if (services && services.length > 0) {
-      return res.status(200).json({ success: true, count: services.length, data: services });
-    }
-  } catch (err) {
-    console.log('[Notice] Using fallback service data');
+  return res.status(200).json({
+    success: true,
+    count: store.services.length,
+    data: store.services
+  });
+};
+
+// Get Specialists List (Reflects Admin Updates Live)
+exports.getSpecialists = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    count: store.employees.length,
+    data: store.employees
+  });
+};
+
+// Get Customer Reviews
+exports.getReviews = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    data: store.reviews
+  });
+};
+
+// Submit Customer Review
+exports.submitReview = async (req, res) => {
+  const { customerName, customerEmail, serviceName, rating, comment } = req.body;
+  if (!customerName || !rating || !comment) {
+    return res.status(400).json({ success: false, message: 'Please provide name, rating, and comment.' });
   }
-  return res.status(200).json({ success: true, count: fallbackServices.length, data: fallbackServices });
+
+  const newReview = {
+    _id: 'rev_' + Date.now(),
+    customerName,
+    customerEmail,
+    serviceName: serviceName || 'General Service',
+    rating: Number(rating),
+    comment
+  };
+
+  store.reviews.unshift(newReview);
+  return res.status(201).json({ success: true, message: 'Thank you for your review!', data: newReview });
 };
 
 // Get Branches
 exports.getBranches = async (req, res) => {
-  try {
-    const branches = await Branch.find({ isActive: true }).lean();
-    if (branches && branches.length > 0) {
-      return res.status(200).json({ success: true, count: branches.length, data: branches });
-    }
-  } catch (err) {
-    console.log('[Notice] Using fallback branch data');
-  }
   return res.status(200).json({ success: true, count: fallbackBranches.length, data: fallbackBranches });
 };
 
 // Get Offers
 exports.getOffers = async (req, res) => {
-  try {
-    const offers = await Offer.find({ isActive: true }).lean();
-    if (offers && offers.length > 0) {
-      return res.status(200).json({ success: true, count: offers.length, data: offers });
-    }
-  } catch (err) {
-    console.log('[Notice] Using fallback offer data');
-  }
   return res.status(200).json({ success: true, count: fallbackOffers.length, data: fallbackOffers });
 };
 
-// Book Appointment Public Endpoint
+// Get Booked Time Slots for a Given Date and Specialist
+exports.getBookedSlots = async (req, res) => {
+  const { date, specialist } = req.query;
+  let matches = store.appointments.filter(a => a.status !== 'Cancelled');
+
+  if (date) {
+    matches = matches.filter(a => a.appointmentDate === date);
+  }
+
+  if (specialist && specialist !== 'Any Available Specialist') {
+    matches = matches.filter(a => a.specialistName === specialist || a.specialistName.includes(specialist.split('(')[0].trim()));
+  }
+
+  const bookedTimeSlots = matches.map(a => a.appointmentTime);
+  return res.status(200).json({
+    success: true,
+    date: date || 'All',
+    specialist: specialist || 'All',
+    bookedSlots: bookedTimeSlots
+  });
+};
+
+// Book Appointment Public Endpoint (Syncs with Admin & Employee Desks)
 exports.bookAppointment = async (req, res) => {
   try {
-    const { customerName, customerPhone, customerEmail, branch, service, staffPreference, appointmentDate, appointmentTime, notes } = req.body;
+    const { 
+      customerName, 
+      customerPhone, 
+      customerEmail, 
+      branch, 
+      service, 
+      staffPreference, 
+      specialistName,
+      appointmentDate, 
+      appointmentTime, 
+      paymentMethod,
+      paymentDetails,
+      notes 
+    } = req.body;
 
     if (!customerName || !customerPhone || !branch || !service || !appointmentDate || !appointmentTime) {
       return res.status(400).json({ success: false, message: 'Please provide all required booking fields.' });
     }
 
-    const bookingId = 'SPY-' + Math.floor(100000 + Math.random() * 900000);
+    const chosenSpecialist = specialistName || staffPreference || 'Any Available Specialist';
 
-    const newAppointment = new Appointment({
+    // Check slot availability
+    const conflict = store.appointments.find(a => 
+      a.status !== 'Cancelled' &&
+      a.appointmentDate === appointmentDate &&
+      a.appointmentTime === appointmentTime &&
+      (chosenSpecialist === 'Any Available Specialist' || a.specialistName === chosenSpecialist)
+    );
+
+    if (conflict) {
+      return res.status(409).json({
+        success: false,
+        message: `The selected time slot ${appointmentTime} on ${appointmentDate} is already booked. Please select another available time slot.`
+      });
+    }
+
+    const bookingId = 'SPY-' + Math.floor(100000 + Math.random() * 900000);
+    const chosenPayment = paymentMethod || 'Cash';
+    const initialPaymentStatus = (chosenPayment === 'UPI' || chosenPayment === 'Razorpay') ? 'Paid' : 'Unpaid';
+
+    const newAppointment = {
+      _id: 'app_' + Date.now(),
       bookingId,
       customerName,
       customerPhone,
-      customerEmail,
+      customerEmail: customerEmail || '',
       branch,
       service,
-      staffPreference: staffPreference || 'Any Available Specialist',
+      specialistName: chosenSpecialist,
       appointmentDate,
       appointmentTime,
+      paymentMethod: chosenPayment,
+      paymentStatus: initialPaymentStatus,
+      paymentDetails: paymentDetails || {},
       notes: notes || '',
       status: 'Pending'
-    });
+    };
 
-    try {
-      await newAppointment.save();
-    } catch (dbErr) {
-      console.log('[Notice] DB Save pending, returning generated appointment payload');
+    // If this is a reschedule action, update existing appointment & clear old reschedule notifications
+    const existingIndex = store.appointments.findIndex(a => 
+      (a.customerPhone === customerPhone || a.customerEmail === customerEmail) && a.status === 'Reschedule Requested'
+    );
+
+    if (existingIndex !== -1) {
+      store.appointments[existingIndex].appointmentDate = appointmentDate;
+      store.appointments[existingIndex].appointmentTime = appointmentTime;
+      store.appointments[existingIndex].status = 'Confirmed';
+      store.appointments[existingIndex].service = service;
+      store.appointments[existingIndex].specialistName = chosenSpecialist;
+    } else {
+      store.appointments.unshift(newAppointment);
     }
+
+    // Clear old warning reschedule notifications for this customer
+    store.userNotifications = store.userNotifications.filter(n => 
+      !( (n.customerPhone === customerPhone || n.customerEmail === customerEmail) && n.title.includes('Reschedule') )
+    );
+
+    // Push new confirmation notification
+    store.addUserNotification(
+      customerPhone,
+      customerEmail,
+      'Reschedule Completed 🟢',
+      `Your appointment ${newAppointment.bookingId} for ${service} has been updated to ${appointmentDate} at ${appointmentTime}.`,
+      'success'
+    );
+
+    // Sync Audit Activity Log & Send Realtime Notification to Admin
+    store.logActivity(
+      'Customer Reschedule Completed',
+      `Client ${customerName} (${customerPhone}) rescheduled ${service} with ${chosenSpecialist} for ${appointmentDate} at ${appointmentTime}`
+    );
+
+    store.addNotification(
+      'Appointment Slot Updated 🟢',
+      `Client ${customerName} rescheduled ${service} to ${appointmentDate} at ${appointmentTime}. Status: Confirmed.`,
+      'success'
+    );
 
     return res.status(201).json({
       success: true,
-      message: 'Appointment booked successfully! Our receptionist will confirm shortly via SMS/WhatsApp.',
-      data: {
-        bookingId,
-        customerName,
-        customerPhone,
-        branch,
-        service,
-        appointmentDate,
-        appointmentTime,
-        status: 'Pending'
-      }
+      message: 'Appointment rescheduled and confirmed successfully!',
+      data: existingIndex !== -1 ? store.appointments[existingIndex] : newAppointment
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to complete appointment booking.', error: error.message });

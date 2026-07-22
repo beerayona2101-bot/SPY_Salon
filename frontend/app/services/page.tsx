@@ -1,29 +1,57 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Star, Clock, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Star, Clock, Sparkles, ArrowRight, Eye, CheckCircle2 } from 'lucide-react';
+import { servicesData as defaultStaticServices } from '@/data/servicesData';
 
 export default function ServicesPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState<any[]>(defaultStaticServices);
 
   const categories = ['All', 'Hair', 'Skin', 'Spa', 'Nails', 'Bridal', 'Grooming'];
 
-  const services = [
-    { id: 1, name: '24K Royal Gold Glow Facial', category: 'Skin', price: 1499, duration: '60 min', rating: 4.9, desc: 'Infusion of 24K gold leaves, hyaluronic acid, and jade roller massage for glowing skin.' },
-    { id: 2, name: 'Signature Keratin Hair Spa & Mask', category: 'Hair', price: 2199, duration: '75 min', rating: 4.9, desc: 'Deep protein reconstruction to tame frizzy strands and impart silkiness.' },
-    { id: 3, name: 'Aroma Luxury Full Body Massage', category: 'Spa', price: 2499, duration: '90 min', rating: 5.0, desc: 'Aromatherapy massage with warm essential oils to melt away tension and stress.' },
-    { id: 4, name: 'Gel Couture Manicure & Pedicure', category: 'Nails', price: 1199, duration: '45 min', rating: 4.8, desc: 'Precision nail shaping, cuticle nourishment, exfoliation scrub, and long-lasting gel polish.' },
-    { id: 5, name: 'HD Bridal Makeup & Hair Styling', category: 'Bridal', price: 8999, duration: '180 min', rating: 5.0, desc: 'Complete high-definition airbrush bridal look with premium lashes, hairstyle, draping.' },
-    { id: 6, name: 'Royal Beard Sculpting & Charcoal Steam', category: 'Grooming', price: 599, duration: '30 min', rating: 4.7, desc: 'Precision razor shaping, warm steam pore cleansing, charcoal detox mask, and beard oil.' },
-    { id: 7, name: 'Balayage & Hair Gloss Treatment', category: 'Hair', price: 3499, duration: '120 min', rating: 4.9, desc: 'Custom hand-painted highlights with ammonia-free gloss for dimensional color.' },
-    { id: 8, name: 'Hydra-Infusion Deep Cleanup', category: 'Skin', price: 1299, duration: '45 min', rating: 4.8, desc: 'Pore extraction, ultrasonic scrub, and water-surge hydration mask.' }
-  ];
+  const fetchLiveServices = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/v1/services');
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        const formatted = data.data.map((s: any) => ({
+          id: s._id || s.id,
+          title: s.name,
+          category: s.category,
+          price: s.price,
+          discountPrice: s.discountPrice || s.price,
+          duration: `${s.durationMinutes || 60} mins`,
+          durationMinutes: s.durationMinutes || 60,
+          rating: s.rating || 4.9,
+          reviews: 120,
+          desc: s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.',
+          image: s.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
+          popular: s.isPopular !== undefined ? s.isPopular : true
+        }));
+        setServices(formatted);
+      }
+    } catch (err) {
+      console.warn('Using static service data fallback');
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveServices();
+    // Auto-fetch live changes from Admin every 4 seconds
+    const intervalId = setInterval(() => {
+      fetchLiveServices();
+    }, 4000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   const filteredServices = services.filter(service => {
     const matchesCategory = activeTab === 'All' || service.category === activeTab;
-    const matchesSearch = service.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           service.desc.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -33,12 +61,12 @@ export default function ServicesPage() {
       
       {/* Header */}
       <div className="text-center space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-xs font-medium uppercase">
+        <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5" />
           <span>Complete Botanical Beauty Menu</span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold font-serif text-white">Services & Treatments</h1>
-        <p className="text-gray-400 text-sm max-w-xl mx-auto">Browse our luxury salon offerings. Select a treatment to view pricing and reserve your appointment slot.</p>
+        <p className="text-gray-400 text-sm max-w-xl mx-auto">Browse our luxury salon offerings. Click any card to open its dedicated treatment profile page, step-by-step procedure, and instant booking.</p>
       </div>
 
       {/* Search & Filter Bar */}
@@ -50,7 +78,7 @@ export default function ServicesPage() {
             <button
               key={cat}
               onClick={() => setActiveTab(cat)}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === cat 
                   ? 'rosegold-gradient-bg text-dark-900 shadow-md font-bold' 
                   : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
@@ -69,69 +97,88 @@ export default function ServicesPage() {
             placeholder="Search treatments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800 border border-white/10 text-xs sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-rosegold-500"
           />
         </div>
-
       </div>
 
-      {/* Services Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredServices.length > 0 ? (
-          filteredServices.map((service) => {
-            const slug = service.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-            return (
-              <Link 
-                key={service.id} 
-                href={`/services/${slug}`}
-                className="glass-card p-6 rounded-2xl flex flex-col justify-between space-y-4 hover:border-rosegold-500 transition-all group cursor-pointer"
-              >
-                
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="bg-purple-600/30 text-purple-300 border border-purple-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                      {service.category}
-                    </span>
-                    <span className="flex items-center space-x-1 text-xs text-rosegold-400 font-medium">
-                      <Star className="w-3.5 h-3.5 fill-rosegold-400" />
-                      <span>{service.rating}</span>
-                    </span>
-                  </div>
-
-                  <h3 className="text-white font-serif text-xl font-bold group-hover:text-rosegold-400 transition-colors">{service.name}</h3>
-                  <p className="text-gray-400 text-xs leading-relaxed">{service.desc}</p>
-                  
-                  <div className="flex items-center space-x-2 text-xs text-gray-400 pt-1">
-                    <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                    <span>Duration: {service.duration}</span>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-gray-400 block">Price</span>
-                    <span className="text-rosegold-400 text-xl font-bold font-serif">₹{service.price}</span>
-                  </div>
-
-                  <span className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs group-hover:opacity-90 transition-opacity">
-                    View & Book
+      {/* Services Grid with Direct Relocation to /services/[id] */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredServices.map((service) => (
+          <div 
+            key={service.id} 
+            onClick={() => router.push(`/services/${service.id}`)}
+            className="glass-card rounded-3xl overflow-hidden border border-rosegold-500/20 hover:border-rosegold-500/60 transition-all group flex flex-col justify-between cursor-pointer hover:shadow-glow-rosegold"
+          >
+            <div>
+              {/* Image & Badge */}
+              <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-dark-800">
+                <img 
+                  src={service.image} 
+                  alt={service.title} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                {service.popular && (
+                  <span className="absolute top-3 left-3 bg-rosegold-500 text-dark-900 font-bold text-[11px] px-3 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    Popular
                   </span>
+                )}
+                <div className="absolute bottom-3 right-3 bg-dark-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 flex items-center space-x-1">
+                  <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  <span className="text-xs font-bold text-white">{service.rating}</span>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-6 space-y-3 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-rosegold-400 uppercase tracking-wider">{service.category}</span>
+                  <div className="flex items-center space-x-1 text-xs text-gray-400">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{service.duration}</span>
+                  </div>
                 </div>
 
-              </Link>
-            );
-          })
-        ) : (
-          <div className="col-span-full text-center py-16 glass-panel rounded-2xl space-y-3">
-            <p className="text-gray-400 text-base">No services found matching "{searchQuery}".</p>
-            <button 
-              onClick={() => { setSearchQuery(''); setActiveTab('All'); }}
-              className="text-xs text-rosegold-400 underline font-semibold"
-            >
-              Reset Filters
-            </button>
+                <h3 className="text-xl font-bold font-serif text-white group-hover:text-rosegold-300 transition-colors">{service.title}</h3>
+                <p className="text-xs text-gray-400 line-clamp-2">{service.desc}</p>
+              </div>
+            </div>
+
+            {/* Footer with Relocate & Booking Buttons */}
+            <div className="px-6 pb-6 pt-3 border-t border-white/10 flex items-center justify-between gap-2">
+              <div>
+                <span className="text-2xl font-bold font-serif text-rosegold-400">₹{service.price}</span>
+                {service.discountPrice && service.discountPrice < service.price && (
+                  <span className="text-xs text-gray-500 line-through ml-2">₹{service.discountPrice}</span>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/services/${service.id}`);
+                  }}
+                  className="p-2.5 rounded-full bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
+                  title="View Full Treatment Details & Procedure"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/book?service=${encodeURIComponent(service.title)}`);
+                  }} 
+                  className="px-3.5 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
+                >
+                  Book Slot
+                </button>
+              </div>
+            </div>
+
           </div>
-        )}
+        ))}
       </div>
 
     </div>
