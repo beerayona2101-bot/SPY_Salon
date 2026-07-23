@@ -30,6 +30,7 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 
 interface AssignedAppointment {
   _id: string;
@@ -42,6 +43,11 @@ interface AssignedAppointment {
   appointmentDate: string;
   appointmentTime: string;
   status: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  bookingDateTime?: string;
+  bookingDate?: string;
+  bookingTimeFormatted?: string;
   notes?: string;
 }
 
@@ -84,6 +90,10 @@ export default function EmployeeDashboardPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'queue' | 'clockin' | 'payrolls' | 'bank' | 'leaves' | 'schedule' | 'performance'>('queue');
   
+  // Shift & Queue Control States
+  const [shiftStatus, setShiftStatus] = useState<'Not Checked In' | 'Checked In' | 'On Break' | 'Checked Out'>('Not Checked In');
+  const [queueFilter, setQueueFilter] = useState<'All' | 'In Queue' | 'Completed'>('All');
+
   // Data States
   const [appointments, setAppointments] = useState<AssignedAppointment[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -142,6 +152,29 @@ export default function EmployeeDashboardPage() {
   });
   const [bankSaved, setBankSaved] = useState(false);
 
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('appointment:updated', (data: any) => {
+      if (data?.appointment) {
+        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      }
+    });
+
+    socket.on('leave:updated', (data: any) => {
+      if (data?.leave) {
+        setLeaves(prev => prev.map(l => l._id === data.leave._id ? { ...l, ...data.leave } : l));
+      }
+    });
+
+    return () => {
+      socket.off('appointment:updated');
+      socket.off('leave:updated');
+    };
+  }, [socket]);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('spy_user');
     if (!storedUser) {
@@ -199,6 +232,19 @@ export default function EmployeeDashboardPage() {
     }
   };
 
+  const handleMarkPaymentPaid = async (id: string) => {
+    try {
+      await fetch(`http://localhost:5000/api/v1/employee/appointments/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: 'Paid', paymentMethod: 'Cash', status: 'Completed' })
+      });
+      setAppointments(appointments.map(a => a._id === id ? { ...a, paymentStatus: 'Paid', status: 'Completed' } : a));
+    } catch (e) {
+      fetchEmployeeData();
+    }
+  };
+
   // Update Notes
   const handleSaveNotes = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -233,7 +279,7 @@ export default function EmployeeDashboardPage() {
     }
   };
 
-  // Clock-in Action
+  // Clock-in & Shift Control Actions
   const handleClockIn = async () => {
     try {
       const res = await fetch('http://localhost:5000/api/v1/employee/clock-in', {
@@ -244,11 +290,19 @@ export default function EmployeeDashboardPage() {
       const data = await res.json();
       if (data.data) {
         setAttendance([data.data, ...attendance]);
-        alert(data.message || 'Clocked in successfully!');
       }
     } catch (e) {
-      alert('Clocked in successfully!');
+      console.log('Clocked in');
     }
+    setShiftStatus('Checked In');
+  };
+
+  const handleTakeBreak = () => {
+    setShiftStatus(prev => prev === 'On Break' ? 'Checked In' : 'On Break');
+  };
+
+  const handleCheckOut = () => {
+    setShiftStatus('Checked Out');
   };
 
   // Leave Request Submission (CRUD)
@@ -270,10 +324,9 @@ export default function EmployeeDashboardPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('spy_user');
-    localStorage.removeItem('spy_token');
-    router.push('/employee/login');
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
   };
 
   if (isAuthorized === false) {
@@ -309,6 +362,14 @@ export default function EmployeeDashboardPage() {
   return (
     <div className="min-h-screen bg-dark-900 flex text-gray-100 font-sans">
       
+      {/* MOBILE BACKDROP OVERLAY */}
+      {sidebarOpen && (
+        <div 
+          onClick={() => setSidebarOpen(false)} 
+          className="fixed inset-0 z-40 bg-black/70 lg:hidden transition-opacity cursor-pointer"
+        />
+      )}
+
       {/* SIDEBAR NAVIGATION */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-800/95 border-r border-rosegold-500/20 backdrop-blur-2xl flex flex-col justify-between transition-transform duration-300 h-screen overflow-hidden ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -381,7 +442,7 @@ export default function EmployeeDashboardPage() {
           </div>
 
           <button
-            onClick={handleLogout}
+            onClick={() => { setSidebarOpen(false); handleLogout(); }}
             className="w-full py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -398,7 +459,8 @@ export default function EmployeeDashboardPage() {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white"
+              className="lg:hidden p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white cursor-pointer"
+              title="Toggle Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -412,14 +474,48 @@ export default function EmployeeDashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs">
-            <button
-              onClick={handleClockIn}
-              className="px-3.5 py-1.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>Clock In Today</span>
-            </button>
+          <div className="flex items-center space-x-2 text-xs">
+            {shiftStatus === 'Not Checked In' || shiftStatus === 'Checked Out' ? (
+              <button
+                onClick={handleClockIn}
+                className="px-4 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+              >
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>Check In Shift 🟢</span>
+              </button>
+            ) : shiftStatus === 'Checked In' ? (
+              <>
+                <button
+                  onClick={handleTakeBreak}
+                  className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                >
+                  <Coffee className="w-3.5 h-3.5" />
+                  <span>Take Break ☕</span>
+                </button>
+                <button
+                  onClick={handleCheckOut}
+                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                >
+                  <span>Check Out 🔴</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleTakeBreak}
+                  className="px-4 py-2 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Resume Work ⏱️</span>
+                </button>
+                <button
+                  onClick={handleCheckOut}
+                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                >
+                  <span>Check Out 🔴</span>
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -429,12 +525,24 @@ export default function EmployeeDashboardPage() {
           {/* TAB 1: TODAY'S ASSIGNED SERVICE QUEUE */}
           {activeTab === 'queue' && (
             <div className="space-y-6 animate-fadeIn text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-2xl font-bold font-serif text-white">Assigned Appointments Queue</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Manage appointment service statuses and client preference notes.</p>
-                </div>
-                <div className="flex items-center space-x-2">
+              
+              {/* FULL-WIDTH WORKLOAD & QUEUE CONTROL CARD */}
+              <div className="glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-5 bg-dark-800/80 shadow-2xl">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                        shiftStatus === 'On Break' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        shiftStatus === 'Checked In' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                        'bg-gray-500/20 text-gray-400 border-gray-500/30'
+                      }`}>
+                        {shiftStatus === 'On Break' ? '☕ On Break' : shiftStatus === 'Checked In' ? '🟢 Shift Active' : '⚪ Shift Inactive'}
+                      </span>
+                      <span className="text-xs text-gray-400 font-mono">Stylist Shift Workload</span>
+                    </div>
+                    <h3 className="text-xl font-bold font-serif text-white mt-1">Assigned Client Queue & Workload Control</h3>
+                  </div>
+
                   <button
                     onClick={() => {
                       setWalkInForm({
@@ -446,19 +554,91 @@ export default function EmployeeDashboardPage() {
                       });
                       setWalkInModalOpen(true);
                     }}
-                    className="px-4 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md flex items-center space-x-1.5 cursor-pointer"
+                    className="px-4 py-2.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md flex items-center justify-center space-x-1.5 cursor-pointer hover:scale-105 transition-all self-start md:self-auto"
                   >
                     <Plus className="w-4 h-4" />
                     <span>+ Add Walk-In Client</span>
                   </button>
-                  <span className="text-xs text-rosegold-400 font-bold bg-rosegold-500/10 px-3 py-2 rounded-full border border-rosegold-500/20">
-                    {appointments.length} Clients Today
+                </div>
+
+                {/* Metric Summary Counters */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-dark-900/90 border border-white/5 space-y-1">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Clients Assigned Today</span>
+                    <span className="text-2xl font-serif font-bold text-white block">{appointments.length} Clients</span>
+                    <span className="text-[10px] text-rosegold-400 block font-mono">Total Workload Schedule</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-dark-900/90 border border-white/5 space-y-1">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">Clients Completed</span>
+                    <span className="text-2xl font-serif font-bold text-green-400 block">
+                      {appointments.filter(a => a.status === 'Completed').length} Completed ✅
+                    </span>
+                    <span className="text-[10px] text-green-400 block font-mono">Service Billed & Fulfilled</span>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-dark-900/90 border border-white/5 space-y-1">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">In Queue / Remaining</span>
+                    <span className="text-2xl font-serif font-bold text-rosegold-400 block">
+                      {appointments.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length} In Queue ⏱️
+                    </span>
+                    <span className="text-[10px] text-purple-300 block font-mono">Pending Next Service</span>
+                  </div>
+                </div>
+
+                {/* Queue Filter Buttons */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-400 font-bold uppercase text-[10px]">Queue Filter:</span>
+                    <div className="flex bg-dark-900 p-1 rounded-xl border border-white/10 text-xs font-bold">
+                      <button
+                        onClick={() => setQueueFilter('All')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          queueFilter === 'All' ? 'rosegold-gradient-bg text-dark-900' : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        All Assigned ({appointments.length})
+                      </button>
+                      <button
+                        onClick={() => setQueueFilter('In Queue')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          queueFilter === 'In Queue' ? 'bg-amber-500 text-dark-900' : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        In Queue ({appointments.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length})
+                      </button>
+                      <button
+                        onClick={() => setQueueFilter('Completed')}
+                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                          queueFilter === 'Completed' ? 'bg-green-500 text-dark-900' : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        Completed ({appointments.filter(a => a.status === 'Completed').length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <span className="text-[11px] font-mono text-gray-400">
+                    Showing {
+                      appointments.filter(a => {
+                        if (queueFilter === 'Completed') return a.status === 'Completed';
+                        if (queueFilter === 'In Queue') return a.status !== 'Completed' && a.status !== 'Cancelled';
+                        return true;
+                      }).length
+                    } assigned clients
                   </span>
                 </div>
               </div>
 
+              {/* APPOINTMENTS QUEUE LIST */}
               <div className="space-y-4">
-                {appointments.map((app) => (
+                {appointments
+                  .filter(a => {
+                    if (queueFilter === 'Completed') return a.status === 'Completed';
+                    if (queueFilter === 'In Queue') return a.status !== 'Completed' && a.status !== 'Cancelled';
+                    return true;
+                  })
+                  .map((app) => (
                   <div key={app._id} className="glass-card p-5 rounded-3xl border border-rosegold-500/30 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-3 gap-2">
                       <div>
@@ -467,6 +647,15 @@ export default function EmployeeDashboardPage() {
                       </div>
 
                       <div className="flex items-center space-x-2">
+                        {app.paymentStatus !== 'Paid' && (
+                          <button
+                            onClick={() => handleMarkPaymentPaid(app._id)}
+                            className="px-3 py-1.5 rounded-xl bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center space-x-1"
+                          >
+                            <span>Mark as Paid (Cash 💵)</span>
+                          </button>
+                        )}
+
                         <span className="text-xs text-gray-400">Status:</span>
                         <select
                           value={app.status}
@@ -482,17 +671,32 @@ export default function EmployeeDashboardPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
                       <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
                         <span className="text-gray-400 text-[10px] uppercase font-semibold block">Client Name</span>
                         <span className="text-white font-bold block">{app.customerName}</span>
                         <span className="text-gray-400 text-[11px] block">{app.customerPhone}</span>
                       </div>
 
+                      {/* BOOKING TIME (NEVER OVERWRITTEN) */}
                       <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
-                        <span className="text-gray-400 text-[10px] uppercase font-semibold block">Scheduled Time</span>
+                        <span className="text-gray-400 text-[10px] uppercase font-semibold block">Booking Date & Time</span>
+                        <span className="text-rosegold-300 font-bold flex items-center space-x-1">
+                          <Clock className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
+                          <span>
+                            {app.bookingDateTime 
+                              ? new Date(app.bookingDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                              : (app.bookingDate || '23 Jul 2026')
+                            } • {app.bookingTimeFormatted || (app.bookingDateTime ? new Date(app.bookingDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM')}
+                          </span>
+                        </span>
+                      </div>
+
+                      {/* SCHEDULED SALON VISIT TIME */}
+                      <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
+                        <span className="text-gray-400 text-[10px] uppercase font-semibold block">Scheduled Visit</span>
                         <span className="text-white font-bold flex items-center space-x-1">
-                          <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+                          <Calendar className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
                           <span>{app.appointmentDate} at {app.appointmentTime}</span>
                         </span>
                       </div>

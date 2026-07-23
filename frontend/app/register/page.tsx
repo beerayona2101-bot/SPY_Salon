@@ -75,7 +75,7 @@ export default function RegisterPage() {
           </div>
           <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Join SPY Salon VIP</span>
+            <span>SPY Salon Account Registration</span>
           </div>
           <h1 className="text-3xl font-bold font-serif text-white">Create Account</h1>
           <p className="text-gray-400 text-xs sm:text-sm">Enjoy instant online booking, member discounts, and priority concierge access.</p>

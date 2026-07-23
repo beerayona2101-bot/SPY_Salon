@@ -69,9 +69,9 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 
 .glass-card:hover {
-  border-color: rgba(224, 169, 109, 0.6);
-  box-shadow: 0 12px 35px -10px rgba(224, 169, 109, 0.35);
-  transform: translateY(-4px);
+  border-color: rgba(224, 169, 109, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  transform: translateY(-2px);
 }
 
 .rosegold-glass-card {

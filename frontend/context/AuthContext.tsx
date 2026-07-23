@@ -19,15 +19,15 @@ interface AuthContextType {
   register: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; message: string }>;
   sendOtp: (identifier: { phone?: string; email?: string }) => Promise<{ success: boolean; message: string; demoOtp?: string }>;
   verifyOtp: (identifier: { phone?: string; email?: string; otp: string }) => Promise<{ success: boolean; message: string; user?: UserProfile }>;
-  forgotPassword: (email: string) => Promise<{ success: boolean; message: string; resetUrl?: string }>;
-  resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string; resetUrl?: string; demoOtp?: string }>;
+  resetPassword: (emailOrOtp: string, otpOrPassword: string, newPassword?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { API_BASE_URL } from '@/lib/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -79,10 +79,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
+      const userObj = data.data?.user || data.user;
+      const tokenVal = data.data?.token || data.token;
+      const refreshTokenVal = data.data?.refreshToken || data.refreshToken;
 
-      if (res.ok && data.success && data.user) {
-        saveAuthData(data.token, data.refreshToken, data.user);
-        return { success: true, message: data.message || 'Login successful!', user: data.user };
+      if (res.ok && data.success && userObj) {
+        saveAuthData(tokenVal, refreshTokenVal, userObj);
+        return { success: true, message: data.message || 'Login successful!', user: userObj };
       } else {
         return { success: false, message: data.message || 'Invalid email/username or password.' };
       }
@@ -99,9 +102,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify(formData)
       });
       const data = await res.json();
+      const userObj = data.data?.user || data.user;
+      const tokenVal = data.data?.token || data.token;
+      const refreshTokenVal = data.data?.refreshToken || data.refreshToken;
 
-      if (res.ok && data.success) {
-        saveAuthData(data.token, data.refreshToken, data.user);
+      if (res.ok && data.success && userObj) {
+        saveAuthData(tokenVal, refreshTokenVal, userObj);
         return { success: true, message: data.message || 'Registration successful!' };
       } else {
         return { success: false, message: data.message || 'Registration failed.' };
@@ -122,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return {
         success: data.success,
         message: data.message || (data.success ? 'OTP sent!' : 'Failed to send OTP'),
-        demoOtp: data.demoOtp
+        demoOtp: data.demoOtp || data.data?.demoOtp
       };
     } catch (err: any) {
       return { success: true, message: 'OTP sent! (Demo Code: 123456)', demoOtp: '123456' };
@@ -137,9 +143,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify(identifier)
       });
       const data = await res.json();
-      if (res.ok && data.success && data.user) {
-        saveAuthData(data.token, data.refreshToken, data.user);
-        return { success: true, message: data.message || 'OTP verified!', user: data.user };
+      const userObj = data.data?.user || data.user;
+      const tokenVal = data.data?.token || data.token;
+      const refreshTokenVal = data.data?.refreshToken || data.refreshToken;
+
+      if (res.ok && data.success && userObj) {
+        saveAuthData(tokenVal, refreshTokenVal, userObj);
+        return { success: true, message: data.message || 'OTP verified!', user: userObj };
       } else {
         return { success: false, message: data.message || 'Invalid OTP code.' };
       }
@@ -157,35 +167,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
       const data = await res.json();
       return {
-        success: data.success,
-        message: data.message || 'Password reset request processed.',
-        resetUrl: data.resetUrl
+        success: res.ok && data.success,
+        message: data.message || (res.ok ? 'Password reset OTP sent to your email.' : 'Failed to send OTP.'),
+        demoOtp: data.demoOtp || data.data?.demoOtp
       };
     } catch (err: any) {
       return {
-        success: true,
-        message: 'Password reset link sent to your email.',
-        resetUrl: '/reset-password?token=demo-reset-token'
+        success: false,
+        message: 'Server connection error. Please ensure backend is running.'
       };
     }
   };
 
-  const resetPassword = async (token: string, password: string) => {
+  const resetPassword = async (emailOrOtp: string, otpOrPassword: string, newPassword?: string) => {
     try {
+      let email = '';
+      let otp = '';
+      let password = '';
+
+      if (newPassword) {
+        email = emailOrOtp;
+        otp = otpOrPassword;
+        password = newPassword;
+      } else {
+        otp = emailOrOtp;
+        password = otpOrPassword;
+      }
+
       const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
+        body: JSON.stringify({ email, otp, password })
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        saveAuthData(data.token, data.refreshToken, data.user);
         return { success: true, message: data.message || 'Password reset successful!' };
       } else {
-        return { success: false, message: data.message || 'Reset failed.' };
+        return { success: false, message: data.message || 'OTP verification or reset failed.' };
       }
     } catch (err: any) {
-      return { success: true, message: 'Password updated successfully!' };
+      return { success: false, message: 'Server error during password reset.' };
     }
   };
 

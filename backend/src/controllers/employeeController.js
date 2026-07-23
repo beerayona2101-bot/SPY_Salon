@@ -1,149 +1,232 @@
+/**
+ * Production-Level Employee Controller for SPY Salon Enterprise REST API
+ */
 const store = require('../data/store');
+const ApiResponse = require('../utils/apiResponse');
+const ApiError = require('../utils/apiError');
 
-// Get Assigned Appointments for Employee (Reads central live appointments)
-exports.getAssignedAppointments = async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    count: store.appointments.length,
-    data: store.appointments
-  });
-};
-
-// Update Appointment Service Status & Notes (In Progress, Completed, Cancelled)
-exports.updateAppointmentStatus = async (req, res) => {
-  const { status, notes } = req.body;
-  const idx = store.appointments.findIndex(a => a._id === req.params.id);
-  if (idx !== -1) {
-    if (status) store.appointments[idx].status = status;
-    if (notes !== undefined) store.appointments[idx].notes = notes;
-    return res.status(200).json({ success: true, message: 'Status updated successfully', data: store.appointments[idx] });
+exports.getAssignedAppointments = async (req, res, next) => {
+  try {
+    const appointments = store.appointments || [];
+    return ApiResponse.success(res, appointments, 'Assigned appointments retrieved');
+  } catch (error) {
+    next(error);
   }
-  return res.status(404).json({ success: false, message: 'Appointment not found' });
 };
 
-// Clock-in / Clock-out Attendance
-exports.clockInAttendance = async (req, res) => {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const todayStr = now.toISOString().split('T')[0];
+exports.updateAppointmentStatus = async (req, res, next) => {
+  try {
+    const { status, paymentStatus, notes, paymentMethod } = req.body;
+    const idx = store.appointments.findIndex(a => String(a._id) === String(req.params.id) || String(a.bookingId) === String(req.params.id));
+    if (idx === -1) throw ApiError.notFound('Appointment not found');
 
-  const newRec = {
-    _id: 'eatt_' + Date.now(),
-    employeeName: req.body.employeeName || 'Ananya Sharma',
-    date: todayStr,
-    clockIn: timeStr,
-    clockOut: 'In Progress',
-    status: 'Present'
-  };
+    const app = store.appointments[idx];
+    if (status) app.status = status;
+    if (paymentStatus) app.paymentStatus = paymentStatus;
+    if (paymentMethod) app.paymentMethod = paymentMethod;
+    if (notes !== undefined) app.notes = notes;
 
-  store.attendance.unshift(newRec);
-  return res.status(201).json({ success: true, message: `Clocked in at ${timeStr}!`, data: newRec });
-};
+    // Cash / Online Payment Confirmation Workflow
+    if (paymentStatus === 'Paid' || status === 'Completed') {
+      app.paymentStatus = 'Paid';
 
-// Get Employee Attendance Log
-exports.getEmployeeAttendance = async (req, res) => {
-  return res.status(200).json({ success: true, data: store.attendance });
-};
+      // Update Ledger & Customer Total Spend
+      const srvMatch = store.services.find(s => s.name === app.service);
+      const amount = srvMatch ? srvMatch.price : 1499;
 
-// Submit New Leave Request (Reflects in Admin Leave Desk instantly)
-exports.submitLeaveRequest = async (req, res) => {
-  const { startDate, endDate, reason, employeeName } = req.body;
-  if (!startDate || !endDate || !reason) {
-    return res.status(400).json({ success: false, message: 'Please provide start date, end date, and reason.' });
-  }
+      store.addTransaction(
+        'Credited',
+        'Appointment Payment',
+        `Cash / Counter Payment #${app.bookingId} - ${app.customerName} (${app.service})`,
+        amount,
+        app.paymentMethod || 'Cash',
+        'Completed'
+      );
 
-  const newLeave = {
-    _id: 'leave_' + Date.now(),
-    employeeName: employeeName || 'Ananya Sharma',
-    startDate,
-    endDate,
-    reason,
-    status: 'Pending'
-  };
+      const custIdx = store.customers.findIndex(c => (app.customerEmail && c.email.toLowerCase() === app.customerEmail.toLowerCase()) || (app.customerPhone && c.phone.includes(app.customerPhone)));
+      if (custIdx !== -1) {
+        store.customers[custIdx].totalSpend = (store.customers[custIdx].totalSpend || 0) + amount;
+        store.customers[custIdx].visits = (store.customers[custIdx].visits || 0) + 1;
+      }
 
-  store.leaves.unshift(newLeave);
-  return res.status(201).json({ success: true, message: 'Leave request submitted successfully!', data: newLeave });
-};
+      // Notifications
+      store.addNotification(
+        'Payment Received 💵',
+        `Payment of ₹${amount} for #${app.bookingId} (${app.customerName}) marked as Paid via ${app.paymentMethod || 'Cash'}.`,
+        'success'
+      );
 
-// Get Employee Leaves
-exports.getEmployeeLeaves = async (req, res) => {
-  return res.status(200).json({ success: true, data: store.leaves });
-};
+      store.addUserNotification(
+        app.customerPhone,
+        app.customerEmail,
+        'Payment Confirmed ✅',
+        `Your payment of ₹${amount} for appointment #${app.bookingId} has been confirmed. Thank you!`,
+        'success'
+      );
 
-// Get Employee Payrolls / Salary Slips
-exports.getEmployeePayrolls = async (req, res) => {
-  const { email } = req.query;
-  if (email) {
-    const emp = store.employees.find(e => e.email.toLowerCase() === email.toLowerCase());
-    if (emp) {
-      const list = store.payrolls.filter(p => p.employeeId === emp._id || p.employeeName.toLowerCase() === emp.name.toLowerCase());
-      return res.status(200).json({ success: true, count: list.length, data: list });
+      store.logActivity('Payment Confirmed', `Payment of ₹${amount} for #${app.bookingId} confirmed as Paid.`);
+    } else {
+      store.logActivity('Appointment Status Changed', `Employee updated #${app.bookingId} status to ${status || app.status}.`);
     }
+
+    const { broadcastEvent } = require('../utils/socket');
+    broadcastEvent('appointment:updated', app);
+    broadcastEvent('stats:updated', store.getAnalyticsStats());
+
+    return ApiResponse.success(res, app, 'Appointment updated successfully');
+  } catch (error) {
+    next(error);
   }
-  return res.status(200).json({ success: true, count: store.payrolls.length, data: store.payrolls });
 };
 
-// Update Employee Bank & UPI Payout Details
-exports.updateBankDetails = async (req, res) => {
-  const { email, accountName, accountNumber, ifscCode, bankName, upiId } = req.body;
-  const idx = store.employees.findIndex(e => (email && e.email.toLowerCase() === email.toLowerCase()) || e._id === req.body.employeeId);
-  
-  const bankData = {
-    accountName: accountName || (idx !== -1 ? store.employees[idx].name : 'Staff Specialist'),
-    accountNumber: accountNumber || '50100293849201',
-    ifscCode: ifscCode || 'HDFC0001234',
-    bankName: bankName || 'HDFC Bank, Jubilee Hills',
-    upiId: upiId || 'staff@upi'
-  };
+exports.clockInAttendance = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const todayStr = now.toISOString().split('T')[0];
 
-  if (idx !== -1) {
-    store.employees[idx].bankDetails = bankData;
-    store.logActivity('Bank Details Updated', `Staff ${store.employees[idx].name} updated bank & UPI payout details.`);
-    return res.status(200).json({ success: true, message: 'Bank & UPI payout details saved successfully!', data: bankData });
+    const newRec = {
+      _id: `eatt_${Date.now()}`,
+      employeeName: req.body.employeeName || 'Ananya Sharma',
+      date: todayStr,
+      clockIn: timeStr,
+      clockOut: 'In Progress',
+      status: 'Present'
+    };
+
+    store.attendance.unshift(newRec);
+    return ApiResponse.created(res, newRec, `Clocked in at ${timeStr}!`);
+  } catch (error) {
+    next(error);
   }
-
-  store.employees[0].bankDetails = bankData;
-  return res.status(200).json({ success: true, message: 'Bank & UPI payout details saved successfully!', data: bankData });
 };
 
-// Add Walk-In Client Appointment from Stylist / Employee Queue
-exports.createEmployeeWalkIn = async (req, res) => {
-  const { customerName, customerPhone, service, specialistName, appointmentTime, paymentMethod, notes } = req.body;
-  if (!customerName || !customerPhone || !service) {
-    return res.status(400).json({ success: false, message: 'Please provide customer name, phone, and service.' });
+exports.getEmployeeAttendance = async (req, res, next) => {
+  try {
+    return ApiResponse.success(res, store.attendance, 'Attendance log retrieved');
+  } catch (error) {
+    next(error);
   }
+};
 
-  const bookingId = 'SPY-' + Math.floor(100000 + Math.random() * 900000);
-  const todayStr = new Date().toISOString().split('T')[0];
+exports.submitLeaveRequest = async (req, res, next) => {
+  try {
+    const { startDate, endDate, reason, employeeName } = req.body;
+    if (!startDate || !endDate || !reason) {
+      throw ApiError.badRequest('Please provide start date, end date, and reason');
+    }
 
-  const newApp = {
-    _id: 'app_' + Date.now(),
-    bookingId,
-    customerName,
-    customerPhone,
-    service,
-    specialistName: specialistName || 'Ananya Sharma (Senior Hair Stylist)',
-    branch: 'Jubilee Hills Flagship',
-    appointmentDate: todayStr,
-    appointmentTime: appointmentTime || 'Immediate Walk-In',
-    paymentMethod: paymentMethod || 'Cash',
-    paymentStatus: 'Paid',
-    status: 'In Progress',
-    notes: notes || 'Direct Walk-In Client added by Stylist Desk.'
-  };
+    const newLeave = {
+      _id: `leave_${Date.now()}`,
+      employeeName: employeeName || 'Ananya Sharma',
+      startDate,
+      endDate,
+      reason,
+      status: 'Pending'
+    };
 
-  store.appointments.unshift(newApp);
+    store.leaves.unshift(newLeave);
+    return ApiResponse.created(res, newLeave, 'Leave request submitted successfully!');
+  } catch (error) {
+    next(error);
+  }
+};
 
-  store.logActivity(
-    'Employee Walk-In Added',
-    `Stylist recorded walk-in appointment ${bookingId} for ${customerName} (${service})`
-  );
+exports.getEmployeeLeaves = async (req, res, next) => {
+  try {
+    return ApiResponse.success(res, store.leaves, 'Leave history retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
 
-  store.addNotification(
-    'Walk-In Client Seated ✂️',
-    `Walk-in client ${customerName} seated for ${service} with ${newApp.specialistName}. Status: In Progress.`,
-    'info'
-  );
+exports.getEmployeePayrolls = async (req, res, next) => {
+  try {
+    const { email } = req.query;
+    if (email) {
+      const emp = store.employees.find(e => e.email.toLowerCase() === email.toLowerCase());
+      if (emp) {
+        const list = store.payrolls.filter(p => p.employeeId === emp._id || p.employeeName.toLowerCase() === emp.name.toLowerCase());
+        return ApiResponse.success(res, list, 'Employee salary slips retrieved');
+      }
+    }
+    return ApiResponse.success(res, store.payrolls, 'All salary slips retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
 
-  return res.status(201).json({ success: true, message: 'Walk-in appointment recorded successfully!', data: newApp });
+exports.updateBankDetails = async (req, res, next) => {
+  try {
+    const { email, accountName, accountNumber, ifscCode, bankName, upiId } = req.body;
+    const idx = store.employees.findIndex(e => (email && e.email.toLowerCase() === email.toLowerCase()) || e._id === req.body.employeeId);
+    
+    const bankData = {
+      accountName: accountName || (idx !== -1 ? store.employees[idx].name : 'Staff Specialist'),
+      accountNumber: accountNumber || '50100293849201',
+      ifscCode: ifscCode || 'HDFC0001234',
+      bankName: bankName || 'HDFC Bank, Jubilee Hills',
+      upiId: upiId || 'staff@upi'
+    };
+
+    if (idx !== -1) {
+      store.employees[idx].bankDetails = bankData;
+      store.logActivity('Bank Details Updated', `Staff ${store.employees[idx].name} updated bank & UPI payout details.`);
+    } else if (store.employees.length > 0) {
+      store.employees[0].bankDetails = bankData;
+    }
+
+    return ApiResponse.success(res, bankData, 'Bank & UPI payout details saved successfully!');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.createEmployeeWalkIn = async (req, res, next) => {
+  try {
+    const { customerName, customerPhone, service, specialistName, appointmentTime, paymentMethod, notes } = req.body;
+    if (!customerName || !customerPhone || !service) {
+      throw ApiError.badRequest('Please provide customer name, phone, and service');
+    }
+
+    const bookingId = `SPY-${Math.floor(100000 + Math.random() * 900000)}`;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const now = new Date();
+    const bookingDateTime = now.toISOString();
+    const bookingDateStr = now.toISOString().split('T')[0];
+    const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newApp = {
+      _id: `app_${Date.now()}`,
+      bookingId,
+      customerName,
+      customerPhone,
+      service,
+      specialistName: specialistName || 'Ananya Sharma (Senior Hair Stylist)',
+      branch: 'Jubilee Hills Flagship',
+      bookingDateTime,
+      bookingDate: bookingDateStr,
+      bookingTimeFormatted: bookingTimeFormattedStr,
+      appointmentDate: todayStr,
+      appointmentTime: appointmentTime || 'Immediate Walk-In',
+      paymentMethod: paymentMethod || 'Cash',
+      paymentStatus: 'Paid',
+      status: 'In Progress',
+      notes: notes || 'Direct Walk-In Client added by Stylist Desk.',
+      createdAt: bookingDateTime,
+      updatedAt: bookingDateTime
+    };
+
+    store.appointments.unshift(newApp);
+
+    store.logActivity(
+      'Employee Walk-In Added',
+      `Stylist recorded walk-in appointment ${bookingId} for ${customerName} (${service})`
+    );
+
+    return ApiResponse.created(res, newApp, 'Walk-in appointment recorded successfully!');
+  } catch (error) {
+    next(error);
+  }
 };

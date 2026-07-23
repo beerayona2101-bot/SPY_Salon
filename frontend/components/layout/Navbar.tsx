@@ -17,7 +17,8 @@ import {
   PhoneCall,
   X,
   LayoutDashboard,
-  Bell
+  Bell,
+  Menu
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
@@ -28,6 +29,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userNotifs, setUserNotifs] = useState<any[]>([]);
   const [profileTab, setProfileTab] = useState<'schedules' | 'history'>('schedules');
 
@@ -56,10 +58,11 @@ export default function Navbar() {
 
   const notifRef = useRef<HTMLDivElement>(null);
 
-  // Auto-close notification dropdown & profile modal when screen/route moves to another location
+  // Auto-close notification dropdown, profile modal & mobile menu when route changes
   useEffect(() => {
     setNotifDropdownOpen(false);
     setProfileDropdownOpen(false);
+    setMobileMenuOpen(false);
   }, [pathname]);
 
   // Click-outside listener to smoothly close notification dropdown & profile modal
@@ -276,10 +279,61 @@ export default function Navbar() {
                     <span>Sign In</span>
                   </Link>
                 )}
+
+                {/* Mobile Hamburger Toggle Button for Navbar */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-gray-200 hover:text-white hover:border-rosegold-400 transition-all cursor-pointer"
+                  title="Toggle Navigation Menu"
+                >
+                  {mobileMenuOpen ? <X className="w-5 h-5 text-rosegold-400" /> : <Menu className="w-5 h-5 text-rosegold-400" />}
+                </button>
+
               </div>
 
             </div>
           </div>
+
+          {/* Mobile Responsive Navbar Dropdown Drawer */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-white/10 bg-dark-900/98 backdrop-blur-2xl px-4 py-4 space-y-2 animate-fadeIn shadow-2xl">
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+              >
+                Home
+              </Link>
+              <Link
+                href="/services"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/services' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+              >
+                Services & Treatments
+              </Link>
+              <Link
+                href="/pricing"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${isPricingOrOffersActive ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+              >
+                Pricing & Offers
+              </Link>
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/contact' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+              >
+                Contact Us
+              </Link>
+              <Link
+                href="/book"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full py-3 text-center rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold mt-2"
+              >
+                Book Online Appointment
+              </Link>
+            </div>
+          )}
         </nav>
       </header>
 

@@ -19,6 +19,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useSocket } from '@/context/SocketContext';
 
 interface AppointmentRecord {
   _id: string;
@@ -32,6 +33,9 @@ interface AppointmentRecord {
   status: string;
   paymentMethod?: string;
   paymentStatus?: string;
+  bookingDateTime?: string;
+  bookingDate?: string;
+  bookingTimeFormatted?: string;
 }
 
 interface OfferRecord {
@@ -53,6 +57,37 @@ export default function UserProfilePage() {
   const [membershipDetails, setMembershipDetails] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Reschedule Request Modal State
+  const [rescheduleModalApp, setRescheduleModalApp] = useState<AppointmentRecord | null>(null);
+  const [rescheduleForm, setRescheduleForm] = useState({
+    newDate: new Date().toISOString().split('T')[0],
+    newTime: '02:00 PM',
+    reason: ''
+  });
+  const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
+
+  const handleRequestReschedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rescheduleModalApp) return;
+    setIsSubmittingReschedule(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/v1/user/appointments/${rescheduleModalApp._id}/reschedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(rescheduleForm)
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAppointments(appointments.map(a => a._id === rescheduleModalApp._id ? { ...a, ...data.data } : a));
+      }
+      setRescheduleModalApp(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmittingReschedule(false);
+    }
+  };
+
   // STRICT ROLE REDIRECT: Admin must ONLY use Admin Dashboard (/admin).
   useEffect(() => {
     if (user?.role === 'admin' || user?.email?.includes('admin')) {
@@ -71,6 +106,22 @@ export default function UserProfilePage() {
     }, 4000);
     return () => clearInterval(intervalId);
   }, [user, router]);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('appointment:updated', (data: any) => {
+      if (data?.appointment) {
+        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      }
+    });
+
+    return () => {
+      socket.off('appointment:updated');
+    };
+  }, [socket]);
 
   const fetchProfileData = async () => {
     setLoading(true);
@@ -270,11 +321,26 @@ export default function UserProfilePage() {
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  {/* BOOKING TIME (NEVER CHANGES) */}
                   <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
-                    <span className="text-gray-400 text-[10px] uppercase font-semibold block">Date & Time</span>
-                    <span className="text-white font-bold flex items-center space-x-1.5">
+                    <span className="text-gray-400 text-[10px] uppercase font-semibold block">Appointment Booked On</span>
+                    <span className="text-rosegold-300 font-bold flex items-center space-x-1.5">
                       <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                      <span>{app.appointmentDate} at {app.appointmentTime}</span>
+                      <span>
+                        {app.bookingDateTime 
+                          ? new Date(app.bookingDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : (app.bookingDate || '23 July 2026')
+                        } • {app.bookingTimeFormatted || (app.bookingDateTime ? new Date(app.bookingDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM')}
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* SCHEDULED SALON VISIT TIME */}
+                  <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
+                    <span className="text-gray-400 text-[10px] uppercase font-semibold block">Scheduled Visit</span>
+                    <span className="text-white font-bold flex items-center space-x-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-rosegold-400" />
+                      <span>{app.appointmentDate} • {app.appointmentTime}</span>
                     </span>
                   </div>
 
@@ -286,7 +352,7 @@ export default function UserProfilePage() {
                     </span>
                   </div>
 
-                  <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1">
+                  <div className="bg-dark-800 p-3 rounded-2xl border border-white/5 space-y-1 flex flex-col justify-between">
                     <span className="text-gray-400 text-[10px] uppercase font-semibold block">Studio Branch</span>
                     <span className="text-white font-bold flex items-center space-x-1.5 truncate">
                       <ShieldCheck className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
@@ -294,11 +360,121 @@ export default function UserProfilePage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Reschedule Request Action Button */}
+                {(app.status === 'Confirmed' || app.status === 'Pending') && (
+                  <div className="pt-2 border-t border-white/10 flex justify-end">
+                    <button
+                      onClick={() => {
+                        setRescheduleModalApp(app);
+                        setRescheduleForm({
+                          newDate: app.appointmentDate || new Date().toISOString().split('T')[0],
+                          newTime: app.appointmentTime || '02:00 PM',
+                          reason: ''
+                        });
+                      }}
+                      className="px-4 py-2 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold hover:bg-amber-500/30 transition-all cursor-pointer flex items-center space-x-1.5"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Request Reschedule 📅</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* RESCHEDULE REQUEST MODAL */}
+      {rescheduleModalApp && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="glass-card w-full max-w-md p-6 rounded-3xl border border-rosegold-500/50 space-y-5 bg-dark-900 shadow-2xl text-left animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="text-lg font-serif font-bold text-white">Request Appointment Reschedule</h3>
+                <p className="text-xs text-rosegold-400 font-mono">Booking #{rescheduleModalApp.bookingId}</p>
+              </div>
+              <button
+                onClick={() => setRescheduleModalApp(null)}
+                className="w-8 h-8 rounded-full bg-white/10 text-gray-300 hover:text-white flex items-center justify-center font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestReschedule} className="space-y-4 text-xs">
+              <div className="space-y-1">
+                <label className="text-gray-300 font-bold block">Current Service</label>
+                <input
+                  type="text"
+                  disabled
+                  value={rescheduleModalApp.service}
+                  className="w-full px-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-gray-400 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-gray-300 font-bold block">New Preferred Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={rescheduleForm.newDate}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, newDate: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-white font-bold focus:outline-none focus:border-rosegold-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-gray-300 font-bold block">New Preferred Time *</label>
+                  <select
+                    value={rescheduleForm.newTime}
+                    onChange={(e) => setRescheduleForm({ ...rescheduleForm, newTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-white font-bold focus:outline-none focus:border-rosegold-500"
+                  >
+                    <option value="10:00 AM">10:00 AM</option>
+                    <option value="11:30 AM">11:30 AM</option>
+                    <option value="01:00 PM">01:00 PM</option>
+                    <option value="02:30 PM">02:30 PM</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="05:30 PM">05:30 PM</option>
+                    <option value="07:00 PM">07:00 PM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-300 font-bold block">Reason for Reschedule (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Schedule conflict, work commitment..."
+                  value={rescheduleForm.reason}
+                  onChange={(e) => setRescheduleForm({ ...rescheduleForm, reason: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-rosegold-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setRescheduleModalApp(null)}
+                  className="px-4 py-2 rounded-full bg-dark-800 text-gray-300 font-bold hover:bg-dark-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReschedule}
+                  className="px-5 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold shadow-lg hover:scale-105 transition-all"
+                >
+                  {isSubmittingReschedule ? 'Submitting Request...' : 'Submit Reschedule Request 🚀'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -6,6 +6,7 @@ const adminController = require('../controllers/adminController');
 router.get('/analytics', adminController.getAnalytics);
 router.get('/activity-logs', adminController.getActivityLogs);
 router.get('/notifications', adminController.getNotifications);
+router.put('/notifications/read', adminController.markNotificationRead);
 router.get('/export/:module', adminController.exportData);
 
 // Employee Routes (CRUD)
@@ -27,9 +28,10 @@ router.post('/services', adminController.createService);
 router.put('/services/:id', adminController.updateService);
 router.delete('/services/:id', adminController.deleteService);
 
-// Appointment Routes (CRUD)
+// Appointment Routes (CRUD & Reschedule Workflow)
 router.get('/appointments', adminController.getAdminAppointments);
 router.post('/appointments', adminController.createAdminAppointment);
+router.put('/appointments/:id/reschedule-respond', adminController.respondReschedule);
 router.put('/appointments/:id', adminController.updateAppointmentStatus);
 router.delete('/appointments/:id', adminController.deleteAppointment);
 
@@ -42,6 +44,7 @@ router.delete('/leaves/:id', adminController.deleteLeave);
 
 // Attendance Routes
 router.get('/attendance', adminController.getAttendance);
+router.get('/attendance/report', adminController.getAttendanceReport);
 router.post('/attendance', adminController.recordAttendance);
 
 // Reviews Moderation Routes
@@ -53,5 +56,12 @@ router.get('/payrolls', adminController.getPayrolls);
 router.post('/payrolls', adminController.createPayroll);
 router.put('/payrolls/:id/status', adminController.updatePayrollStatus);
 router.delete('/payrolls/:id', adminController.deletePayroll);
+
+// Financial Ledger & Transactions Routes
+router.get('/transactions', adminController.getTransactions);
+router.post('/transactions', adminController.createTransaction);
+
+// AI Power BI Reports Data Model Route
+router.get('/ai-reports', adminController.getAiPowerBiReport);
 
 module.exports = router;

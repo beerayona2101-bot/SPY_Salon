@@ -132,6 +132,11 @@ exports.bookAppointment = async (req, res) => {
     const bookingId = 'SPY-' + Math.floor(100000 + Math.random() * 900000);
     const chosenPayment = paymentMethod || 'Cash';
     const initialPaymentStatus = (chosenPayment === 'UPI' || chosenPayment === 'Razorpay') ? 'Paid' : 'Unpaid';
+    
+    const now = new Date();
+    const bookingDateTime = now.toISOString();
+    const bookingDateStr = now.toISOString().split('T')[0];
+    const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const newAppointment = {
       _id: 'app_' + Date.now(),
@@ -142,13 +147,18 @@ exports.bookAppointment = async (req, res) => {
       branch,
       service,
       specialistName: chosenSpecialist,
+      bookingDateTime,
+      bookingDate: bookingDateStr,
+      bookingTimeFormatted: bookingTimeFormattedStr,
       appointmentDate,
       appointmentTime,
       paymentMethod: chosenPayment,
       paymentStatus: initialPaymentStatus,
       paymentDetails: paymentDetails || {},
       notes: notes || '',
-      status: 'Pending'
+      status: 'Pending',
+      createdAt: bookingDateTime,
+      updatedAt: bookingDateTime
     };
 
     // If this is a reschedule action, update existing appointment & clear old reschedule notifications
@@ -157,13 +167,28 @@ exports.bookAppointment = async (req, res) => {
     );
 
     if (existingIndex !== -1) {
+      const oldDate = store.appointments[existingIndex].appointmentDate;
+      const oldTime = store.appointments[existingIndex].appointmentTime;
+      
       store.appointments[existingIndex].appointmentDate = appointmentDate;
       store.appointments[existingIndex].appointmentTime = appointmentTime;
       store.appointments[existingIndex].status = 'Confirmed';
       store.appointments[existingIndex].service = service;
       store.appointments[existingIndex].specialistName = chosenSpecialist;
+      store.appointments[existingIndex].updatedAt = new Date().toISOString();
+      // NOTE: bookingDateTime remains completely untouched!
+
+      store.logActivity(
+        'Appointment Rescheduled',
+        `Rescheduled #${store.appointments[existingIndex].bookingId} for ${customerName}. Old Schedule: ${oldDate} ${oldTime} ➔ New Schedule: ${appointmentDate} ${appointmentTime}. (Booked on: ${store.appointments[existingIndex].bookingDateTime})`
+      );
     } else {
       store.appointments.unshift(newAppointment);
+
+      store.logActivity(
+        'New Appointment Booked',
+        `Client ${customerName} booked #${bookingId} for ${service} scheduled on ${appointmentDate} at ${appointmentTime}. (Booked on: ${bookingDateTime})`
+      );
     }
 
     // Clear old warning reschedule notifications for this customer

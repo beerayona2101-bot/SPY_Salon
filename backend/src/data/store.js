@@ -79,9 +79,69 @@ const services = [
 ];
 
 const appointments = [
-  { _id: 'app1', bookingId: 'SPY-884920', customerName: 'Priya Sharma', customerPhone: '+91 98765 43210', customerEmail: 'priya.s@gmail.com', branch: 'Jubilee Hills Flagship', service: '24K Royal Gold Glow Facial', specialistName: 'Priya Reddy (Aesthetics & Skin Expert)', appointmentDate: '2026-07-23', appointmentTime: '11:00 AM', status: 'Confirmed', paymentMethod: 'UPI', paymentStatus: 'Paid', notes: 'Client prefers gentle scalp massage.' },
-  { _id: 'app2', bookingId: 'SPY-492104', customerName: 'Sneha Rao', customerPhone: '+91 98765 67890', customerEmail: 'sneha.rao@outlook.com', branch: 'Jubilee Hills Flagship', service: 'Signature Keratin Hair Spa & Mask', specialistName: 'Ananya Sharma (Senior Hair Stylist)', appointmentDate: '2026-07-22', appointmentTime: '03:30 PM', status: 'Completed', paymentMethod: 'Cash', paymentStatus: 'Paid', notes: 'Pre-bridal hair consultation.' },
-  { _id: 'app3', bookingId: 'SPY-991204', customerName: 'Vikram Malhotra', customerPhone: '+91 98765 12345', customerEmail: 'vikram.m@yahoo.com', branch: 'Gachibowli Tech Hub', service: 'Royal Beard Sculpting & Charcoal Steam', specialistName: 'Rahul Verma (Master Barber)', appointmentDate: '2026-07-24', appointmentTime: '05:00 PM', status: 'Pending', paymentMethod: 'Cash', paymentStatus: 'Unpaid', notes: 'First time visitor.' }
+  {
+    _id: 'app1',
+    bookingId: 'SPY-884920',
+    customerName: 'Priya Sharma',
+    customerPhone: '+91 98765 43210',
+    customerEmail: 'priya.s@gmail.com',
+    branch: 'Jubilee Hills Flagship',
+    service: '24K Royal Gold Glow Facial',
+    specialistName: 'Priya Reddy (Aesthetics & Skin Expert)',
+    bookingDateTime: '2026-07-23T09:15:00.000Z',
+    bookingDate: '2026-07-23',
+    bookingTimeFormatted: '09:15 AM',
+    appointmentDate: '2026-07-23',
+    appointmentTime: '11:00 AM',
+    status: 'Confirmed',
+    paymentMethod: 'UPI',
+    paymentStatus: 'Paid',
+    notes: 'Client prefers gentle scalp massage.',
+    createdAt: '2026-07-23T09:15:00.000Z',
+    updatedAt: '2026-07-23T09:15:00.000Z'
+  },
+  {
+    _id: 'app2',
+    bookingId: 'SPY-492104',
+    customerName: 'Sneha Rao',
+    customerPhone: '+91 98765 67890',
+    customerEmail: 'sneha.rao@outlook.com',
+    branch: 'Jubilee Hills Flagship',
+    service: 'Signature Keratin Hair Spa & Mask',
+    specialistName: 'Ananya Sharma (Senior Hair Stylist)',
+    bookingDateTime: '2026-07-21T14:20:00.000Z',
+    bookingDate: '2026-07-21',
+    bookingTimeFormatted: '02:20 PM',
+    appointmentDate: '2026-07-22',
+    appointmentTime: '03:30 PM',
+    status: 'Completed',
+    paymentMethod: 'Cash',
+    paymentStatus: 'Paid',
+    notes: 'Pre-bridal hair consultation.',
+    createdAt: '2026-07-21T14:20:00.000Z',
+    updatedAt: '2026-07-22T15:30:00.000Z'
+  },
+  {
+    _id: 'app3',
+    bookingId: 'SPY-991204',
+    customerName: 'Vikram Malhotra',
+    customerPhone: '+91 98765 12345',
+    customerEmail: 'vikram.m@yahoo.com',
+    branch: 'Gachibowli Tech Hub',
+    service: 'Royal Beard Sculpting & Charcoal Steam',
+    specialistName: 'Rahul Verma (Master Barber)',
+    bookingDateTime: '2026-07-23T10:05:00.000Z',
+    bookingDate: '2026-07-23',
+    bookingTimeFormatted: '10:05 AM',
+    appointmentDate: '2026-07-24',
+    appointmentTime: '05:00 PM',
+    status: 'Pending',
+    paymentMethod: 'Cash',
+    paymentStatus: 'Unpaid',
+    notes: 'First time visitor.',
+    createdAt: '2026-07-23T10:05:00.000Z',
+    updatedAt: '2026-07-23T10:05:00.000Z'
+  }
 ];
 
 const leaves = [
@@ -109,32 +169,45 @@ const customers = [
 ];
 
 const activityLogs = [
-  { _id: 'act1', timestamp: new Date().toISOString(), action: 'System Initialized', details: 'SPY Salon production database synchronized.', user: 'System Admin' }
+  { _id: 'act1', timestamp: new Date(Date.now() - 5 * 60000).toISOString(), action: 'Payment Confirmed', details: 'Cash payment of ₹2,199 confirmed for #SPY-492104 (Sneha Rao - Keratin Hair Spa).', user: 'Ananya Sharma (Stylist Desk)' },
+  { _id: 'act2', timestamp: new Date(Date.now() - 25 * 60000).toISOString(), action: 'Appointment Booked', details: 'VIP client Priya Sharma booked 24K Royal Gold Glow Facial (#SPY-884920).', user: 'Priya Sharma (VIP Client Portal)' },
+  { _id: 'act3', timestamp: new Date(Date.now() - 60 * 60000).toISOString(), action: 'Walk-In Recorded', details: 'Master barber Rahul Verma logged walk-in appointment #SPY-991204 for Vikram Malhotra.', user: 'Rahul Verma (Barber Desk)' },
+  { _id: 'act4', timestamp: new Date(Date.now() - 120 * 60000).toISOString(), action: 'Payroll Disbursed', details: 'Salary slip PAY-2026-07-101 (₹51,000) disbursed to Ananya Sharma via HDFC Bank Transfer.', user: 'System Admin' },
+  { _id: 'act5', timestamp: new Date(Date.now() - 180 * 60000).toISOString(), action: 'Staff Attendance Logged', details: 'Ananya Sharma, Rahul Verma & Priya Reddy clocked in as Present 🟢 for July 2026 operational cycle.', user: 'Attendance Engine' },
+  { _id: 'act6', timestamp: new Date(Date.now() - 240 * 60000).toISOString(), action: 'Customer VIP Upgraded', details: 'Kavita Patel upgraded to VIP Platinum Tier (Total Spend: ₹24,500 across 15 salon visits).', user: 'Customer Concierge' },
+  { _id: 'act7', timestamp: new Date(Date.now() - 300 * 60000).toISOString(), action: 'System Initialized', details: 'SPY Salon production REST API & Socket.IO realtime server initialized cleanly.', user: 'System Administrator' }
 ];
+
+const { broadcastEvent } = require('../utils/socket');
 
 const notifications = [
   { _id: 'notif1', timestamp: new Date().toISOString(), title: 'System Online', message: 'SPY Salon Enterprise Portal active.', read: false, type: 'info' }
 ];
 
 const logActivity = (action, details, user = 'System Admin') => {
-  activityLogs.unshift({
+  const logItem = {
     _id: 'act_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
     timestamp: new Date().toISOString(),
     action,
     details,
     user
-  });
+  };
+  activityLogs.unshift(logItem);
+  broadcastEvent('activity:new', logItem);
 };
 
-const addNotification = (title, message, type = 'info') => {
-  notifications.unshift({
+const addNotification = (title, message, type = 'info', recipientRole = 'admin') => {
+  const notifItem = {
     _id: 'notif_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
     timestamp: new Date().toISOString(),
     title,
     message,
     read: false,
+    recipientRole,
     type
-  });
+  };
+  notifications.unshift(notifItem);
+  broadcastEvent('notification:new', notifItem);
 };
 
 const getAnalyticsStats = () => {
@@ -157,8 +230,13 @@ const getAnalyticsStats = () => {
     ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : '4.9';
 
+  const cashCollected = transactions
+    .filter(t => t.type === 'Credited' && (t.paymentMethod === 'Cash' || t.paymentMethod === 'Counter Cash' || t.paymentMethod === 'UPI'))
+    .reduce((sum, t) => sum + (t.amount || 0), 42500);
+
   return {
     totalRevenue,
+    cashCollected,
     totalAppointments: totalAppointmentsCount,
     activeEmployees: activeEmployeesCount,
     totalCustomers: totalCustomersCount,
@@ -214,10 +292,65 @@ const payrolls = [
   }
 ];
 
+const transactions = [
+  { _id: 'txn_101', txnId: 'TXN-2026-07-001', type: 'Credited', category: 'Appointment Booking', description: 'Customer Appointment #SPY-884920 - Priya Sharma (24K Gold Facial)', amount: 1499, paymentMethod: 'UPI', date: '2026-07-23 11:00 AM', status: 'Completed' },
+  { _id: 'txn_102', txnId: 'TXN-2026-07-002', type: 'Debited', category: 'Staff Payroll Disbursal', description: 'Monthly Salary Disbursal - Ananya Sharma (EMP-1001)', amount: 51000, paymentMethod: 'Bank Transfer (HDFC)', date: '2026-07-20 04:30 PM', status: 'Settled' },
+  { _id: 'txn_103', txnId: 'TXN-2026-07-003', type: 'Credited', category: 'Counter Product Sale', description: 'Keratin Nourishing Hair Serum & Organic Shampoo Set', amount: 3450, paymentMethod: 'Razorpay Online', date: '2026-07-22 02:15 PM', status: 'Completed' },
+  { _id: 'txn_104', txnId: 'TXN-2026-07-004', type: 'Debited', category: 'Staff Payroll Disbursal', description: 'Monthly Salary Disbursal - Rahul Verma (EMP-1002)', amount: 42200, paymentMethod: 'UPI Transfer', date: '2026-07-20 05:10 PM', status: 'Settled' },
+  { _id: 'txn_105', txnId: 'TXN-2026-07-005', type: 'Credited', category: 'VIP Package Booking', description: 'HD Bridal Styling Package Deposit - Sneha Rao', amount: 8999, paymentMethod: 'Razorpay Online', date: '2026-07-21 06:00 PM', status: 'Completed' },
+  { _id: 'txn_106', txnId: 'TXN-2026-07-006', type: 'Debited', category: 'Staff Payroll Disbursal', description: 'Monthly Salary Disbursal - Priya Reddy (EMP-1003)', amount: 47600, paymentMethod: 'Bank Transfer (ICICI)', date: '2026-07-20 05:45 PM', status: 'Settled' },
+  { _id: 'txn_107', txnId: 'TXN-2026-07-007', type: 'Debited', category: 'Salon Inventory Expense', description: 'L\'Oréal Professional Keratin & Botanical Serums Bulk Supply', amount: 18500, paymentMethod: 'Corporate Card', date: '2026-07-18 11:30 AM', status: 'Settled' },
+  { _id: 'txn_108', txnId: 'TXN-2026-07-008', type: 'Credited', category: 'Appointment Booking', description: 'Customer Appointment #SPY-492104 - Sneha Rao (Keratin Hair Spa)', amount: 2199, paymentMethod: 'Cash', date: '2026-07-22 03:30 PM', status: 'Completed' }
+];
+
+const addTransaction = (type, category, description, amount, paymentMethod = 'UPI', status = 'Completed') => {
+  const newTxn = {
+    _id: 'txn_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    txnId: 'TXN-2026-07-' + Math.floor(100 + Math.random() * 900),
+    type,
+    category,
+    description,
+    amount: Number(amount),
+    paymentMethod,
+    date: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
+    status
+  };
+  transactions.unshift(newTxn);
+  broadcastEvent('transaction:new', newTxn);
+  broadcastEvent('stats:updated', getAnalyticsStats());
+  return newTxn;
+};
+
+const getEmployeeAttendanceMetrics = () => {
+  const salonOpenedDays = 26; // Monthly salon operational days
+  return employees.map((emp, index) => {
+    // Generate realistic monthly attendance metrics
+    const workedDays = index === 0 ? 25 : index === 1 ? 24 : index === 2 ? 23 : 24;
+    const absentDays = salonOpenedDays - workedDays;
+    const otHours = index === 0 ? 12 : index === 1 ? 8 : index === 2 ? 6 : 4;
+    const otTimes = index === 0 ? 4 : index === 1 ? 3 : index === 2 ? 2 : 2;
+
+    return {
+      employeeId: emp._id,
+      empCode: emp.empCode || `EMP-100${index + 1}`,
+      name: emp.name,
+      avatar: emp.avatar,
+      specialties: emp.specialties,
+      salonOpenedDays,
+      workedDays,
+      absentDays,
+      otHours,
+      otTimes,
+      attendancePercentage: ((workedDays / salonOpenedDays) * 100).toFixed(1) + '%',
+      lastStatus: index === 3 ? 'Late' : 'Present'
+    };
+  });
+};
+
 const userNotifications = [];
 
 const addUserNotification = (customerPhone, customerEmail, title, message, type = 'warning') => {
-  userNotifications.unshift({
+  const notifItem = {
     _id: 'cust_notif_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
     timestamp: new Date().toISOString(),
     customerPhone: customerPhone || '',
@@ -226,7 +359,9 @@ const addUserNotification = (customerPhone, customerEmail, title, message, type 
     message,
     read: false,
     type
-  });
+  };
+  userNotifications.unshift(notifItem);
+  broadcastEvent('notification:user', notifItem);
 };
 
 module.exports = {
@@ -241,6 +376,9 @@ module.exports = {
   notifications,
   userNotifications,
   payrolls,
+  transactions,
+  addTransaction,
+  getEmployeeAttendanceMetrics,
   logActivity,
   addNotification,
   addUserNotification,

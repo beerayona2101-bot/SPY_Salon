@@ -118,13 +118,13 @@ export default function Home() {
               </div>
 
               {/* Main Responsive Headline */}
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white leading-tight font-serif">
-                Unveil Your <span className="rosegold-gradient-text">Radiant Beauty</span> & Timeless Elegance
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-serif">
+                Unveil Your <span className="rosegold-gradient-text">Radiant Beauty</span>
               </h1>
 
-              {/* Sub-description */}
-              <p className="text-gray-300 text-xs sm:text-base max-w-2xl mx-auto lg:mx-0 leading-relaxed font-light">
-                Experience luxury hair transformations, 24K gold skin therapies, and soothing aromatherapy crafted by certified master artists in an opulent rose-gold atmosphere.
+              {/* Sub-description / Quote */}
+              <p className="text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic">
+                “Beauty is not created—it is unveiled from within.”
               </p>
 
               {/* Action Buttons */}

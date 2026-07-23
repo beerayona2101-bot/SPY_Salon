@@ -189,15 +189,15 @@ function LoginPageInner() {
           {authMethod === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-5">
               
-              {/* Email Address */}
+              {/* Email Address or Mobile Number */}
               <div className="space-y-1.5">
-                <label className="text-xs text-gray-300 uppercase font-semibold block">Email Address *</label>
+                <label className="text-xs text-gray-300 uppercase font-semibold block">Email Address or Mobile Number *</label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    placeholder="Enter email address"
+                    placeholder="e.g. customer@spysalon.com or +91 98765 43210"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full pl-10 pr-4 py-3 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
