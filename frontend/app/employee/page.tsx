@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { 
   Calendar, 
   Clock, 
@@ -27,7 +28,8 @@ import {
   CreditCard,
   Printer,
   FileText,
-  Check
+  Check,
+  Home
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
@@ -85,7 +87,7 @@ interface SalarySlip {
 }
 
 export default function EmployeeDashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -177,27 +179,31 @@ export default function EmployeeDashboardPage() {
   }, [socket]);
 
   useEffect(() => {
+    if (isLoading) return;
+
     const storedUser = localStorage.getItem('spy_user');
-    if (!storedUser) {
+    let currentUser = user;
+    if (!currentUser && storedUser) {
+      try {
+        currentUser = JSON.parse(storedUser);
+      } catch (e) {}
+    }
+
+    if (!currentUser) {
       setIsAuthorized(false);
       router.push('/employee/login');
       return;
     }
-    try {
-      const parsed = JSON.parse(storedUser);
-      setIsAuthorized(true);
-      fetchEmployeeData();
 
-      // Auto-fetch updates from Admin every 3 seconds
-      const intervalId = setInterval(() => {
-        fetchEmployeeData();
-      }, 3000);
-      return () => clearInterval(intervalId);
-    } catch (e) {
-      setIsAuthorized(false);
-      router.push('/employee/login');
-    }
-  }, [router]);
+    setIsAuthorized(true);
+    fetchEmployeeData();
+
+    // Background sync every 15 seconds (supplemented by Socket.IO real-time events)
+    const intervalId = setInterval(() => {
+      fetchEmployeeData();
+    }, 15000);
+    return () => clearInterval(intervalId);
+  }, [user, isLoading, router]);
 
   const fetchEmployeeData = async () => {
     try {
@@ -210,7 +216,21 @@ export default function EmployeeDashboardPage() {
 
       if (appRes.data) setAppointments(appRes.data);
       if (leaveRes.data) setLeaves(leaveRes.data);
-      if (attRes.data) setAttendance(attRes.data);
+      if (attRes.data) {
+        setAttendance(attRes.data);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayRecords = attRes.data.filter((a: any) => a.date === todayStr);
+        if (todayRecords.length > 0) {
+          const mostRecent = todayRecords[0];
+          if (mostRecent.clockOut === 'In Progress' || !mostRecent.clockOut) {
+            setShiftStatus('Checked In');
+          } else {
+            setShiftStatus('Checked Out');
+          }
+        } else {
+          setShiftStatus('Not Checked In');
+        }
+      }
       if (payRes.data) setPayrolls(payRes.data);
     } catch (e) {
       console.error(e);
@@ -290,7 +310,7 @@ export default function EmployeeDashboardPage() {
       });
       const data = await res.json();
       if (data.data) {
-        setAttendance([data.data, ...attendance]);
+        setAttendance(prev => [data.data, ...prev.filter(a => a.date !== data.data.date)]);
       }
     } catch (e) {
       console.log('Clocked in');
@@ -302,7 +322,28 @@ export default function EmployeeDashboardPage() {
     setShiftStatus(prev => prev === 'On Break' ? 'Checked In' : 'On Break');
   };
 
-  const handleCheckOut = () => {
+  const handleCheckOut = async () => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const todayStr = now.toISOString().split('T')[0];
+
+    try {
+      await fetch(`${API_BASE_URL}/employee/clock-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeName: user?.name || 'Ananya Sharma' })
+      });
+    } catch (e) {
+      console.error('Clock-out API call error:', e);
+    }
+
+    setAttendance(prev => prev.map(a => {
+      if (a.date === todayStr && (a.clockOut === 'In Progress' || !a.clockOut)) {
+        return { ...a, clockOut: timeStr, status: 'Present' };
+      }
+      return a;
+    }));
+
     setShiftStatus('Checked Out');
   };
 
@@ -373,11 +414,11 @@ export default function EmployeeDashboardPage() {
 
       {/* SIDEBAR NAVIGATION */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-800/95 border-r border-rosegold-500/20 backdrop-blur-2xl flex flex-col justify-between transition-transform duration-300 h-screen overflow-hidden ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center space-x-2.5">
+            <Link href="/" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity cursor-pointer" title="Go to Main Website">
               <div className="w-9 h-9 rounded-xl bg-white p-1 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0">
                 <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
               </div>
@@ -389,11 +430,12 @@ export default function EmployeeDashboardPage() {
                   STAFF STYLIST PORTAL
                 </span>
               </div>
-            </div>
+            </Link>
 
             <button 
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white"
+              className="text-gray-400 hover:text-white cursor-pointer"
+              title="Close Sidebar"
             >
               <X className="w-5 h-5" />
             </button>
@@ -433,8 +475,15 @@ export default function EmployeeDashboardPage() {
 
         <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl rosegold-gradient-bg text-dark-900 font-bold flex items-center justify-center text-xs shrink-0">
-              {employeeName.slice(0, 2).toUpperCase()}
+            <div className="w-9 h-9 rounded-xl border border-rosegold-500/40 overflow-hidden shrink-0 shadow-md bg-dark-800">
+              <img 
+                src={(user as any)?.image || (user as any)?.avatar || (user as any)?.profileImage || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} 
+                alt={employeeName} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+                }}
+              />
             </div>
             <div className="space-y-0.5 overflow-hidden text-left">
               <h4 className="text-white font-serif font-bold text-xs truncate">{employeeName}</h4>
@@ -453,14 +502,14 @@ export default function EmployeeDashboardPage() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 lg:ml-72 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
         
         {/* Top Sticky Header */}
         <header className="sticky top-0 z-40 bg-dark-900/90 backdrop-blur-xl border-b border-rosegold-500/20 px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white cursor-pointer"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white cursor-pointer"
               title="Toggle Navigation Menu"
             >
               <Menu className="w-5 h-5" />
@@ -728,15 +777,61 @@ export default function EmployeeDashboardPage() {
                 <div className="space-y-1 text-center sm:text-left">
                   <span className="text-xs text-rosegold-400 font-bold uppercase tracking-wider">Attendance Clock-in</span>
                   <h3 className="text-xl font-serif font-bold text-white">Log Today's Shift Entrance</h3>
-                  <p className="text-xs text-gray-400">Clock in every morning upon entering the Jubilee Hills Flagship studio.</p>
+                  <p className="text-xs text-gray-400">
+                    {shiftStatus === 'Checked In' 
+                      ? 'Shift in progress. Log break or check out below.'
+                      : shiftStatus === 'On Break'
+                      ? 'Currently on break. Click Resume Work when returning to desk.'
+                      : shiftStatus === 'Checked Out'
+                      ? 'Shift completed for today. Click Clock In to record a new shift entry.'
+                      : 'Clock in every morning upon entering the Jubilee Hills Flagship studio.'
+                    }
+                  </p>
                 </div>
-                <button
-                  onClick={handleClockIn}
-                  className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 shrink-0 cursor-pointer"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                  <span>Clock In Now</span>
-                </button>
+
+                <div className="flex items-center space-x-3 shrink-0">
+                  {shiftStatus === 'Not Checked In' || shiftStatus === 'Checked Out' ? (
+                    <button
+                      onClick={handleClockIn}
+                      className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                      <span>Clock In Now</span>
+                    </button>
+                  ) : shiftStatus === 'Checked In' ? (
+                    <>
+                      <button
+                        onClick={handleTakeBreak}
+                        className="px-5 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                      >
+                        <Coffee className="w-3.5 h-3.5" />
+                        <span>Take Break ☕</span>
+                      </button>
+                      <button
+                        onClick={handleCheckOut}
+                        className="px-5 py-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                      >
+                        <span>Check Out 🔴</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleTakeBreak}
+                        className="px-5 py-3 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Resume Work ⏱️</span>
+                      </button>
+                      <button
+                        onClick={handleCheckOut}
+                        className="px-5 py-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                      >
+                        <span>Check Out 🔴</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto">

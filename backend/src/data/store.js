@@ -161,12 +161,7 @@ const reviews = [
   { _id: 'rev3', customerName: 'Kavita Patel', serviceName: 'Gel Couture Manicure', rating: 4, comment: 'Super fast service, highly hygienic disposable kits used.' }
 ];
 
-const customers = [
-  { _id: 'cust1', name: 'Priya Sharma', email: 'priya.s@gmail.com', phone: '+91 98765 43210', visits: 12, totalSpend: 18400, membership: 'VIP Gold', status: 'Active' },
-  { _id: 'cust2', name: 'Sneha Rao', email: 'sneha.rao@outlook.com', phone: '+91 98765 67890', visits: 8, totalSpend: 12100, membership: 'VIP Silver', status: 'Active' },
-  { _id: 'cust3', name: 'Vikram Malhotra', email: 'vikram.m@yahoo.com', phone: '+91 98765 12345', visits: 5, totalSpend: 7500, membership: 'Standard', status: 'Active' },
-  { _id: 'cust4', name: 'Kavita Patel', email: 'kavita.p@gmail.com', phone: '+91 98765 99999', visits: 15, totalSpend: 24500, membership: 'VIP Platinum', status: 'Active' }
-];
+const customers = [];
 
 const activityLogs = [
   { _id: 'act1', timestamp: new Date(Date.now() - 5 * 60000).toISOString(), action: 'Payment Confirmed', details: 'Cash payment of ₹2,199 confirmed for #SPY-492104 (Sneha Rao - Keratin Hair Spa).', user: 'Ananya Sharma (Stylist Desk)' },

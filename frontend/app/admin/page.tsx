@@ -1,5 +1,6 @@
 'use client';
 
+// Executive Admin Dashboard Portal for SPY Salon Enterprise System
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -21,6 +22,8 @@ import {
   Menu, 
   X, 
   ChevronRight, 
+  ChevronLeft,
+  CalendarDays,
   Download,
   Search,
   Filter,
@@ -40,7 +43,8 @@ import {
   DollarSign,
   CreditCard,
   FileText,
-  Printer
+  Printer,
+  Home
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, APP_BASE_URL } from '@/lib/api';
@@ -165,11 +169,50 @@ interface ActivityLog {
 }
 
 export default function AdminDashboardPage() {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'earnings' | 'employees' | 'customers' | 'services' | 'appointments' | 'leaves' | 'reviews' | 'ai-reports'>('analytics');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'calendar' | 'earnings' | 'employees' | 'customers' | 'services' | 'appointments' | 'leaves' | 'reviews' | 'ai-reports'>('analytics');
+  
+  // Schedule Calendar States
+  const [selectedCalDate, setSelectedCalDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [calMonthView, setCalMonthView] = useState<Date>(new Date());
+
+  // Security Authorization Guard
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const storedUser = localStorage.getItem('spy_user');
+    let currentUser = user;
+    if (!currentUser && storedUser) {
+      try {
+        currentUser = JSON.parse(storedUser);
+      } catch (e) {}
+    }
+
+    if (!currentUser) {
+      setIsAuthorized(false);
+      router.push('/login');
+      return;
+    }
+
+    if (currentUser.role === 'admin' || currentUser.role === 'manager' || currentUser.email?.includes('admin')) {
+      setIsAuthorized(true);
+      fetchAdminData();
+
+      // Realtime background sync every 15 seconds (supplemented by Socket.IO live push events)
+      const intervalId = setInterval(() => {
+        fetchAdminData();
+      }, 15000);
+      return () => clearInterval(intervalId);
+    } else {
+      setIsAuthorized(false);
+      router.push('/login');
+    }
+  }, [user, isLoading, router]);
   
   // Data States
   const [analytics, setAnalytics] = useState<any>(null);
@@ -381,36 +424,7 @@ export default function AdminDashboardPage() {
     paymentMethod: 'Bank Transfer (HDFC)'
   });
 
-  // Security Authorization Guard
-  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('spy_user');
-    if (!storedUser) {
-      setIsAuthorized(false);
-      router.push('/login');
-      return;
-    }
-    try {
-      const parsed = JSON.parse(storedUser);
-      if (parsed.role === 'admin' || parsed.role === 'manager' || parsed.email?.includes('admin')) {
-        setIsAuthorized(true);
-        fetchAdminData();
-
-        // Realtime auto-fetch polling every 3 seconds
-        const intervalId = setInterval(() => {
-          fetchAdminData();
-        }, 3000);
-        return () => clearInterval(intervalId);
-      } else {
-        setIsAuthorized(false);
-        router.push('/login');
-      }
-    } catch (e) {
-      setIsAuthorized(false);
-      router.push('/login');
-    }
-  }, [router]);
 
   const fetchAdminData = async () => {
     try {
@@ -780,6 +794,86 @@ export default function AdminDashboardPage() {
     setTimeout(() => setCopiedCreds(false), 2000);
   };
 
+  // Calendar Calculation Helpers
+  const getCalendarDays = () => {
+    const year = calMonthView.getFullYear();
+    const month = calMonthView.getMonth();
+
+    const firstDayOfMonth = new Date(year, month, 1);
+    const lastDayOfMonth = new Date(year, month + 1, 0);
+
+    let startDayOfWeek = firstDayOfMonth.getDay();
+    startDayOfWeek = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+    const totalDaysInMonth = lastDayOfMonth.getDate();
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+    const days = [];
+
+    for (let i = startDayOfWeek - 1; i >= 0; i--) {
+      const pDay = prevMonthLastDay - i;
+      const prevDate = new Date(year, month - 1, pDay);
+      const yyyy = prevDate.getFullYear();
+      const mm = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(prevDate.getDate()).padStart(2, '0');
+      days.push({
+        dateStr: `${yyyy}-${mm}-${dd}`,
+        dayNumber: pDay,
+        isCurrentMonth: false
+      });
+    }
+
+    for (let d = 1; d <= totalDaysInMonth; d++) {
+      const currentDate = new Date(year, month, d);
+      const yyyy = currentDate.getFullYear();
+      const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(currentDate.getDate()).padStart(2, '0');
+      days.push({
+        dateStr: `${yyyy}-${mm}-${dd}`,
+        dayNumber: d,
+        isCurrentMonth: true
+      });
+    }
+
+    const targetLength = days.length <= 35 ? 35 : 42;
+    const paddingNeeded = targetLength - days.length;
+
+    for (let n = 1; n <= paddingNeeded; n++) {
+      const nextDate = new Date(year, month + 1, n);
+      const yyyy = nextDate.getFullYear();
+      const mm = String(nextDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(nextDate.getDate()).padStart(2, '0');
+      days.push({
+        dateStr: `${yyyy}-${mm}-${dd}`,
+        dayNumber: n,
+        isCurrentMonth: false
+      });
+    }
+
+    return days;
+  };
+
+  const getAppointmentsForDate = (dateStr: string) => {
+    return appointments.filter(app => {
+      if (!app) return false;
+      if (app.appointmentDate === dateStr) return true;
+      if (app.bookingDateTime) {
+        try {
+          const appIsoDate = new Date(app.bookingDateTime).toISOString().split('T')[0];
+          if (appIsoDate === dateStr) return true;
+        } catch (e) {}
+      }
+      if (app.bookingDate) {
+        if (app.bookingDate === dateStr) return true;
+        try {
+          const parsed = new Date(app.bookingDate).toISOString().split('T')[0];
+          if (parsed === dateStr) return true;
+        } catch (e) {}
+      }
+      return false;
+    });
+  };
+
   // Filtered Lists
   const filteredEmployees = employees.filter(e => {
     const matchQ = !searchQuery || e.name.toLowerCase().includes(searchQuery.toLowerCase()) || e.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -816,6 +910,7 @@ export default function AdminDashboardPage() {
 
   const navMenuItems = [
     { id: 'analytics', label: 'Dashboard & Reports', icon: TrendingUp },
+    { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
     { id: 'appointments', label: 'Appointments Desk', icon: Calendar },
     { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign },
     { id: 'employees', label: 'Employee Management', icon: Users },
@@ -839,11 +934,11 @@ export default function AdminDashboardPage() {
 
       {/* SIDEBAR NAVIGATION */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-850 border-r border-rosegold-500/20 flex flex-col justify-between transition-transform duration-300 h-screen overflow-hidden ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center space-x-2.5">
+            <Link href="/" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity cursor-pointer" title="Go to Main Website">
               <div className="w-9 h-9 rounded-xl bg-white p-1 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0">
                 <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
               </div>
@@ -855,9 +950,9 @@ export default function AdminDashboardPage() {
                   ADMIN EXECUTIVE DESK
                 </span>
               </div>
-            </div>
+            </Link>
 
-            <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-gray-400 hover:text-white">
+            <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white cursor-pointer" title="Close Sidebar">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -886,8 +981,15 @@ export default function AdminDashboardPage() {
 
         <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl rosegold-gradient-bg text-dark-900 font-bold flex items-center justify-center text-xs shrink-0">
-              AD
+            <div className="w-9 h-9 rounded-xl border border-rosegold-500/40 overflow-hidden shrink-0 shadow-md bg-dark-800">
+              <img 
+                src={(user as any)?.image || (user as any)?.avatar || (user as any)?.profileImage || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'} 
+                alt="System Administrator" 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80';
+                }}
+              />
             </div>
             <div className="space-y-0.5 overflow-hidden text-left">
               <h4 className="text-white font-serif font-bold text-xs truncate">System Administrator</h4>
@@ -903,12 +1005,12 @@ export default function AdminDashboardPage() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 lg:ml-72 flex flex-col min-w-0">
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'}`}>
         
         {/* Header */}
         <header className="sticky top-0 z-40 bg-dark-900/95 border-b border-rosegold-500/20 px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white cursor-pointer" title="Toggle Navigation Menu">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white cursor-pointer" title="Toggle Navigation Menu">
               <Menu className="w-5 h-5" />
             </button>
             <div className="flex items-center space-x-2 text-xs">
@@ -1344,6 +1446,292 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 2: SCHEDULE CALENDAR & DAILY TIMELINES */}
+          {activeTab === 'calendar' && (() => {
+            const calendarDays = getCalendarDays();
+            const selectedApps = getAppointmentsForDate(selectedCalDate);
+            const selectedDateObj = new Date(selectedCalDate);
+            const formattedSelectedDate = selectedDateObj.toLocaleDateString('en-GB', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            });
+
+            const monthNameYear = calMonthView.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+
+            return (
+              <div className="space-y-6 animate-fadeIn text-left">
+                
+                {/* HEADER & QUICK ACTIONS */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-rosegold-500/30">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 text-xs font-bold uppercase tracking-wider">
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      <span>Executive Schedule Calendar</span>
+                    </div>
+                    <h2 className="text-2xl font-bold font-serif text-white">Daily Appointment Schedules</h2>
+                    <p className="text-xs text-gray-400">Click any date on the calendar to view full time-slotted appointments, assigned specialists, client details, and status.</p>
+                  </div>
+
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <button
+                      onClick={() => setModalType('addApp')}
+                      className="px-5 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Book Appointment</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2-COLUMN LAYOUT: CALENDAR GRID ON LEFT (7 COLS), SELECTED DAY SCHEDULE ON RIGHT (5 COLS) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                  
+                  {/* LEFT COLUMN: INTERACTIVE MONTH CALENDAR GRID (LG: 7 COLS) */}
+                  <div className="lg:col-span-7 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4">
+                    
+                    {/* MONTH CONTROLS */}
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="w-5 h-5 text-rosegold-400" />
+                        <h3 className="text-lg font-serif font-bold text-white uppercase tracking-wide">
+                          {monthNameYear}
+                        </h3>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => {
+                            const newM = new Date(calMonthView);
+                            newM.setMonth(newM.getMonth() - 1);
+                            setCalMonthView(newM);
+                          }}
+                          className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                          title="Previous Month"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const today = new Date();
+                            setCalMonthView(today);
+                            setSelectedCalDate(today.toISOString().split('T')[0]);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-dark-800 border border-rosegold-500/30 text-rosegold-400 font-bold text-xs hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
+                        >
+                          Today
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const newM = new Date(calMonthView);
+                            newM.setMonth(newM.getMonth() + 1);
+                            setCalMonthView(newM);
+                          }}
+                          className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                          title="Next Month"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* DAY OF WEEK HEADERS */}
+                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-rosegold-400 uppercase tracking-wider py-1 border-b border-white/5">
+                      <span>Mon</span>
+                      <span>Tue</span>
+                      <span>Wed</span>
+                      <span>Thu</span>
+                      <span>Fri</span>
+                      <span>Sat</span>
+                      <span>Sun</span>
+                    </div>
+
+                    {/* 35/42 CALENDAR DAY CELLS */}
+                    <div className="grid grid-cols-7 gap-1.5 pt-1">
+                      {calendarDays.map((day, idx) => {
+                        const isSelected = selectedCalDate === day.dateStr;
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const isToday = day.dateStr === todayStr;
+                        const dayApps = getAppointmentsForDate(day.dateStr);
+
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedCalDate(day.dateStr)}
+                            className={`min-h-[72px] sm:min-h-[82px] p-2 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border ${
+                              isSelected
+                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-glow-rosegold scale-[1.02] z-10'
+                                : isToday
+                                ? 'bg-dark-800 border-green-500/60 text-white font-bold shadow-md hover:border-rosegold-400'
+                                : day.isCurrentMonth
+                                ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800 hover:border-rosegold-500/40'
+                                : 'bg-dark-900/40 border-transparent text-gray-600 hover:text-gray-400'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className={`text-xs sm:text-sm font-bold ${
+                                isSelected ? 'text-dark-900 font-extrabold' : isToday ? 'text-green-400 font-bold' : 'text-gray-300'
+                              }`}>
+                                {day.dayNumber}
+                              </span>
+
+                              {dayApps.length > 0 && (
+                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold shadow-sm ${
+                                  isSelected
+                                    ? 'bg-dark-900 text-rosegold-300'
+                                    : 'bg-rosegold-500/20 text-rosegold-400 border border-rosegold-500/40'
+                                }`}>
+                                  {dayApps.length}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* APPOINTMENT DOT INDICATORS & PREVIEW */}
+                            <div className="space-y-1 mt-1">
+                              {dayApps.length > 0 && (
+                                <div className="flex items-center space-x-1">
+                                  {dayApps.slice(0, 3).map((app, i) => {
+                                    const dotColor = app.status === 'Completed'
+                                      ? 'bg-green-400'
+                                      : app.status === 'In Progress'
+                                      ? 'bg-amber-400'
+                                      : app.status === 'Cancelled'
+                                      ? 'bg-red-400'
+                                      : 'bg-purple-400';
+                                    return (
+                                      <span key={i} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-dark-900' : dotColor}`} />
+                                    );
+                                  })}
+                                  {dayApps.length > 3 && (
+                                    <span className={`text-[8px] font-bold ${isSelected ? 'text-dark-900' : 'text-rosegold-400'}`}>
+                                      +{dayApps.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {dayApps.length > 0 && (
+                                <p className={`text-[9px] truncate font-medium ${isSelected ? 'text-dark-900/90 font-bold' : 'text-gray-400'}`}>
+                                  {dayApps[0].service}
+                                </p>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN: DETAILED TIMELINE FOR SELECTED DATE (LG: 5 COLS) */}
+                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 flex flex-col justify-between">
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                        <div>
+                          <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-wider block">Selected Schedule Date</span>
+                          <h3 className="text-lg font-serif font-bold text-white">{formattedSelectedDate}</h3>
+                        </div>
+
+                        <span className="px-3 py-1 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 text-xs font-bold">
+                          {selectedApps.length} {selectedApps.length === 1 ? 'Appointment' : 'Appointments'}
+                        </span>
+                      </div>
+
+                      {/* SCHEDULE TIMELINE CARDS */}
+                      {selectedApps.length === 0 ? (
+                        <div className="py-12 text-center space-y-3 bg-dark-850/60 rounded-2xl border border-white/5 p-6">
+                          <div className="w-12 h-12 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400 mx-auto">
+                            <Calendar className="w-6 h-6" />
+                          </div>
+                          <h4 className="text-white font-serif font-bold text-base">No Schedules for This Date</h4>
+                          <p className="text-xs text-gray-400 max-w-xs mx-auto">There are no appointments registered for {formattedSelectedDate}. Click below to add a client appointment.</p>
+                          <button
+                            onClick={() => {
+                              setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
+                              setModalType('addApp');
+                            }}
+                            className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md hover:scale-105 transition-transform inline-flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Appointment for Date</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3.5 max-h-[580px] overflow-y-auto pr-1 custom-scrollbar">
+                          {selectedApps.map((app) => (
+                            <div 
+                              key={app._id}
+                              className="p-4 rounded-2xl bg-dark-800/90 border border-rosegold-500/25 space-y-3 hover:border-rosegold-400 transition-all text-xs"
+                            >
+                              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                                <div className="flex items-center space-x-2">
+                                  <Clock className="w-4 h-4 text-rosegold-400 shrink-0" />
+                                  <span className="text-rosegold-300 font-extrabold text-xs">
+                                    {app.appointmentTime || app.bookingTimeFormatted || '11:00 AM'}
+                                  </span>
+                                  <span className="text-gray-500 text-[10px]">({app.bookingId})</span>
+                                </div>
+
+                                <select
+                                  value={app.status}
+                                  onChange={(e) => handleUpdateAppStatus(app._id, e.target.value)}
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold border focus:outline-none cursor-pointer ${
+                                    app.status === 'Completed'
+                                      ? 'bg-green-500/20 text-green-300 border-green-500/40'
+                                      : app.status === 'In Progress'
+                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                      : app.status === 'Cancelled'
+                                      ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                                      : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                                  }`}
+                                >
+                                  <option value="Confirmed">Confirmed 🟢</option>
+                                  <option value="In Progress">In Progress ⏳</option>
+                                  <option value="Completed">Completed ✅</option>
+                                  <option value="Rescheduled">Rescheduled 🔄</option>
+                                  <option value="Cancelled">Cancelled 🔴</option>
+                                </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                <div className="bg-dark-900 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Client Name</span>
+                                  <strong className="text-white font-bold block truncate">{app.customerName}</strong>
+                                  <span className="text-gray-400 text-[10px] block">{app.customerPhone}</span>
+                                </div>
+
+                                <div className="bg-dark-900 p-2.5 rounded-xl border border-white/5">
+                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Assigned Specialist</span>
+                                  <strong className="text-rosegold-300 font-bold block truncate">{app.specialistName}</strong>
+                                  <span className="text-gray-400 text-[10px] block">{app.branch || 'Jubilee Hills Flagship'}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between bg-dark-900/60 p-2.5 rounded-xl border border-white/5">
+                                <div>
+                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Treatment Service</span>
+                                  <span className="text-white font-bold text-xs">{app.service}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                                  app.paymentStatus === 'Paid' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'
+                                }`}>
+                                  {app.paymentStatus === 'Paid' ? 'Paid ✅' : 'Pending ⏳'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TAB 3: EMPLOYEE MANAGEMENT */}
           {activeTab === 'employees' && (

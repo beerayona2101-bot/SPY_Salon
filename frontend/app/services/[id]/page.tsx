@@ -34,35 +34,55 @@ export default function ServiceDetailPage() {
     fetch(`${API_BASE_URL}/services`)
       .then(res => res.json())
       .then(data => {
+        const targetId = String(id).toLowerCase().trim();
+        const normalizeSlug = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
         if (data.data && data.data.length > 0) {
-          const match = data.data.find((s: any) => s._id === id || s.id === id || String(s.id) === String(id));
+          const match = data.data.find((s: any) => 
+            s._id === id || 
+            String(s.id) === targetId || 
+            (s.slug && String(s.slug).toLowerCase() === targetId) ||
+            normalizeSlug(s.name) === normalizeSlug(id) ||
+            normalizeSlug(s.title) === normalizeSlug(id)
+          );
           if (match) {
             setService({
               id: match._id || match.id,
-              title: match.name,
+              slug: match.slug || normalizeSlug(match.name),
+              title: match.name || match.title,
               category: match.category,
               price: match.price,
               discountPrice: match.discountPrice || match.price,
               duration: `${match.durationMinutes || 60} mins`,
               durationMinutes: match.durationMinutes || 60,
               rating: match.rating || 4.9,
-              desc: match.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.',
+              desc: match.description || match.desc || 'Luxury botanical treatment provided by SPY Salon certified specialists.',
               image: match.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
               popular: match.isPopular !== undefined ? match.isPopular : true,
-              customSteps: match.steps,
+              customSteps: match.steps || match.processSteps,
               customBenefits: match.benefits
             });
             return;
           }
         }
         // Fallback to static match
-        const staticMatch = defaultStaticServices.find(s => String(s.id) === String(id));
+        const staticMatch = defaultStaticServices.find(s => 
+          String(s.id) === targetId || 
+          s.slug === targetId || 
+          normalizeSlug(s.title) === normalizeSlug(id)
+        );
         if (staticMatch) {
           setService(staticMatch);
         }
       })
       .catch(() => {
-        const staticMatch = defaultStaticServices.find(s => String(s.id) === String(id));
+        const targetId = String(id).toLowerCase().trim();
+        const normalizeSlug = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const staticMatch = defaultStaticServices.find(s => 
+          String(s.id) === targetId || 
+          s.slug === targetId || 
+          normalizeSlug(s.title) === normalizeSlug(id)
+        );
         if (staticMatch) setService(staticMatch);
       })
       .finally(() => setLoading(false));

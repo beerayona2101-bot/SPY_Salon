@@ -16,12 +16,15 @@ const errorHandler = require('./middlewares/errorHandler');
 const rateLimiter = require('./middlewares/rateLimiter');
 const ApiError = require('./utils/apiError');
 
+const compression = require('compression');
+
 const app = express();
 
 // Connect MongoDB
 connectDB();
 
-// Global Security & Utility Middlewares
+// Global Security, Compression & Performance Middlewares
+app.use(compression());
 app.use(helmet());
 
 const corsOrigins = process.env.CORS_ORIGIN 

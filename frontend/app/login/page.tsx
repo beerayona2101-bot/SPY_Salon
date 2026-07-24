@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Phone, KeyRound } from 'lucide-react';
@@ -9,7 +9,7 @@ import { useAuth, UserProfile } from '@/context/AuthContext';
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/profile';
+  const redirectTarget = searchParams.get('redirect') || '/';
   const isAuthRequired = searchParams.get('auth_required') === 'true';
 
   const { login, sendOtp, verifyOtp } = useAuth();
@@ -21,6 +21,17 @@ function LoginPageInner() {
   const [otpSent, setOtpSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const isRegistered = searchParams.get('registered') === 'true';
+    const emailParam = searchParams.get('email');
+    if (emailParam) {
+      setFormData(prev => ({ ...prev, email: emailParam }));
+    }
+    if (isRegistered) {
+      setSuccessMessage('Account created successfully! Please sign in below with your credentials.');
+    }
+  }, [searchParams]);
 
   // Unified Role-Based Redirection Function
   const dispatchRoleBasedRedirect = (userObj?: UserProfile) => {

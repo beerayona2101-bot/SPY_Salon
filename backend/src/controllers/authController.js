@@ -25,17 +25,12 @@ exports.loginUser = async (req, res, next) => {
 exports.registerUser = async (req, res, next) => {
   try {
     const { name, email, phone, password } = req.body;
-    const loginInput = email || phone;
-    if (!name || !loginInput || !password) {
-      throw ApiError.badRequest('Please enter name, email or phone number, and password');
-    }
-
-    const result = await authService.login(loginInput, password);
+    const result = await authService.register(name, email, phone, password);
     return ApiResponse.created(res, {
       user: result.user,
       token: result.token,
       refreshToken: result.refreshToken
-    }, 'Account created successfully!');
+    }, 'Account registered successfully! Please sign in with your credentials.');
   } catch (error) {
     next(error);
   }

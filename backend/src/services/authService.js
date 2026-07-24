@@ -106,6 +106,10 @@ class AuthService {
     });
 
     if (customer) {
+      if (customer.password && password && customer.password !== password) {
+        throw ApiError.badRequest('Invalid password. Please check your password or reset it.');
+      }
+
       const userPayload = {
         _id: customer._id,
         name: customer.name,
@@ -121,21 +125,63 @@ class AuthService {
       return { user: userPayload, token: accessToken, refreshToken };
     }
 
-    // Standard User Fallback
-    const isEmailInput = input.includes('@');
-    const userPayload = {
-      _id: `usr_${Date.now()}`,
-      name: isEmailInput ? input.split('@')[0].toUpperCase() : 'VIP Member',
-      email: isEmailInput ? input : `${input}@spysalon.com`,
-      phone: !isEmailInput ? input : '+91 98765 43210',
-      role: role || 'customer',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
+    // 4. Strict Unregistered Account Rejection (Only users with created accounts can log in)
+    throw ApiError.badRequest('No registered account found with this email address or mobile number. Please click "Create Account" to register first.');
+  }
+
+  // Dedicated Public Customer Account Registration (Strictly creates customer users)
+  async register(name, email, phone, password) {
+    if (!name || (!email && !phone) || !password) {
+      throw ApiError.badRequest('Please provide your full name, email address or phone number, and password.');
+    }
+
+    const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+    const cleanPhone = phone ? String(phone).trim() : '';
+
+    // Prevent public registration using existing admin or employee credentials
+    if (cleanEmail === 'admin@spysalon.com' || cleanEmail.includes('admin')) {
+      throw ApiError.badRequest('This email address is reserved for administrator access. Please sign in via Admin Portal.');
+    }
+
+    const existingEmp = store.employees.find(e => 
+      (cleanEmail && (e.email || '').toLowerCase() === cleanEmail) ||
+      (cleanPhone && cleanPhone.length >= 7 && (e.phone || '').replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')))
+    );
+    if (existingEmp) {
+      throw ApiError.badRequest('This account belongs to a staff member. Please log in through the Staff Portal.');
+    }
+
+    // Check existing customer directory
+    const existingCust = store.customers.find(c => 
+      (cleanEmail && (c.email || '').toLowerCase() === cleanEmail) ||
+      (cleanPhone && cleanPhone.length >= 7 && (c.phone || '').replace(/\D/g, '').endsWith(cleanPhone.replace(/\D/g, '')))
+    );
+    if (existingCust) {
+      throw ApiError.badRequest('An account with this email address or phone number already exists. Please sign in.');
+    }
+
+    // Create new Customer record (role is strictly 'customer')
+    const newCustomer = {
+      _id: `cust_${Date.now()}`,
+      name: name.trim(),
+      email: cleanEmail || `${cleanPhone}@spysalon.com`,
+      phone: cleanPhone || '+91 98765 43210',
+      password: password,
+      role: 'customer',
+      totalSpent: 0,
+      visits: 0,
+      membershipTier: 'Classic Member',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+      createdAt: new Date().toISOString()
     };
 
-    const accessToken = this.generateAccessToken(userPayload);
-    const refreshToken = this.generateRefreshToken(userPayload);
+    store.customers.unshift(newCustomer);
+    store.logActivity('New Customer Registered', `Customer account registered for ${newCustomer.name} (${newCustomer.email}).`);
 
-    return { user: userPayload, token: accessToken, refreshToken };
+    const accessToken = this.generateAccessToken(newCustomer);
+    const refreshToken = this.generateRefreshToken(newCustomer);
+
+    return { user: newCustomer, token: accessToken, refreshToken };
   }
 
   // Request Password Reset OTP for Registered Emails Only

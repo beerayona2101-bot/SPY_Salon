@@ -7,8 +7,9 @@ router.get('/appointments', employeeController.getAssignedAppointments);
 router.post('/appointments/walkin', employeeController.createEmployeeWalkIn);
 router.put('/appointments/:id/status', employeeController.updateAppointmentStatus);
 
-// Attendance Clock-in & Log
+// Attendance Clock-in, Clock-out & Log
 router.post('/clock-in', employeeController.clockInAttendance);
+router.post('/clock-out', employeeController.clockOutAttendance);
 router.get('/attendance', employeeController.getEmployeeAttendance);
 
 // Leaves Submission & History

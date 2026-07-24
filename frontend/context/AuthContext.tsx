@@ -53,13 +53,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const saveAuthData = (accToken: string, refToken: string, userObj: UserProfile) => {
-    setToken(accToken);
-    setRefreshToken(refToken);
-    setUser(userObj);
-    localStorage.setItem('spy_token', accToken);
-    if (refToken) localStorage.setItem('spy_refresh_token', refToken);
-    localStorage.setItem('spy_user', JSON.stringify(userObj));
+  const saveAuthData = (accToken: string, refToken: string, userObj?: UserProfile) => {
+    if (accToken) {
+      setToken(accToken);
+      localStorage.setItem('spy_token', accToken);
+    }
+    if (refToken) {
+      setRefreshToken(refToken);
+      localStorage.setItem('spy_refresh_token', refToken);
+    }
+    if (userObj) {
+      setUser(userObj);
+      localStorage.setItem('spy_user', JSON.stringify(userObj));
+    }
   };
 
   const clearAuthData = () => {
@@ -106,9 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const tokenVal = data.data?.token || data.token;
       const refreshTokenVal = data.data?.refreshToken || data.refreshToken;
 
-      if (res.ok && data.success && userObj) {
-        saveAuthData(tokenVal, refreshTokenVal, userObj);
-        return { success: true, message: data.message || 'Registration successful!' };
+      if (res.ok && data.success) {
+        return { success: true, message: data.message || 'Account created successfully! Please log in.' };
       } else {
         return { success: false, message: data.message || 'Registration failed.' };
       }
@@ -238,10 +243,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ refreshToken })
       });
       const data = await res.json();
-      if (data.success) {
-        saveAuthData(data.token, data.refreshToken, data.user);
-      } else {
-        clearAuthData();
+      if (data.success && data.token) {
+        saveAuthData(data.token, data.refreshToken || refreshToken, data.user || user || undefined);
       }
     } catch (err) {
       console.error('Refresh auth failed:', err);

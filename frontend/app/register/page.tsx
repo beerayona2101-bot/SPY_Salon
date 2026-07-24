@@ -50,10 +50,10 @@ export default function RegisterPage() {
     setIsSubmitting(false);
 
     if (res.success) {
-      setSuccessMessage(res.message);
+      setSuccessMessage('Account created successfully! Redirecting to sign in page...');
       setTimeout(() => {
-        router.push('/book');
-      }, 1200);
+        router.push(`/login?registered=true&email=${encodeURIComponent(formData.email)}`);
+      }, 1000);
     } else {
       setErrorMessage(res.message);
     }
@@ -195,7 +195,7 @@ export default function RegisterPage() {
               disabled={isSubmitting}
               className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mt-2 cursor-pointer"
             >
-              <span>{isSubmitting ? 'Creating Account...' : 'Register VIP Account'}</span>
+              <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

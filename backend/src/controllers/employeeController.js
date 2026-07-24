@@ -84,10 +84,17 @@ exports.clockInAttendance = async (req, res, next) => {
     const now = new Date();
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const todayStr = now.toISOString().split('T')[0];
+    const empName = req.body.employeeName || 'Ananya Sharma';
+
+    // If there is already an active 'In Progress' shift today, return it without creating duplicates
+    const existingActive = store.attendance.find(a => a.date === todayStr && a.clockOut === 'In Progress');
+    if (existingActive) {
+      return ApiResponse.success(res, existingActive, `Shift already in progress (Clocked in at ${existingActive.clockIn})`);
+    }
 
     const newRec = {
       _id: `eatt_${Date.now()}`,
-      employeeName: req.body.employeeName || 'Ananya Sharma',
+      employeeName: empName,
       date: todayStr,
       clockIn: timeStr,
       clockOut: 'In Progress',
@@ -95,7 +102,40 @@ exports.clockInAttendance = async (req, res, next) => {
     };
 
     store.attendance.unshift(newRec);
+    store.logActivity('Staff Clock In', `${empName} clocked in for shift at ${timeStr}.`);
+
     return ApiResponse.created(res, newRec, `Clocked in at ${timeStr}!`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.clockOutAttendance = async (req, res, next) => {
+  try {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const todayStr = now.toISOString().split('T')[0];
+    const empName = req.body.employeeName || 'Ananya Sharma';
+
+    let updatedCount = 0;
+    store.attendance = store.attendance.map(a => {
+      if (a.date === todayStr && (a.clockOut === 'In Progress' || !a.clockOut)) {
+        updatedCount++;
+        return { ...a, clockOut: timeStr, status: 'Present' };
+      }
+      return a;
+    });
+
+    if (updatedCount === 0 && store.attendance.length > 0) {
+      const firstToday = store.attendance.find(a => a.date === todayStr);
+      if (firstToday) {
+        firstToday.clockOut = timeStr;
+      }
+    }
+
+    store.logActivity('Staff Clock Out', `${empName} clocked out of shift at ${timeStr}.`);
+
+    return ApiResponse.success(res, { clockOut: timeStr, date: todayStr }, `Clocked out at ${timeStr}!`);
   } catch (error) {
     next(error);
   }

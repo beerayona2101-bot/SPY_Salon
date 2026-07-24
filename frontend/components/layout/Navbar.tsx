@@ -52,7 +52,7 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchUserNotifs();
-    const intervalId = setInterval(fetchUserNotifs, 3000);
+    const intervalId = setInterval(fetchUserNotifs, 15000);
     return () => clearInterval(intervalId);
   }, [user]);
 

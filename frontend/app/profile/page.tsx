@@ -49,7 +49,7 @@ interface OfferRecord {
 }
 
 export default function UserProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, isLoading, logout } = useAuth();
   const router = useRouter();
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
@@ -91,6 +91,8 @@ export default function UserProfilePage() {
 
   // STRICT ROLE REDIRECT: Admin must ONLY use Admin Dashboard (/admin).
   useEffect(() => {
+    if (isLoading) return;
+
     if (user?.role === 'admin' || user?.email?.includes('admin')) {
       router.replace('/admin');
       return;
@@ -106,7 +108,7 @@ export default function UserProfilePage() {
       fetchProfileData();
     }, 4000);
     return () => clearInterval(intervalId);
-  }, [user, router]);
+  }, [user, isLoading, router]);
 
   const { socket } = useSocket();
 

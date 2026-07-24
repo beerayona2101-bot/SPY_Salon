@@ -1,7 +1,8 @@
 /**
  * Single Base URL & Real-Time Socket Configuration for SPY Salon
- * Dynamically resolves origin, API_BASE_URL, SOCKET_URL, and APP_BASE_URL
- * supporting localhost, custom domains, and LAN IP addresses (e.g. 192.168.x.x).
+ * Dynamically derives origin, API_BASE_URL, SOCKET_URL, and APP_BASE_URL
+ * from a SINGLE backend base URL environment variable (NEXT_PUBLIC_BACKEND_URL).
+ * Also supports localhost, custom domain, and LAN IP address auto-resolution (e.g. 192.168.x.x).
  */
 
 // Helper to sanitize any input URL (removes any trailing /api/v1, /api, or trailing slashes)
@@ -13,39 +14,43 @@ export function sanitizeOrigin(url: string): string {
     .replace(/\/$/, '');
 }
 
-// 1. Raw Environment Configured Base URL
-const ENV_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ? sanitizeOrigin(process.env.NEXT_PUBLIC_BASE_URL) : '';
-const ENV_APP_URL = process.env.NEXT_PUBLIC_APP_URL ? sanitizeOrigin(process.env.NEXT_PUBLIC_APP_URL) : '';
+// 1. Raw Single Environment Configured Backend Base URL
+const getRawEnvBackendUrl = (): string => {
+  const envUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 
+                 process.env.NEXT_PUBLIC_BASE_URL || 
+                 process.env.NEXT_PUBLIC_API_URL || 
+                 '';
+  return sanitizeOrigin(envUrl);
+};
+
+const ENV_BACKEND_URL = getRawEnvBackendUrl();
 
 /**
- * Returns the clean origin URL (e.g. http://192.168.88.9:5000 or http://localhost:5000)
+ * Returns the clean backend origin URL (e.g. http://localhost:5000 or http://192.168.88.9:5000)
  */
 export function getCleanOrigin(): string {
-  // If explicitly configured in environment to a remote/specific URL (not empty, not default localhost)
-  if (ENV_BASE_URL && !ENV_BASE_URL.includes('localhost') && !ENV_BASE_URL.includes('127.0.0.1')) {
-    return ENV_BASE_URL;
+  // If explicitly configured in environment to a remote/production URL (not localhost/127.0.0.1)
+  if (ENV_BACKEND_URL && !ENV_BACKEND_URL.includes('localhost') && !ENV_BACKEND_URL.includes('127.0.0.1')) {
+    return ENV_BACKEND_URL;
   }
 
-  // Browser Client-Side Dynamic Origin Fallback
+  // Browser Client-Side Dynamic Origin Fallback for LAN IP access
   if (typeof window !== 'undefined') {
     const { protocol, hostname, port } = window.location;
-    // If accessing via LAN IP or non-localhost domain, infer host dynamically
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      // If frontend runs on port 3000, default backend target port is 5000
       if (port === '3000') {
         return `${protocol}//${hostname}:5000`;
       }
-      // If running behind Nginx / port 80 / 443 proxy or custom deployment
       return `${protocol}//${hostname}${port ? `:${port}` : ''}`;
     }
   }
 
-  // Fallback to configured ENV or default local dev server
-  return ENV_BASE_URL || 'http://localhost:5000';
+  // Fallback to configured single ENV URL or default local backend server port 5000
+  return ENV_BACKEND_URL || 'http://localhost:5000';
 }
 
 /**
- * Returns the full API V1 endpoint base URL (e.g. http://192.168.88.9:5000/api/v1)
+ * Returns the full REST API V1 endpoint base URL (e.g. http://localhost:5000/api/v1)
  */
 export function getApiBaseUrl(): string {
   const origin = getCleanOrigin();
@@ -53,23 +58,20 @@ export function getApiBaseUrl(): string {
 }
 
 /**
- * Returns the WebSocket / Real-time Socket.IO server URL
+ * Returns the WebSocket / Real-time Socket.IO server URL (e.g. http://localhost:5000)
  */
 export function getSocketUrl(): string {
   return getCleanOrigin();
 }
 
 /**
- * Returns the Frontend Application base URL (e.g. http://192.168.88.9:3000)
+ * Returns the Frontend Application base URL (e.g. http://localhost:3000)
  */
 export function getAppBaseUrl(): string {
-  if (ENV_APP_URL && !ENV_APP_URL.includes('localhost')) {
-    return ENV_APP_URL;
-  }
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
-  return ENV_APP_URL || 'http://localhost:3000';
+  return 'http://localhost:3000';
 }
 
 // Backward-compatible exports for existing static imports
