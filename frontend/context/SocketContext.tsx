@@ -9,7 +9,7 @@ interface SocketContextType {
   isConnected: boolean;
 }
 
-import { SOCKET_URL } from '@/lib/api';
+import { getSocketUrl } from '@/lib/api';
 
 const SocketContext = createContext<SocketContextType>({
   socket: null,
@@ -23,7 +23,8 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   // Initialize single persistent Socket.IO connection on mount
   useEffect(() => {
-    const socketInstance = io(SOCKET_URL, {
+    const targetSocketUrl = getSocketUrl();
+    const socketInstance = io(targetSocketUrl, {
       transports: ['polling', 'websocket'],
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
