@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, X } from 'lucide-react';
-import { API_BASE_URL } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 interface ImageUploaderProps {
   initialUrl?: string;
@@ -46,7 +46,7 @@ export default function ImageUploader({
       formData.append('image', file);
       formData.append('folder', folder);
 
-      const res = await fetch(`${API_BASE_URL}/upload/single`, {
+      const res = await apiFetch('/upload/single', {
         method: 'POST',
         body: formData,
       });

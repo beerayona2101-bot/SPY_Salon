@@ -19,7 +19,8 @@ import {
   Lock,
   Sparkles
 } from 'lucide-react';
-import { API_BASE_URL } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
+import ImageUploader from '@/components/ui/ImageUploader';
 
 export default function EmployeeDetailPage() {
   const params = useParams();
@@ -31,10 +32,23 @@ export default function EmployeeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  const handleAvatarUpload = async (newUrl: string) => {
+    if (!newUrl || !employee) return;
+    setEmployee((prev: any) => ({ ...prev, avatar: newUrl }));
+    try {
+      await apiFetch(`/admin/employees/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...employee, avatar: newUrl })
+      });
+    } catch (err) {
+      console.error('Failed to update avatar:', err);
+    }
+  };
+
   useEffect(() => {
     if (!id) return;
 
-    fetch(`${API_BASE_URL}/admin/employees/${id}`)
+    apiFetch(`/admin/employees/${id}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data) {
@@ -104,13 +118,25 @@ export default function EmployeeDetailPage() {
         </div>
 
         {/* Profile Card Header */}
-        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/30 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-2 border-rosegold-500/50 shadow-glow-rosegold shrink-0 bg-dark-800">
-            <img 
-              src={employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'} 
-              alt={employee.name} 
-              className="w-full h-full object-cover"
-            />
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/30 flex flex-col md:flex-row items-center md:items-start gap-6">
+          <div className="flex flex-col items-center space-y-3 shrink-0">
+            <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-2 border-rosegold-500/50 shadow-glow-rosegold bg-dark-800">
+              <img 
+                src={employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'} 
+                alt={employee.name} 
+                className="w-full h-full object-cover"
+                onError={(e: any) => { e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'; }}
+              />
+            </div>
+            
+            <div className="w-full max-w-[140px]">
+              <ImageUploader 
+                initialUrl={employee.avatar} 
+                folder="employees"
+                label="Update Photo"
+                onUploadSuccess={handleAvatarUpload}
+              />
+            </div>
           </div>
 
           <div className="space-y-3 text-center sm:text-left flex-1">
@@ -258,9 +284,8 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
   const handleDisburseSalary = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/payrolls`, {
+      const res = await apiFetch('/admin/payrolls', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           employeeName: employee.name,
           empCode,

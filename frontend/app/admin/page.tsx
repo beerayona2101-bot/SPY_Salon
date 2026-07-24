@@ -3294,7 +3294,12 @@ export default function AdminDashboardPage() {
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-rosegold-500/50 shrink-0 bg-dark-800">
-                    <img src={selectedItem.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'} alt={selectedItem.name} className="w-full h-full object-cover" />
+                    <img 
+                      src={selectedItem.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'} 
+                      alt={selectedItem.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e: any) => { e.target.src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'; }} 
+                    />
                   </div>
                   <div>
                     <span className="bg-rosegold-500/15 text-rosegold-300 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-rosegold-500/30">{createdCredentials.empCode}</span>
@@ -3421,6 +3426,15 @@ export default function AdminDashboardPage() {
             {/* ADD / EDIT EMPLOYEE */}
             {(modalType === 'addEmp' || modalType === 'editEmp') && (
               <form onSubmit={handleSaveEmployee} className="space-y-3.5">
+                <div>
+                  <ImageUploader 
+                    initialUrl={empForm.avatar} 
+                    folder="employees" 
+                    label="Employee Profile Photo" 
+                    onUploadSuccess={(url) => setEmpForm(prev => ({ ...prev, avatar: url }))} 
+                  />
+                </div>
+
                 <div>
                   <label className="text-gray-300 font-semibold block mb-1 text-xs">Employee Full Name *</label>
                   <input 
