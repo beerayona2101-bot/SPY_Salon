@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -42,7 +42,7 @@ export default function Navbar() {
     try {
       const email = user?.email || '';
       const phone = user?.phone || '';
-      const res = await fetch(`${API_BASE_URL}/user/notifications?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
+      const res = await apiFetch(`/user/notifications?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`);
       const data = await res.json();
       if (data.data) {
         setUserNotifs(data.data);
@@ -128,9 +128,8 @@ export default function Navbar() {
 
   const handleClearUserNotifs = async () => {
     try {
-      await fetch(`${API_BASE_URL}/user/notifications/clear`, {
+      await apiFetch('/user/notifications/clear', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user?.email, phone: user?.phone })
       });
       setUserNotifs([]);

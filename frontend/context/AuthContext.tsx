@@ -25,7 +25,7 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
 }
 
-import { API_BASE_URL } from '@/lib/api';
+import { apiFetch } from '@/lib/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -79,9 +79,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      const res = await apiFetch('/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
@@ -102,9 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (formData: { name: string; email: string; phone: string; password: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      const res = await apiFetch('/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       const data = await res.json();
@@ -124,9 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const sendOtp = async (identifier: { phone?: string; email?: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
+      const res = await apiFetch('/auth/send-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(identifier)
       });
       const data = await res.json();
@@ -142,9 +139,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const verifyOtp = async (identifier: { phone?: string; email?: string; otp: string }) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
+      const res = await apiFetch('/auth/verify-otp', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(identifier)
       });
       const data = await res.json();
@@ -165,9 +161,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const forgotPassword = async (email: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      const res = await apiFetch('/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
       const data = await res.json();
@@ -199,9 +194,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password = otpOrPassword;
       }
 
-      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      const res = await apiFetch('/auth/reset-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp, password })
       });
       const data = await res.json();
@@ -218,12 +212,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       if (token && refreshToken) {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
+        await apiFetch('/auth/logout', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
+          headers: { Authorization: `Bearer ${token}` },
           body: JSON.stringify({ refreshToken })
         });
       }
@@ -237,9 +228,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const refreshAuth = async () => {
     if (!refreshToken) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const res = await apiFetch('/auth/refresh', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
       });
       const data = await res.json();
