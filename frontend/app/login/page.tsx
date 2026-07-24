@@ -129,8 +129,8 @@ function LoginPageInner() {
         
         {/* Header & Logo */}
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-white p-1.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
-            <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-2 border-2 border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
+            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold font-serif text-white">Sign In to SPY Salon</h1>
         </div>

@@ -18,6 +18,7 @@ import {
   Award
 } from 'lucide-react';
 import { servicesData as defaultStaticServices } from '@/data/servicesData';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function ServiceDetailPage() {
   const params = useParams();
@@ -30,7 +31,7 @@ export default function ServiceDetailPage() {
   useEffect(() => {
     if (!id) return;
 
-    fetch(`http://localhost:5000/api/v1/services`)
+    fetch(`${API_BASE_URL}/services`)
       .then(res => res.json())
       .then(data => {
         if (data.data && data.data.length > 0) {

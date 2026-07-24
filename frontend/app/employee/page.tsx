@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
+import { API_BASE_URL } from '@/lib/api';
 
 interface AssignedAppointment {
   _id: string;
@@ -123,7 +124,7 @@ export default function EmployeeDashboardPage() {
   const handleSaveWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/v1/employee/appointments/walkin', {
+      const res = await fetch(`${API_BASE_URL}/employee/appointments/walkin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -201,10 +202,10 @@ export default function EmployeeDashboardPage() {
   const fetchEmployeeData = async () => {
     try {
       const [appRes, leaveRes, attRes, payRes] = await Promise.all([
-        fetch('http://localhost:5000/api/v1/employee/appointments').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/employee/leaves').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/employee/attendance').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/employee/payrolls').then(r => r.json()).catch(() => ({ data: [] }))
+        fetch(`${API_BASE_URL}/employee/appointments`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/employee/leaves`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/employee/attendance`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/employee/payrolls`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
       if (appRes.data) setAppointments(appRes.data);
@@ -221,7 +222,7 @@ export default function EmployeeDashboardPage() {
   // Update Service Status (In Progress, Completed, Cancelled)
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
-      await fetch(`http://localhost:5000/api/v1/employee/appointments/${id}/status`, {
+      await fetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -234,7 +235,7 @@ export default function EmployeeDashboardPage() {
 
   const handleMarkPaymentPaid = async (id: string) => {
     try {
-      await fetch(`http://localhost:5000/api/v1/employee/appointments/${id}/status`, {
+      await fetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentStatus: 'Paid', paymentMethod: 'Cash', status: 'Completed' })
@@ -250,7 +251,7 @@ export default function EmployeeDashboardPage() {
     e.preventDefault();
     if (!selectedApp) return;
     try {
-      await fetch(`http://localhost:5000/api/v1/employee/appointments/${selectedApp._id}/status`, {
+      await fetch(`${API_BASE_URL}/employee/appointments/${selectedApp._id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: notesEdit })
@@ -266,7 +267,7 @@ export default function EmployeeDashboardPage() {
   const handleSaveBankDetails = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await fetch('http://localhost:5000/api/v1/employee/bank-details', {
+      await fetch(`${API_BASE_URL}/employee/bank-details`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...bankForm, email: user?.email })
@@ -282,7 +283,7 @@ export default function EmployeeDashboardPage() {
   // Clock-in & Shift Control Actions
   const handleClockIn = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/v1/employee/clock-in', {
+      const res = await fetch(`${API_BASE_URL}/employee/clock-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ employeeName: user?.name || 'Ananya Sharma' })
@@ -309,7 +310,7 @@ export default function EmployeeDashboardPage() {
   const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/v1/employee/leaves', {
+      const res = await fetch(`${API_BASE_URL}/employee/leaves`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...leaveForm, employeeName: user?.name || 'Ananya Sharma' })

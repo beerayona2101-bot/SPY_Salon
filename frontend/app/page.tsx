@@ -101,12 +101,12 @@ export default function Home() {
             >
               
               {/* Mobile, Tablet & iPad Brand Logo Showcase Image (Present on Mobiles, Tablets & iPads) */}
-              <div className="lg:hidden flex justify-center pt-1 pb-1">
-                <div className="relative group">
+              <div className="lg:hidden flex justify-center pt-2 pb-2">
+                <div className="relative max-w-[220px] sm:max-w-[280px] w-full mx-auto transition-all transform hover:scale-105">
                   <img 
-                    src="/logo-transparent.png" 
+                    src="/logo-mobile-transparent.png" 
                     alt="SPY Salon Luxury Brand Identity" 
-                    className="w-40 sm:w-52 md:w-64 max-w-[75vw] h-auto object-contain mx-auto drop-shadow-[0_0_25px_rgba(232,180,184,0.3)] transition-all transform hover:scale-105"
+                    className="w-full h-auto object-contain mx-auto drop-shadow-[0_0_20px_rgba(232,180,184,0.3)]"
                   />
                 </div>
               </div>
@@ -175,11 +175,11 @@ export default function Home() {
                 <div className="rosegold-glass-card rounded-3xl p-6 overflow-hidden relative shadow-2xl space-y-5 text-center border border-rosegold-500/30">
                   
                   {/* Glowing Logo Frame on Desktop */}
-                  <div className="relative w-44 h-44 mx-auto rounded-full bg-white p-3 border-2 border-rosegold-500/60 shadow-glow-rosegold flex items-center justify-center">
+                  <div className="relative w-44 h-44 mx-auto rounded-full bg-white p-2 border-4 border-rosegold-500/60 shadow-glow-rosegold flex items-center justify-center overflow-hidden">
                     <img 
-                      src="/logo.png" 
+                      src="/logo-icon.png" 
                       alt="SPY Salon Luxury Logo" 
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain p-1"
                     />
                   </div>
 

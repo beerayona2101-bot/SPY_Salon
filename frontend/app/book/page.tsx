@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Calendar, Clock, User, ShieldCheck, Sparkles, CheckCircle2, MapPin, CreditCard, ArrowRight, Smartphone, DollarSign, Lock, AlertCircle, X, Check } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function BookingPage() {
   const router = useRouter();
@@ -55,7 +56,7 @@ export default function BookingPage() {
       const rId = urlParams.get('rescheduleId') || urlParams.get('bookingId');
       if (rId) {
         setRescheduleId(rId);
-        fetch('http://localhost:5000/api/v1/user/appointments')
+        fetch(`${API_BASE_URL}/user/appointments`)
           .then(r => r.json())
           .then(data => {
             if (data.data) {
@@ -77,8 +78,8 @@ export default function BookingPage() {
   const fetchLiveBookData = async () => {
     try {
       const [srvRes, specRes] = await Promise.all([
-        fetch('http://localhost:5000/api/v1/services').then(r => r.json()).catch(() => null),
-        fetch('http://localhost:5000/api/v1/specialists').then(r => r.json()).catch(() => null)
+        fetch(`${API_BASE_URL}/services`).then(r => r.json()).catch(() => null),
+        fetch(`${API_BASE_URL}/specialists`).then(r => r.json()).catch(() => null)
       ]);
 
       if (srvRes && srvRes.data && srvRes.data.length > 0) {
@@ -107,7 +108,7 @@ export default function BookingPage() {
 
   const fetchBookedSlots = async (dateVal: string, staffVal: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/appointments/booked-slots?date=${dateVal}&specialist=${encodeURIComponent(staffVal)}`);
+      const res = await fetch(`${API_BASE_URL}/appointments/booked-slots?date=${dateVal}&specialist=${encodeURIComponent(staffVal)}`);
       const data = await res.json();
       if (data.bookedSlots) {
         setBookedSlots(data.bookedSlots);
@@ -179,7 +180,7 @@ export default function BookingPage() {
     setIsSubmitting(true);
     setConflictError(null);
     try {
-      const response = await fetch('http://localhost:5000/api/v1/appointments/public-book', {
+      const response = await fetch(`${API_BASE_URL}/appointments/public-book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'SPY Salon | Luxury Beauty Studio, Hair & Spa Experience',
   description: 'Experience luxury grooming, 24K gold skin care, keratin hair treatments, and relaxing spa sessions at SPY Salon. Book online appointments instantly.',
   keywords: ['Salon', 'Spa', 'Luxury Beauty Studio', 'Hair Care', 'Skin Care', 'Hyderabad Salon', 'Online Booking'],
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({

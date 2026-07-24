@@ -19,6 +19,7 @@ import {
   Lock,
   Sparkles
 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function EmployeeDetailPage() {
   const params = useParams();
@@ -33,7 +34,7 @@ export default function EmployeeDetailPage() {
   useEffect(() => {
     if (!id) return;
 
-    fetch(`http://localhost:5000/api/v1/admin/employees/${id}`)
+    fetch(`${API_BASE_URL}/admin/employees/${id}`)
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data) {
@@ -257,7 +258,7 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
   const handleDisburseSalary = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/v1/admin/payrolls', {
+      const res = await fetch(`${API_BASE_URL}/admin/payrolls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

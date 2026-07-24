@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
+import { API_BASE_URL } from '@/lib/api';
 
 interface AppointmentRecord {
   _id: string;
@@ -71,7 +72,7 @@ export default function UserProfilePage() {
     if (!rescheduleModalApp) return;
     setIsSubmittingReschedule(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/user/appointments/${rescheduleModalApp._id}/reschedule`, {
+      const res = await fetch(`${API_BASE_URL}/user/appointments/${rescheduleModalApp._id}/reschedule`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(rescheduleForm)
@@ -130,9 +131,9 @@ export default function UserProfilePage() {
       const phone = user?.phone || '';
 
       const [appRes, memRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/v1/user/appointments?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`)
+        fetch(`${API_BASE_URL}/user/appointments?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`)
           .then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`http://localhost:5000/api/v1/user/membership`).then(r => r.json()).catch(() => ({ hasActiveMembership: false, offers: [] }))
+        fetch(`${API_BASE_URL}/user/membership`).then(r => r.json()).catch(() => ({ hasActiveMembership: false, offers: [] }))
       ]);
 
       if (appRes.data) setAppointments(appRes.data);

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Search, Star, Clock, Sparkles, ArrowRight, Eye, CheckCircle2 } from 'lucide-react';
 import { servicesData as defaultStaticServices } from '@/data/servicesData';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function ServicesPage() {
 
   const fetchLiveServices = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/v1/services');
+      const res = await fetch(`${API_BASE_URL}/services`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
         const formatted = data.data.map((s: any) => ({

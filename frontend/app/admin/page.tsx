@@ -43,6 +43,7 @@ import {
   Printer
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL, APP_BASE_URL } from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import ImageUploader from '@/components/ui/ImageUploader';
 
@@ -414,18 +415,18 @@ export default function AdminDashboardPage() {
   const fetchAdminData = async () => {
     try {
       const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes] = await Promise.all([
-        fetch('http://localhost:5000/api/v1/admin/analytics').then(r => r.json()).catch(() => ({ data: null })),
-        fetch('http://localhost:5000/api/v1/admin/employees').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/customers').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/services').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/appointments').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/leaves').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/reviews').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/payrolls').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/activity-logs').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/notifications').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/transactions').then(r => r.json()).catch(() => ({ data: [] })),
-        fetch('http://localhost:5000/api/v1/admin/attendance/report').then(r => r.json()).catch(() => ({ data: [] }))
+        fetch(`${API_BASE_URL}/admin/analytics`).then(r => r.json()).catch(() => ({ data: null })),
+        fetch(`${API_BASE_URL}/admin/employees`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/customers`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/services`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/appointments`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/leaves`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/reviews`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/payrolls`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/activity-logs`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/notifications`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/transactions`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/attendance/report`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
       if (anaRes.data) setAnalytics(anaRes.data);
@@ -453,7 +454,7 @@ export default function AdminDashboardPage() {
 
   // CSV Report Export Handler
   const handleExportReport = (moduleName: string) => {
-    window.open(`http://localhost:5000/api/v1/admin/export/${moduleName}`, '_blank');
+    window.open(`${API_BASE_URL}/admin/export/${moduleName}`, '_blank');
   };
 
   // AUTO GENERATE PROCEDURE STEPS
@@ -530,7 +531,7 @@ export default function AdminDashboardPage() {
     };
 
     if (modalType === 'editEmp' && selectedItem) {
-      const res = await fetch(`http://localhost:5000/api/v1/admin/employees/${selectedItem._id}`, {
+      const res = await fetch(`${API_BASE_URL}/admin/employees/${selectedItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -551,7 +552,7 @@ export default function AdminDashboardPage() {
       }
       setModalType(null);
     } else {
-      const res = await fetch('http://localhost:5000/api/v1/admin/employees', {
+      const res = await fetch(`${API_BASE_URL}/admin/employees`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -577,7 +578,7 @@ export default function AdminDashboardPage() {
 
   const handleDeleteEmployee = async (id: string) => {
     if (!confirm('Delete this employee record?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/employees/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/employees/${id}`, { method: 'DELETE' });
     setEmployees(employees.filter(e => e._id !== id));
   };
 
@@ -615,7 +616,7 @@ export default function AdminDashboardPage() {
     };
 
     if (modalType === 'editSrv' && selectedItem) {
-      const res = await fetch(`http://localhost:5000/api/v1/admin/services/${selectedItem._id}`, {
+      const res = await fetch(`${API_BASE_URL}/admin/services/${selectedItem._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -624,7 +625,7 @@ export default function AdminDashboardPage() {
       const updated = data.data || payload;
       setServices(services.map(s => s._id === selectedItem._id ? { ...s, ...updated } : s));
     } else {
-      const res = await fetch('http://localhost:5000/api/v1/admin/services', {
+      const res = await fetch(`${API_BASE_URL}/admin/services`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -639,14 +640,14 @@ export default function AdminDashboardPage() {
 
   const handleDeleteService = async (id: string) => {
     if (!confirm('Delete service from menu?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/services/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/services/${id}`, { method: 'DELETE' });
     setServices(services.filter(s => s._id !== id));
   };
 
   // PAYROLL & SALARY SLIP CRUD HANDLERS
   const handleSavePayroll = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:5000/api/v1/admin/payrolls', {
+    const res = await fetch(`${API_BASE_URL}/admin/payrolls`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payForm)
@@ -659,7 +660,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleUpdatePayrollStatus = async (id: string, newStatus: string) => {
-    await fetch(`http://localhost:5000/api/v1/admin/payrolls/${id}/status`, {
+    await fetch(`${API_BASE_URL}/admin/payrolls/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
@@ -669,14 +670,14 @@ export default function AdminDashboardPage() {
 
   const handleDeletePayroll = async (id: string) => {
     if (!confirm('Delete salary slip record?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/payrolls/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/payrolls/${id}`, { method: 'DELETE' });
     setPayrolls(payrolls.filter(p => p._id !== id));
   };
 
   // CUSTOMERS & APPOINTMENTS
   const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:5000/api/v1/admin/customers', {
+    const res = await fetch(`${API_BASE_URL}/admin/customers`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(custForm)
@@ -688,13 +689,13 @@ export default function AdminDashboardPage() {
 
   const handleDeleteCustomer = async (id: string) => {
     if (!confirm('Delete customer account?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/customers/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/customers/${id}`, { method: 'DELETE' });
     setCustomers(customers.filter(c => c._id !== id));
   };
 
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('http://localhost:5000/api/v1/admin/appointments', {
+    const res = await fetch(`${API_BASE_URL}/admin/appointments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -714,7 +715,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleUpdateAppStatus = async (id: string, newStatus: string) => {
-    await fetch(`http://localhost:5000/api/v1/admin/appointments/${id}`, {
+    await fetch(`${API_BASE_URL}/admin/appointments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
@@ -723,7 +724,7 @@ export default function AdminDashboardPage() {
   };
 
   const handleRespondReschedule = async (id: string, action: 'Approve' | 'Reject', rejectionReason?: string) => {
-    const res = await fetch(`http://localhost:5000/api/v1/admin/appointments/${id}/reschedule-respond`, {
+    const res = await fetch(`${API_BASE_URL}/admin/appointments/${id}/reschedule-respond`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, rejectionReason })
@@ -738,13 +739,13 @@ export default function AdminDashboardPage() {
 
   const handleDeleteAppointment = async (id: string) => {
     if (!confirm('Cancel & delete appointment?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/appointments/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/appointments/${id}`, { method: 'DELETE' });
     setAppointments(appointments.filter(a => a._id !== id));
   };
 
   // LEAVE APPROVAL / REJECTION HANDLERS
   const handleUpdateLeaveStatus = async (id: string, newStatus: 'Approved' | 'Rejected') => {
-    await fetch(`http://localhost:5000/api/v1/admin/leaves/${id}/status`, {
+    await fetch(`${API_BASE_URL}/admin/leaves/${id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
@@ -754,13 +755,13 @@ export default function AdminDashboardPage() {
 
   const handleDeleteLeave = async (id: string) => {
     if (!confirm('Remove this leave application record?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/leaves/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/leaves/${id}`, { method: 'DELETE' });
     setLeaves(leaves.filter(l => l._id !== id));
   };
 
   const handleDeleteReview = async (id: string) => {
     if (!confirm('Remove this comment?')) return;
-    await fetch(`http://localhost:5000/api/v1/admin/reviews/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/admin/reviews/${id}`, { method: 'DELETE' });
     setReviews(reviews.filter(r => r._id !== id));
   };
 
@@ -773,7 +774,7 @@ export default function AdminDashboardPage() {
     const e = emailVal || createdCredentials?.email || 'ananya_sharma@spysalon.com';
     const p = passVal || createdCredentials?.tempPassword || 'ananya_sharma@123';
     const c = codeVal || createdCredentials?.empCode || 'EMP-1001';
-    const text = `SPY Salon Staff Credentials:\nEmployee ID: ${c}\nLogin Email: ${e}\nPassword: ${p}\nLogin Portal: http://localhost:3000/login`;
+    const text = `SPY Salon Staff Credentials:\nEmployee ID: ${c}\nLogin Email: ${e}\nPassword: ${p}\nLogin Portal: ${APP_BASE_URL}/login`;
     navigator.clipboard.writeText(text);
     setCopiedCreds(true);
     setTimeout(() => setCopiedCreds(false), 2000);
@@ -939,7 +940,7 @@ export default function AdminDashboardPage() {
                         const willOpen = !adminNotifOpen;
                         setAdminNotifOpen(willOpen);
                         if (willOpen && actionableNotifs.length > 0) {
-                          fetch('http://localhost:5000/api/v1/admin/notifications/read', { method: 'PUT' });
+                          fetch(`${API_BASE_URL}/admin/notifications/read`, { method: 'PUT' });
                           setNotifications(notifications.map(n => ({ ...n, read: true })));
                         }
                       }}
@@ -964,7 +965,7 @@ export default function AdminDashboardPage() {
                           </div>
                           <div className="flex items-center space-x-2">
                             <button onClick={() => {
-                              fetch('http://localhost:5000/api/v1/admin/notifications/read', { method: 'PUT' });
+                              fetch(`${API_BASE_URL}/admin/notifications/read`, { method: 'PUT' });
                               setNotifications([]);
                             }} className="text-[10px] text-rosegold-300 font-bold hover:underline cursor-pointer">Clear All</button>
                             <button onClick={() => setAdminNotifOpen(false)} className="text-gray-400 hover:text-white text-xs cursor-pointer">✕</button>
@@ -2629,7 +2630,7 @@ export default function AdminDashboardPage() {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   try {
-                    const res = await fetch('http://localhost:5000/api/v1/admin/transactions', {
+                    const res = await fetch(`${API_BASE_URL}/admin/transactions`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(manualTxnForm)
