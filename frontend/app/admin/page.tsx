@@ -4156,7 +4156,20 @@ function AdminDashboardContent() {
               </div>
               <div>
                 <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Phone Number</span>
-                <span className="text-white font-bold">{selectedEnquiry.phone || 'Not Provided'}</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-white font-bold">{selectedEnquiry.phone || 'Not Provided'}</span>
+                  {selectedEnquiry.phone && (
+                    <a
+                      href={`https://wa.me/${selectedEnquiry.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${selectedEnquiry.name}, this is SPY Salon Concierge regarding your inquiry #${selectedEnquiry.enquiryId}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-[10px] font-bold inline-flex items-center space-x-1 transition-all"
+                      title="Open direct WhatsApp chat with customer"
+                    >
+                      <span>💬 Chat on WhatsApp</span>
+                    </a>
+                  )}
+                </div>
               </div>
               <div>
                 <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Submission Timestamp</span>
@@ -4184,7 +4197,7 @@ function AdminDashboardContent() {
                   <button
                     key={st}
                     disabled={isUpdatingEnquiry}
-                    onClick={() => handleUpdateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.enquiryId, st)}
+                    onClick={() => setSelectedEnquiry(prev => prev ? { ...prev, status: st } : null)}
                     className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-50 ${
                       selectedEnquiry.status === st
                         ? 'rosegold-gradient-bg text-dark-900 border-rosegold-400 shadow-md font-extrabold scale-105'
@@ -4230,8 +4243,8 @@ function AdminDashboardContent() {
                 </button>
                 <button
                   disabled={isUpdatingEnquiry}
-                  onClick={() => {
-                    handleUpdateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.enquiryId, selectedEnquiry.status, enquiryAdminNotes);
+                  onClick={async () => {
+                    await handleUpdateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.enquiryId, selectedEnquiry.status, enquiryAdminNotes);
                     setIsEnquiryModalOpen(false);
                   }}
                   className="px-6 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer disabled:opacity-50"

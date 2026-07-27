@@ -12,9 +12,16 @@ const notificationSchema = new mongoose.Schema({
     default: null,
     index: true 
   },
+  email: {
+    type: String,
+    default: null,
+    lowercase: true,
+    trim: true,
+    index: true
+  },
   role: { 
     type: String, 
-    enum: ['admin', 'employee', 'user', 'all'], 
+    enum: ['admin', 'employee', 'user', 'all', 'public'], 
     default: 'all',
     index: true 
   },

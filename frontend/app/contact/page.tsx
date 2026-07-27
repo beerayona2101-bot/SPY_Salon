@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [submittedData, setSubmittedData] = useState<{ enquiryId: string; name: string; email: string } | null>(null);
+  const [submittedData, setSubmittedData] = useState<{ enquiryId: string; name: string; email: string; whatsappAdminLink?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,10 +31,14 @@ export default function ContactPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        const enqId = data.data?.enquiryId || ('ENQ-' + Math.floor(100000 + Math.random() * 900000));
+        const adminWaUrl = data.data?.whatsappAdminLink || `https://wa.me/919490644434?text=${encodeURIComponent(`Hello SPY Salon Concierge, I submitted inquiry #${enqId} from website.`)}`;
+        
         setSubmittedData({
-          enquiryId: data.data?.enquiryId || ('ENQ-' + Math.floor(100000 + Math.random() * 900000)),
+          enquiryId: enqId,
           name: formData.name,
-          email: formData.email
+          email: formData.email,
+          whatsappAdminLink: adminWaUrl
         });
         setSubmitted(true);
         setFormData({ name: '', email: '', phone: '', message: '' });
@@ -97,7 +101,7 @@ export default function ContactPage() {
                 <CheckCircle2 className="w-7 h-7 shrink-0 animate-bounce" />
                 <div>
                   <h3 className="font-serif font-bold text-lg text-white">Inquiry Received Successfully!</h3>
-                  <p className="text-xs text-gray-300">Confirmation email sent to <strong className="text-white">{submittedData.email}</strong></p>
+                  <p className="text-xs text-gray-300">Confirmation email & WhatsApp alert dispatched.</p>
                 </div>
               </div>
 
@@ -107,15 +111,27 @@ export default function ContactPage() {
               </div>
 
               <p className="text-xs text-gray-300 leading-relaxed">
-                Thank you, <strong>{submittedData.name}</strong>. Your message has been routed to our Jubilee Hills Concierge Desk. Our team will get back to you within 2 hours.
+                Thank you, <strong>{submittedData.name}</strong>. Your message has been routed to our Jubilee Hills Concierge Desk.
               </p>
 
-              <button
-                onClick={() => setSubmitted(false)}
-                className="w-full py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md cursor-pointer hover:scale-105 transition-all"
-              >
-                Send Another Message
-              </button>
+              <div className="space-y-2 pt-2">
+                <a
+                  href={submittedData.whatsappAdminLink || 'https://wa.me/919490644434'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center space-x-2 shadow-lg transition-all text-center cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Chat directly with Admin on WhatsApp →</span>
+                </a>
+
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="w-full py-2.5 rounded-full bg-dark-900 border border-white/10 text-gray-300 font-bold text-xs hover:text-white cursor-pointer transition-all"
+                >
+                  Send Another Message
+                </button>
+              </div>
             </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">

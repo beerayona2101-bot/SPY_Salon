@@ -49,8 +49,20 @@ export default function Navbar() {
 
   const fetchAppNotifications = async () => {
     try {
+      if (!user) {
+        const res = await fetch(`${API_BASE_URL}/notifications?role=guest`);
+        const data = await res.json();
+        if (res.ok && data.success && Array.isArray(data.data)) {
+          setNotifications(data.data);
+        } else {
+          setNotifications([]);
+        }
+        return;
+      }
+
       const userId = (user as any)?._id || user?.id || '';
-      const res = await fetch(`${API_BASE_URL}/notifications?role=${currentRole}${userId ? `&userId=${userId}` : ''}`);
+      const email = user?.email || '';
+      const res = await fetch(`${API_BASE_URL}/notifications?role=${currentRole}${userId ? `&userId=${userId}` : ''}${email ? `&email=${encodeURIComponent(email)}` : ''}`);
       const data = await res.json();
       if (res.ok && data.success && Array.isArray(data.data)) {
         let list = data.data;
@@ -65,7 +77,10 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchAppNotifications();
-    const intervalId = setInterval(fetchAppNotifications, 15000);
+    const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchAppNotifications();
+    }, 30000);
     return () => clearInterval(intervalId);
   }, [user, pathname]);
 
@@ -73,7 +88,21 @@ export default function Navbar() {
     if (!socket) return;
 
     socket.on('notification:new', (newNotif: any) => {
-      if (newNotif) {
+      if (!newNotif) return;
+      if (!user) return; // Guests ignore live personal notifications
+
+      const userEmail = user?.email ? user.email.toLowerCase().trim() : '';
+      const userId = (user as any)?._id || user?.id || '';
+
+      // Match notification if targeted to user role, all role, or specific matching email/userId
+      const isMatching = 
+        newNotif.role === 'user' || 
+        newNotif.role === 'all' ||
+        !newNotif.email ||
+        (newNotif.email && userEmail && newNotif.email.toLowerCase().trim() === userEmail) ||
+        (newNotif.userId && String(newNotif.userId) === String(userId));
+
+      if (isMatching) {
         setNotifications(prev => [newNotif, ...prev.filter(n => n.notificationId !== newNotif.notificationId)]);
       }
     });
@@ -261,137 +290,172 @@ export default function Navbar() {
               {/* Notification Bell Icon & Profile Avatar / Executive Desk Button - Right Fixed in Mobile View */}
               <div className="flex items-center space-x-1.5 sm:space-x-2.5 absolute right-3 sm:right-6 md:static md:right-auto">
                 
-                {/* UNIVERSAL REAL-TIME NOTIFICATION BELL */}
-                <div className="relative" ref={notifRef}>
-                  <button
-                    onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                    className={`p-1.5 sm:p-2 rounded-full bg-dark-800 border text-rosegold-400 hover:text-white transition-all cursor-pointer relative ${
-                      unreadCount > 0 
-                        ? 'border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
-                        : 'border-white/10 hover:border-rosegold-500/40'
-                    }`}
-                    title="Real-Time Notifications & System Alerts"
-                  >
-                    <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-dark-900 font-extrabold text-[9px] flex items-center justify-center shadow-md animate-bounce">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
+                  {/* UNIVERSAL REAL-TIME NOTIFICATION BELL */}
+                  <div className="relative" ref={notifRef}>
+                    <button
+                      onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
+                      className={`p-1.5 sm:p-2 rounded-full bg-dark-800 border text-rosegold-400 hover:text-white transition-all cursor-pointer relative ${
+                        user && unreadCount > 0 
+                          ? 'border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
+                          : 'border-white/10 hover:border-rosegold-500/40'
+                      }`}
+                      title="Real-Time Notifications & System Alerts"
+                    >
+                      <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      {user && unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-dark-900 font-extrabold text-[9px] flex items-center justify-center shadow-md animate-bounce">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </button>
 
-                  {/* NOTIFICATION DROPDOWN PANEL */}
-                  <AnimatePresence>
-                    {notifDropdownOpen && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.93, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.93, y: -10 }}
-                        transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                        className="absolute right-0 mt-2 w-80 sm:w-96 rounded-3xl bg-dark-900/98 border border-rosegold-500/40 backdrop-blur-2xl shadow-2xl p-4 space-y-3 z-[100] text-left"
-                      >
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                          <div className="flex items-center space-x-2">
-                            <Bell className="w-4 h-4 text-rosegold-400" />
-                            <h4 className="text-white font-serif font-bold text-sm">Notifications & Alerts</h4>
-                            {unreadCount > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                                {unreadCount} unread
-                              </span>
-                            )}
+                    {/* NOTIFICATION DROPDOWN PANEL - SOLID OPAQUE LUXURY BACKGROUND */}
+                    <AnimatePresence>
+                      {notifDropdownOpen && (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.93, y: -10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.93, y: -10 }}
+                          transition={{ type: 'spring', stiffness: 350, damping: 26 }}
+                          className="absolute right-0 mt-2 w-80 sm:w-[410px] rounded-3xl bg-[#141012] border-2 border-rosegold-500/50 shadow-[0_25px_60px_rgba(0,0,0,0.95)] p-4 space-y-3.5 z-[9999] text-left ring-1 ring-black/80"
+                        >
+                          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                            <div className="flex items-center space-x-2">
+                              <Bell className="w-4 h-4 text-rosegold-400" />
+                              <h4 className="text-white font-serif font-bold text-sm">Notifications & Alerts</h4>
+                              {user && unreadCount > 0 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
+                                  {unreadCount} unread
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {user && unreadCount > 0 && (
+                                <button
+                                  onClick={handleMarkAllAsRead}
+                                  className="text-[10px] text-rosegold-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"
+                                  title="Mark all notifications as read"
+                                >
+                                  <CheckCheck className="w-3 h-3" />
+                                  <span>Read All</span>
+                                </button>
+                              )}
+                              {user && notifications.length > 0 && (
+                                <button
+                                  onClick={handleClearAllNotifs}
+                                  className="text-[10px] text-gray-400 hover:text-red-400 font-bold underline cursor-pointer"
+                                >
+                                  Clear All
+                                </button>
+                              )}
+                              <button onClick={() => setNotifDropdownOpen(false)} className="text-gray-400 hover:text-white text-xs cursor-pointer p-1">✕</button>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            {unreadCount > 0 && (
-                              <button
-                                onClick={handleMarkAllAsRead}
-                                className="text-[10px] text-rosegold-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"
-                                title="Mark all notifications as read"
-                              >
-                                <CheckCheck className="w-3 h-3" />
-                                <span>Read All</span>
-                              </button>
-                            )}
-                            {notifications.length > 0 && (
-                              <button
-                                onClick={handleClearAllNotifs}
-                                className="text-[10px] text-gray-400 hover:text-red-400 font-bold underline cursor-pointer"
-                              >
-                                Clear All
-                              </button>
-                            )}
-                            <button onClick={() => setNotifDropdownOpen(false)} className="text-gray-400 hover:text-white text-xs cursor-pointer">✕</button>
-                          </div>
-                        </div>
 
-                        <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
-                          {notifications.length === 0 ? (
-                            <div className="text-center py-6 space-y-1">
-                              <Bell className="w-6 h-6 mx-auto text-gray-500 opacity-40" />
-                              <p className="text-xs text-gray-400">No active notifications.</p>
+                          {/* GUEST (UNAUTHENTICATED) NOTIFICATION PROMPT */}
+                          {!user ? (
+                            <div className="p-5 rounded-2xl bg-[#1c1619] border border-rosegold-500/30 text-center space-y-3 my-1">
+                              <div className="w-10 h-10 rounded-full bg-rosegold-500/20 text-rosegold-400 flex items-center justify-center mx-auto border border-rosegold-500/40 shadow-inner">
+                                <User className="w-5 h-5" />
+                              </div>
+                              <div className="space-y-1">
+                                <h5 className="font-serif font-bold text-white text-sm">Sign In for Personal Alerts</h5>
+                                <p className="text-gray-300 text-xs leading-relaxed">
+                                  Log in to your SPY Salon VIP account to receive real-time updates on your service inquiries, appointment schedules, and exclusive offers.
+                                </p>
+                              </div>
+                              <Link
+                                href="/login"
+                                onClick={() => setNotifDropdownOpen(false)}
+                                className="inline-block w-full py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold transition-transform active:scale-95 text-center mt-1"
+                              >
+                                Sign In to Account →
+                              </Link>
                             </div>
                           ) : (
-                            notifications.map((n) => {
-                              const isActionRequired = n.title?.includes('Reschedule') || n.title?.includes('Reject') || n.type === 'reschedule_needed';
-                              return (
-                                <div 
-                                  key={n._id || n.notificationId} 
-                                  className={`p-3 rounded-2xl border text-xs space-y-1 transition-all relative ${
-                                    !n.isRead
-                                      ? 'bg-rosegold-500/10 border-rosegold-500/40 text-gray-100 shadow-sm' 
-                                      : 'bg-dark-800/80 border-white/10 text-gray-300 opacity-80'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <h5 className="font-bold text-white text-xs flex items-center space-x-1.5">
-                                      {!n.isRead && (
-                                        <span className="w-2 h-2 rounded-full bg-rosegold-400 animate-pulse shrink-0" title="Unread" />
-                                      )}
-                                      <span>{n.title}</span>
-                                    </h5>
-                                    
-                                    <div className="flex items-center space-x-1.5 shrink-0">
-                                      <span className="text-[9.5px] text-gray-400 font-mono">
-                                        {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                      </span>
-                                      {!n.isRead && (
-                                        <button
-                                          onClick={() => handleMarkAsRead(n._id || n.notificationId)}
-                                          className="text-gray-400 hover:text-green-400 p-0.5 cursor-pointer"
-                                          title="Mark as read"
-                                        >
-                                          <Check className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                      <button
-                                        onClick={() => handleDeleteNotif(n._id || n.notificationId)}
-                                        className="text-gray-500 hover:text-red-400 p-0.5 cursor-pointer"
-                                        title="Delete notification"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  
-                                  <p className="text-gray-300 text-[11px] leading-relaxed">{n.message}</p>
-                                  
-                                  {isActionRequired && n.bookingId && (
-                                    <Link
-                                      href={`/book?rescheduleId=${n.bookingId}`}
-                                      onClick={() => setNotifDropdownOpen(false)}
-                                      className="inline-block mt-1 text-[11px] font-bold text-rosegold-400 hover:text-white underline cursor-pointer"
-                                    >
-                                      Reschedule Slot Now (Pre-Paid) →
-                                    </Link>
-                                  )}
+                            /* LOGGED IN USER NOTIFICATIONS LIST */
+                            <div className="space-y-2.5 max-h-88 overflow-y-auto pr-1 custom-scrollbar">
+                              {notifications.length === 0 ? (
+                                <div className="text-center py-8 space-y-2 bg-[#181316] rounded-2xl border border-white/5">
+                                  <Bell className="w-7 h-7 mx-auto text-gray-500 opacity-40" />
+                                  <p className="text-xs text-gray-400 font-medium">No active notifications for your account.</p>
                                 </div>
-                              );
-                            })
+                              ) : (
+                                notifications.map((n) => {
+                                  const isActionRequired = n.title?.includes('Reschedule') || n.title?.includes('Reject') || n.type === 'reschedule_needed';
+                                  const isEnquiry = n.type === 'enquiry' || n.title?.includes('Inquiry');
+                                  const isAppointment = n.type === 'appointment' || n.title?.includes('Appointment');
+
+                                  return (
+                                    <div 
+                                      key={n._id || n.notificationId} 
+                                      className={`p-3.5 rounded-2xl border text-xs space-y-1.5 transition-all relative ${
+                                        !n.isRead
+                                          ? 'bg-[#221a1e] border-l-4 border-l-rosegold-400 border-rosegold-500/30 text-white shadow-md' 
+                                          : 'bg-[#181316] border-l-4 border-l-gray-600 border-white/10 text-gray-300 opacity-90'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-1.5 overflow-hidden pr-2">
+                                          {!n.isRead && (
+                                            <span className="w-2 h-2 rounded-full bg-rosegold-400 animate-pulse shrink-0" title="Unread" />
+                                          )}
+                                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                                            isEnquiry 
+                                              ? 'bg-rosegold-500/20 text-rosegold-300 border border-rosegold-500/30'
+                                              : isAppointment 
+                                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                          }`}>
+                                            {isEnquiry ? 'Enquiry Status' : isAppointment ? 'Appointment' : 'System Alert'}
+                                          </span>
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-1.5 shrink-0">
+                                          <span className="text-[9.5px] text-gray-400 font-mono">
+                                            {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                                          </span>
+                                          {!n.isRead && (
+                                            <button
+                                              onClick={() => handleMarkAsRead(n._id || n.notificationId)}
+                                              className="text-gray-400 hover:text-green-400 p-0.5 cursor-pointer"
+                                              title="Mark as read"
+                                            >
+                                              <Check className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                          <button
+                                            onClick={() => handleDeleteNotif(n._id || n.notificationId)}
+                                            className="text-gray-500 hover:text-red-400 p-0.5 cursor-pointer"
+                                            title="Delete notification"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <h5 className="font-bold text-white text-xs pt-0.5">{n.title}</h5>
+                                      <p className="text-gray-200 text-[11px] leading-relaxed font-sans">{n.message}</p>
+                                      
+                                      {isActionRequired && n.bookingId && (
+                                        <Link
+                                          href={`/book?rescheduleId=${n.bookingId}`}
+                                          onClick={() => setNotifDropdownOpen(false)}
+                                          className="inline-block mt-1 text-[11px] font-bold text-rosegold-400 hover:text-white underline cursor-pointer"
+                                        >
+                                          Reschedule Slot Now (Pre-Paid) →
+                                        </Link>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
                           )}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
 
                 {user ? (
                   <button

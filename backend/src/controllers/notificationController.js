@@ -12,6 +12,7 @@ const dispatchNotification = async (reqApp, notifData) => {
     const payload = {
       notificationId,
       userId: notifData.userId || null,
+      email: notifData.email ? notifData.email.toLowerCase().trim() : null,
       role: notifData.role || 'all',
       title: notifData.title || 'System Notification',
       message: notifData.message || '',
@@ -44,7 +45,7 @@ const dispatchNotification = async (reqApp, notifData) => {
     const io = reqApp ? reqApp.get('io') : null;
     if (io) {
       io.emit('notification:new', notifObj);
-      io.emit('notifications:updated', { role: payload.role });
+      io.emit('notifications:updated', { role: payload.role, email: payload.email, userId: payload.userId });
     }
 
     return notifObj;
@@ -57,17 +58,30 @@ const dispatchNotification = async (reqApp, notifData) => {
 // GET /api/v1/notifications
 exports.getNotifications = async (req, res, next) => {
   try {
-    const { role = 'all', userId } = req.query;
+    const { role = 'all', userId, email } = req.query;
+    const cleanEmail = email ? String(email).toLowerCase().trim() : null;
     let list = [];
 
+    // If unauthenticated guest request without userId/email, return only public notifications
+    const isGuest = (role === 'guest' || role === 'user') && !userId && !cleanEmail;
+
     try {
-      const query = {
-        $or: [
-          { role: 'all' },
-          { role: role },
-          ...(userId ? [{ userId }] : [])
-        ]
-      };
+      let query = {};
+      if (role === 'admin') {
+        query = { $or: [{ role: 'admin' }, { role: 'all' }, { role: 'user' }] };
+      } else if (isGuest) {
+        query = { role: 'public' };
+      } else {
+        query = {
+          $or: [
+            { role: 'user' },
+            { role: 'all' },
+            ...(userId ? [{ userId }] : []),
+            ...(cleanEmail ? [{ email: cleanEmail }] : []),
+            ...(role && role !== 'all' ? [{ role }] : [])
+          ]
+        };
+      }
       list = await Notification.find(query).sort({ createdAt: -1 }).limit(100);
     } catch (err) {
       list = store.notifications || [];
@@ -77,9 +91,19 @@ exports.getNotifications = async (req, res, next) => {
       list = store.notifications;
     }
 
-    // Filter memory list if needed
-    if (role && role !== 'all') {
-      list = list.filter(n => n.role === 'all' || n.role === role || (userId && n.userId === userId));
+    // Filter memory list according to auth state
+    if (role === 'admin') {
+      list = list.filter(n => n.role === 'admin' || n.role === 'all' || n.role === 'user');
+    } else if (isGuest) {
+      list = list.filter(n => n.role === 'public');
+    } else {
+      list = list.filter(n => 
+        n.role === 'all' || 
+        n.role === 'user' ||
+        (userId && String(n.userId) === String(userId)) || 
+        (cleanEmail && n.email && n.email.toLowerCase().trim() === cleanEmail) ||
+        (n.role === role)
+      );
     }
 
     return ApiResponse.success(res, list, 'Notifications retrieved successfully');
@@ -91,22 +115,39 @@ exports.getNotifications = async (req, res, next) => {
 // GET /api/v1/notifications/unread
 exports.getUnreadCount = async (req, res, next) => {
   try {
-    const { role = 'all', userId } = req.query;
+    const { role = 'all', userId, email } = req.query;
+    const cleanEmail = email ? String(email).toLowerCase().trim() : null;
+    const isGuest = (role === 'guest' || role === 'user') && !userId && !cleanEmail;
     let count = 0;
 
     try {
-      const query = {
-        isRead: false,
-        $or: [
+      let query = { isRead: false };
+      if (role === 'admin') {
+        query.$or = [{ role: 'admin' }, { role: 'all' }, { role: 'user' }];
+      } else if (isGuest) {
+        query.role = 'public';
+      } else {
+        query.$or = [
+          { role: 'user' },
           { role: 'all' },
-          { role: role },
-          ...(userId ? [{ userId }] : [])
-        ]
-      };
+          ...(userId ? [{ userId }] : []),
+          ...(cleanEmail ? [{ email: cleanEmail }] : []),
+          ...(role && role !== 'all' ? [{ role }] : [])
+        ];
+      }
       count = await Notification.countDocuments(query);
     } catch (err) {
       const list = store.notifications || [];
-      count = list.filter(n => !n.isRead && (n.role === 'all' || n.role === role)).length;
+      if (isGuest) {
+        count = list.filter(n => !n.isRead && n.role === 'public').length;
+      } else {
+        count = list.filter(n => !n.isRead && (
+          n.role === 'all' || 
+          n.role === 'user' ||
+          (userId && String(n.userId) === String(userId)) ||
+          (cleanEmail && n.email && n.email.toLowerCase().trim() === cleanEmail)
+        )).length;
+      }
     }
 
     return ApiResponse.success(res, { unreadCount: count }, 'Unread count fetched');
@@ -114,6 +155,7 @@ exports.getUnreadCount = async (req, res, next) => {
     next(error);
   }
 };
+
 
 // POST /api/v1/notifications
 exports.createNotification = async (req, res, next) => {

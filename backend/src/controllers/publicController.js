@@ -1,6 +1,8 @@
 const store = require('../data/store');
 const Enquiry = require('../models/Enquiry');
 const { sendCustomerEnquiryConfirmation, sendAdminEnquiryNotification } = require('../services/emailService');
+const { dispatchNotification } = require('./notificationController');
+const { sendAdminWhatsAppNotification, getCustomerWhatsAppChatUrl } = require('../services/whatsappService');
 
 const fallbackBranches = [
   { id: 'b1', name: 'SPY Salon - Flagship Jubilee Hills', code: 'JUB-01', address: 'Road No. 36, Jubilee Hills', city: 'Hyderabad', phone: '+91 98765 43210', email: 'jubilee@spysalon.com', operatingHours: '09:00 AM - 09:00 PM', rating: 4.9, isMainBranch: true },
@@ -298,22 +300,36 @@ exports.submitContact = async (req, res) => {
       console.log(`[Socket] Broadcasted new_enquiry event for ID: ${enquiryId}`);
     }
 
-    // 5. Send Async Email Notifications
-    sendCustomerEnquiryConfirmation({
-      email: enquiryRecord.email,
-      name: enquiryRecord.name,
-      enquiryId: enquiryRecord.enquiryId,
-      message: enquiryRecord.message
-    }).catch(err => console.error('[EmailService] Customer confirmation error:', err.message));
+    // 5. Non-Blocking Background Dispatch for Notifications, Emails & WhatsApp Alerts
+    const customerWaUrl = getCustomerWhatsAppChatUrl(enquiryRecord.phone, enquiryRecord.enquiryId, enquiryRecord.name);
 
-    sendAdminEnquiryNotification({
-      name: enquiryRecord.name,
-      email: enquiryRecord.email,
-      phone: enquiryRecord.phone,
-      message: enquiryRecord.message,
-      enquiryId: enquiryRecord.enquiryId,
-      createdAt: enquiryRecord.createdAt
-    }).catch(err => console.error('[EmailService] Admin notification alert error:', err.message));
+    setImmediate(() => {
+      dispatchNotification(req.app, {
+        role: 'user',
+        email: enquiryRecord.email ? enquiryRecord.email.toLowerCase().trim() : null,
+        title: `Inquiry Submitted #${enquiryRecord.enquiryId}`,
+        message: `Your inquiry ${enquiryRecord.enquiryId} has been successfully received. Initial Status: "New". Our concierge team will review it shortly.`,
+        type: 'enquiry',
+        priority: 'normal',
+        icon: 'bell'
+      }).catch(err => console.error('[NotificationController] Customer initial enquiry notification error:', err.message));
+
+      sendCustomerEnquiryConfirmation({
+        email: enquiryRecord.email,
+        name: enquiryRecord.name,
+        enquiryId: enquiryRecord.enquiryId,
+        message: enquiryRecord.message
+      }).catch(err => console.error('[EmailService] Customer confirmation error:', err.message));
+
+      sendAdminWhatsAppNotification({
+        enquiryId: enquiryRecord.enquiryId,
+        name: enquiryRecord.name,
+        email: enquiryRecord.email,
+        phone: enquiryRecord.phone,
+        message: enquiryRecord.message,
+        createdAt: enquiryRecord.createdAt
+      }).catch(err => console.error('[WhatsAppService] WhatsApp alert dispatch error:', err.message));
+    });
 
     return res.status(201).json({
       success: true,
@@ -324,7 +340,9 @@ exports.submitContact = async (req, res) => {
         email: enquiryRecord.email,
         phone: enquiryRecord.phone,
         status: enquiryRecord.status,
-        createdAt: enquiryRecord.createdAt
+        createdAt: enquiryRecord.createdAt,
+        whatsappAdminLink: `https://wa.me/919490644434?text=${encodeURIComponent(`New inquiry #${enquiryRecord.enquiryId} from ${enquiryRecord.name}`)}`,
+        whatsappCustomerChatUrl: customerWaUrl
       }
     });
 

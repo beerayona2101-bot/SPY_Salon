@@ -554,25 +554,31 @@ exports.updateEnquiryStatus = async (req, res, next) => {
       io.emit('enquiry_updated', updatedRecord);
     }
 
-    // If status is updated to Resolved or Closed, send thank-you & summary email to customer
-    if (status === 'Resolved' || status === 'Closed') {
-      sendEnquiryResolutionEmail({
-        email: updatedRecord.email,
-        name: updatedRecord.name,
-        enquiryId: updatedRecord.enquiryId,
-        status: updatedRecord.status,
-        adminNotes: updatedRecord.adminNotes || adminNotes || '',
-        message: updatedRecord.message || ''
-      }).catch(err => console.error('[EmailService] Failed to send resolution thank-you email:', err.message));
-
+    // Non-blocking background dispatch for notifications & emails (<10ms API response time)
+    setImmediate(() => {
+      // 1. Generate & Dispatch In-App Notification for user Notification Bell Icon
       dispatchNotification(req.app, {
         role: 'user',
-        title: `Inquiry #${updatedRecord.enquiryId} ${updatedRecord.status}`,
-        message: `Your inquiry ${updatedRecord.enquiryId} has been marked as ${updatedRecord.status}. Thank you for contacting SPY Salon!`,
+        email: updatedRecord.email ? updatedRecord.email.toLowerCase().trim() : null,
+        title: `Inquiry #${updatedRecord.enquiryId} Status: ${updatedRecord.status}`,
+        message: `Your inquiry ${updatedRecord.enquiryId} status has been updated to "${updatedRecord.status}".${updatedRecord.adminNotes ? ` Concierge Note: "${updatedRecord.adminNotes}"` : ''}`,
         type: 'enquiry',
-        priority: 'normal'
+        priority: updatedRecord.status === 'Closed' ? 'high' : 'normal',
+        icon: 'bell'
       }).catch(err => console.error('[NotificationController] Error dispatching enquiry notification:', err.message));
-    }
+
+      // 2. After closing or resolving inquiry, send formal resolution summary email to customer
+      if (status === 'Closed' || status === 'Resolved') {
+        sendEnquiryResolutionEmail({
+          email: updatedRecord.email,
+          name: updatedRecord.name,
+          enquiryId: updatedRecord.enquiryId,
+          status: updatedRecord.status,
+          adminNotes: updatedRecord.adminNotes || adminNotes || '',
+          message: updatedRecord.message || ''
+        }).catch(err => console.error('[EmailService] Failed to send resolution thank-you email:', err.message));
+      }
+    });
 
     return ApiResponse.success(res, updatedRecord, `Enquiry status updated to ${updatedRecord.status || 'Updated'}`);
   } catch (error) {

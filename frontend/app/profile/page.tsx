@@ -114,8 +114,9 @@ function UserProfileContent() {
     if (user) {
       fetchProfileData();
       const intervalId = setInterval(() => {
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
         fetchProfileData();
-      }, 4000);
+      }, 30000);
       return () => clearInterval(intervalId);
     }
   }, [user, isLoading, router]);
