@@ -1,41 +1,122 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedData, setSubmittedData] = useState<{ enquiryId: string; name: string; email: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
-    setFormData({ name: '', email: '', phone: '', message: '' });
+    setErrorMsg(null);
+
+    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+      setErrorMsg('Please fill in all required fields.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSubmittedData({
+          enquiryId: data.data?.enquiryId || ('ENQ-' + Math.floor(100000 + Math.random() * 900000)),
+          name: formData.name,
+          email: formData.email
+        });
+        setSubmitted(true);
+        setFormData({ name: '', email: '', phone: '', message: '' });
+      } else {
+        setErrorMsg(data.message || 'Failed to submit inquiry. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Inquiry submit error:', err);
+      setErrorMsg('Unable to connect to server. Please check connection.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full glass-panel border border-gold-500/30 text-gold-400 text-xs font-medium uppercase">
-          <Sparkles className="w-3.5 h-3.5" />
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center space-y-3"
+      >
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-xs font-medium uppercase">
+          <Sparkles className="w-3.5 h-3.5 animate-pulse" />
           <span>Concierge & Support</span>
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold font-serif text-white">Contact Us & Locations</h1>
         <p className="text-gray-400 text-sm max-w-xl mx-auto">Have questions or special requests? Reach out to our concierge team.</p>
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Contact Form */}
-        <div className="lg:col-span-7 glass-card p-6 sm:p-8 rounded-3xl space-y-6">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="lg:col-span-7 glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30"
+        >
           <h2 className="text-2xl font-bold font-serif text-white">Send Us a Message</h2>
 
-          {submitted ? (
-            <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/40 text-green-300 text-sm flex items-center space-x-3">
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
-              <span>Thank you! Your message has been sent. Our team will contact you shortly.</span>
-            </div>
+          {errorMsg && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center space-x-2.5"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+              <span>{errorMsg}</span>
+            </motion.div>
+          )}
+
+          {submitted && submittedData ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-6 rounded-2xl bg-dark-800/90 border border-green-500/40 text-gray-200 space-y-4 text-left shadow-xl"
+            >
+              <div className="flex items-center space-x-3 text-green-400">
+                <CheckCircle2 className="w-7 h-7 shrink-0 animate-bounce" />
+                <div>
+                  <h3 className="font-serif font-bold text-lg text-white">Inquiry Received Successfully!</h3>
+                  <p className="text-xs text-gray-300">Confirmation email sent to <strong className="text-white">{submittedData.email}</strong></p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-dark-900 border border-rosegold-500/30 text-xs space-y-1">
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">Official Reference ID</span>
+                <span className="text-rosegold-400 font-mono font-bold text-base">{submittedData.enquiryId}</span>
+              </div>
+
+              <p className="text-xs text-gray-300 leading-relaxed">
+                Thank you, <strong>{submittedData.name}</strong>. Your message has been routed to our Jubilee Hills Concierge Desk. Our team will get back to you within 2 hours.
+              </p>
+
+              <button
+                onClick={() => setSubmitted(false)}
+                className="w-full py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md cursor-pointer hover:scale-105 transition-all"
+              >
+                Send Another Message
+              </button>
+            </motion.div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -43,10 +124,11 @@ export default function ContactPage() {
                 <input
                   type="text"
                   required
+                  disabled={isSubmitting}
                   placeholder="e.g. Rahul Sharma"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-gold-500"
+                  className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -56,20 +138,22 @@ export default function ContactPage() {
                   <input
                     type="email"
                     required
+                    disabled={isSubmitting}
                     placeholder="name@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-gold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors disabled:opacity-50"
                   />
                 </div>
                 <div>
                   <label className="text-xs text-gray-300 uppercase font-semibold block mb-1">Phone</label>
                   <input
                     type="tel"
+                    disabled={isSubmitting}
                     placeholder="+91 98765 43210"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-gold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors disabled:opacity-50"
                   />
                 </div>
               </div>
@@ -79,46 +163,65 @@ export default function ContactPage() {
                 <textarea
                   rows={4}
                   required
+                  disabled={isSubmitting}
                   placeholder="How can we assist you?"
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-gold-500 resize-none"
+                  className="w-full p-3 rounded-xl bg-dark-800 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 resize-none transition-colors disabled:opacity-50"
                 />
               </div>
 
-              <button
+              <motion.button
+                whileHover={{ scale: isSubmitting ? 1 : 1.03 }}
+                whileTap={{ scale: isSubmitting ? 1 : 0.97 }}
                 type="submit"
-                className="w-full py-3.5 rounded-full gold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-gold hover:scale-105 transition-transform flex items-center justify-center space-x-2"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-60"
               >
-                <Send className="w-4 h-4" />
-                <span>Submit Inquiry</span>
-              </button>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Submitting Inquiry...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Submit Inquiry</span>
+                  </>
+                )}
+              </motion.button>
             </form>
           )}
-        </div>
+        </motion.div>
 
         {/* Branch Outlets */}
-        <div className="lg:col-span-5 space-y-4">
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="lg:col-span-5 space-y-4"
+        >
           <h2 className="text-2xl font-bold font-serif text-white">Our Outlets</h2>
 
-          <div className="glass-card p-5 rounded-2xl space-y-2">
-            <h3 className="text-white font-serif font-bold text-lg">Jubilee Hills Flagship</h3>
-            <p className="text-xs text-gray-300">Road No. 36, Jubilee Hills, Hyderabad 500033</p>
-            <p className="text-xs text-gold-400 font-medium">📞 +91 98765 43210</p>
-          </div>
-
-          <div className="glass-card p-5 rounded-2xl space-y-2">
-            <h3 className="text-white font-serif font-bold text-lg">Gachibowli Tech Suite</h3>
-            <p className="text-xs text-gray-300">Financial District, Gachibowli, Hyderabad 500032</p>
-            <p className="text-xs text-gold-400 font-medium">📞 +91 98765 43211</p>
-          </div>
-
-          <div className="glass-card p-5 rounded-2xl space-y-2">
-            <h3 className="text-white font-serif font-bold text-lg">Banjara Hills Boutique</h3>
-            <p className="text-xs text-gray-300">Road No. 12, Banjara Hills, Hyderabad 500034</p>
-            <p className="text-xs text-gold-400 font-medium">📞 +91 98765 43212</p>
-          </div>
-        </div>
+          {[
+            { title: 'Jubilee Hills Flagship', addr: 'Road No. 36, Jubilee Hills, Hyderabad 500033', phone: '+91 98765 43210' },
+            { title: 'Gachibowli Tech Suite', addr: 'Financial District, Gachibowli, Hyderabad 500032', phone: '+91 98765 43211' },
+            { title: 'Banjara Hills Boutique', addr: 'Road No. 12, Banjara Hills, Hyderabad 500034', phone: '+91 98765 43212' }
+          ].map((branch, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
+              whileHover={{ y: -4, scale: 1.02 }}
+              className="glass-card p-5 rounded-2xl space-y-2 border border-rosegold-500/20 hover:border-rosegold-400 transition-all cursor-pointer shadow-lg"
+            >
+              <h3 className="text-white font-serif font-bold text-lg">{branch.title}</h3>
+              <p className="text-xs text-gray-300">{branch.addr}</p>
+              <p className="text-xs text-rosegold-400 font-medium">📞 {branch.phone}</p>
+            </motion.div>
+          ))}
+        </motion.div>
 
       </div>
     </div>

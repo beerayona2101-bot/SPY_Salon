@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle, Phone, KeyRound } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth, UserProfile } from '@/context/AuthContext';
 
 function LoginPageInner() {
@@ -139,15 +140,25 @@ function LoginPageInner() {
       <div className="max-w-md w-full space-y-6 relative z-10">
         
         {/* Header & Logo */}
-        <div className="text-center space-y-3">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-2 border-2 border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
-            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center space-y-3"
+        >
+          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-1 border-2 border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden animate-float">
+            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
           </div>
           <h1 className="text-3xl font-bold font-serif text-white">Sign In to SPY Salon</h1>
-        </div>
+        </motion.div>
 
         {/* Login Form Card */}
-        <div className="rosegold-glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30">
+        <motion.div 
+          initial={{ opacity: 0, y: 25, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="rosegold-glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30"
+        >
           
           {/* Notifications */}
           {isAuthRequired && !errorMessage && !successMessage && (
@@ -340,7 +351,7 @@ function LoginPageInner() {
             </Link>
           </div>
 
-        </div>
+        </motion.div>
 
       </div>
     </div>

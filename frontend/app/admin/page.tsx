@@ -1,14 +1,15 @@
 'use client';
 
 // Executive Admin Dashboard Portal for SPY Salon Enterprise System
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Users, 
   Clock, 
   Calendar, 
   MessageSquare, 
+  Mail,
   Trash2, 
   Plus, 
   Edit3, 
@@ -145,6 +146,20 @@ interface Review {
   comment: string;
 }
 
+interface EnquiryRecord {
+  _id: string;
+  enquiryId: string;
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+  status: 'New' | 'Contacted' | 'In Progress' | 'Resolved' | 'Closed';
+  adminNotes?: string;
+  ipAddress?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface SalarySlip {
   _id: string;
   slipId: string;
@@ -168,13 +183,30 @@ interface ActivityLog {
   user: string;
 }
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'analytics' | 'calendar' | 'earnings' | 'employees' | 'customers' | 'services' | 'appointments' | 'leaves' | 'reviews' | 'ai-reports'>('analytics');
   
+  const tabFromUrl = searchParams.get('tab');
+  const validTabs = ['analytics', 'calendar', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries'];
+  const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'analytics';
+
+  const handleTabChange = (newTab: string) => {
+    setSidebarOpen(false);
+    setSearchQuery('');
+    setStatusFilter('All');
+
+    // Auto-clear unread badge counts when opening respective tab
+    if (newTab === 'enquiries') {
+      setEnquiries(prev => prev.map(e => e.status === 'New' ? { ...e, status: 'Contacted' } : e));
+    }
+
+    router.push(`/admin?tab=${newTab}`);
+  };
+
   // Schedule Calendar States
   const [selectedCalDate, setSelectedCalDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [calMonthView, setCalMonthView] = useState<Date>(new Date());
@@ -195,7 +227,6 @@ export default function AdminDashboardPage() {
 
     if (!currentUser) {
       setIsAuthorized(false);
-      router.push('/login');
       return;
     }
 
@@ -210,7 +241,6 @@ export default function AdminDashboardPage() {
       return () => clearInterval(intervalId);
     } else {
       setIsAuthorized(false);
-      router.push('/login');
     }
   }, [user, isLoading, router]);
   
@@ -227,7 +257,15 @@ export default function AdminDashboardPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [attendanceReport, setAttendanceReport] = useState<any[]>([]);
+  const [enquiries, setEnquiries] = useState<EnquiryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Enquiry Management Specific States
+  const [selectedEnquiry, setSelectedEnquiry] = useState<EnquiryRecord | null>(null);
+  const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
+  const [enquiryAdminNotes, setEnquiryAdminNotes] = useState('');
+  const [isUpdatingEnquiry, setIsUpdatingEnquiry] = useState(false);
+  const enquiryNewCount = enquiries.filter(e => e.status === 'New').length;
 
   // Search & Filter States
   const [appKpiFilter, setAppKpiFilter] = useState<'All' | 'Completed' | 'Pending' | 'Confirmed' | 'Cancelled' | 'Rescheduled' | 'In Progress' | 'No Show'>('All');
@@ -358,11 +396,36 @@ export default function AdminDashboardPage() {
       }
     });
 
+    socket.on('new_enquiry', (newEnq: any) => {
+      if (newEnq) {
+        setEnquiries(prev => [newEnq, ...prev.filter(e => e.enquiryId !== newEnq.enquiryId)]);
+      }
+    });
+    socket.on('enquiry_created', (newEnq: any) => {
+      if (newEnq) {
+        setEnquiries(prev => [newEnq, ...prev.filter(e => e.enquiryId !== newEnq.enquiryId)]);
+      }
+    });
+    socket.on('enquiry_updated', (updatedEnq: any) => {
+      if (updatedEnq) {
+        setEnquiries(prev => prev.map(e => (e.enquiryId === updatedEnq.enquiryId || e._id === updatedEnq._id) ? { ...e, ...updatedEnq } : e));
+      }
+    });
+    socket.on('enquiry_deleted', (data: any) => {
+      if (data?.id) {
+        setEnquiries(prev => prev.filter(e => e._id !== data.id && e.enquiryId !== data.id));
+      }
+    });
+
     return () => {
       socket.off('employee:created');
       socket.off('employee:updated');
       socket.off('employee:deleted');
       socket.off('appointment:updated');
+      socket.off('new_enquiry');
+      socket.off('enquiry_created');
+      socket.off('enquiry_updated');
+      socket.off('enquiry_deleted');
     };
   }, [socket]);
 
@@ -428,7 +491,7 @@ export default function AdminDashboardPage() {
 
   const fetchAdminData = async () => {
     try {
-      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes] = await Promise.all([
+      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes] = await Promise.all([
         fetch(`${API_BASE_URL}/admin/analytics`).then(r => r.json()).catch(() => ({ data: null })),
         fetch(`${API_BASE_URL}/admin/employees`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/customers`).then(r => r.json()).catch(() => ({ data: [] })),
@@ -440,7 +503,8 @@ export default function AdminDashboardPage() {
         fetch(`${API_BASE_URL}/admin/activity-logs`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/notifications`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/transactions`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`${API_BASE_URL}/admin/attendance/report`).then(r => r.json()).catch(() => ({ data: [] }))
+        fetch(`${API_BASE_URL}/admin/attendance/report`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/admin/enquiries`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
       if (anaRes.data) setAnalytics(anaRes.data);
@@ -459,6 +523,7 @@ export default function AdminDashboardPage() {
       if (notifRes.data) setNotifications(notifRes.data);
       if (txnRes.data) setTransactions(txnRes.data);
       if (attReportRes.data) setAttendanceReport(attReportRes.data);
+      if (enqRes.data) setEnquiries(enqRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -781,7 +846,7 @@ export default function AdminDashboardPage() {
 
   const handleAdminLogout = async () => {
     await logout();
-    router.replace('/');
+    router.push('/');
   };
 
   const copyCredsToClipboard = (emailVal?: string, passVal?: string, codeVal?: string) => {
@@ -893,6 +958,80 @@ export default function AdminDashboardPage() {
     return matchQ && matchS;
   });
 
+  const filteredEnquiries = enquiries.filter(e => {
+    const queryStr = searchQuery.toLowerCase().trim();
+    const matchQ = !queryStr || 
+      (e.name && e.name.toLowerCase().includes(queryStr)) || 
+      (e.email && e.email.toLowerCase().includes(queryStr)) ||
+      (e.phone && e.phone.toLowerCase().includes(queryStr)) ||
+      (e.enquiryId && e.enquiryId.toLowerCase().includes(queryStr)) ||
+      (e.message && e.message.toLowerCase().includes(queryStr));
+    const matchS = statusFilter === 'All' || e.status === statusFilter;
+    return matchQ && matchS;
+  });
+
+  const handleUpdateEnquiryStatus = async (id: string, status: string, notes?: string) => {
+    setIsUpdatingEnquiry(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/enquiries/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, adminNotes: notes !== undefined ? notes : enquiryAdminNotes })
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.data) {
+        setEnquiries(prev => prev.map(e => (e._id === id || e.enquiryId === id) ? { ...e, ...data.data } : e));
+        if (selectedEnquiry && (selectedEnquiry._id === id || selectedEnquiry.enquiryId === id)) {
+          setSelectedEnquiry(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating enquiry:', err);
+    } finally {
+      setIsUpdatingEnquiry(false);
+    }
+  };
+
+  const handleDeleteEnquiry = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this enquiry record?')) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/enquiries/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setEnquiries(prev => prev.filter(e => e._id !== id && e.enquiryId !== id));
+        if (selectedEnquiry && (selectedEnquiry._id === id || selectedEnquiry.enquiryId === id)) {
+          setIsEnquiryModalOpen(false);
+          setSelectedEnquiry(null);
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting enquiry:', err);
+    }
+  };
+
+  const handleExportEnquiriesCsv = () => {
+    const headers = ['Enquiry ID', 'Name', 'Email', 'Phone', 'Status', 'Message', 'Admin Notes', 'Date'];
+    const rows = enquiries.map(e => [
+      e.enquiryId,
+      `"${(e.name || '').replace(/"/g, '""')}"`,
+      `"${(e.email || '').replace(/"/g, '""')}"`,
+      `"${(e.phone || '').replace(/"/g, '""')}"`,
+      e.status,
+      `"${(e.message || '').replace(/"/g, '""')}"`,
+      `"${(e.adminNotes || '').replace(/"/g, '""')}"`,
+      `"${new Date(e.createdAt).toLocaleString()}"`
+    ]);
+    const csvStr = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvStr], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spy_salon_enquiries_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (isAuthorized === false) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center text-center px-4 space-y-4">
@@ -901,7 +1040,7 @@ export default function AdminDashboardPage() {
         </div>
         <h1 className="text-2xl font-serif font-bold text-white">Admin Authentication Required</h1>
         <p className="text-gray-400 text-sm max-w-sm">Please sign in with administrator credentials.</p>
-        <button onClick={() => router.push('/login')} className="px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm">
+        <button onClick={() => router.push('/login?redirect=/admin')} className="px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm cursor-pointer">
           Sign In to Admin Portal
         </button>
       </div>
@@ -914,6 +1053,7 @@ export default function AdminDashboardPage() {
     { id: 'appointments', label: 'Appointments Desk', icon: Calendar },
     { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign },
     { id: 'employees', label: 'Employee Management', icon: Users },
+    { id: 'enquiries', label: 'Enquiries & Leads CRM', icon: Mail, badge: enquiryNewCount > 0 ? enquiryNewCount : null },
     { id: 'customers', label: 'Customer Directory', icon: UserCheck },
     { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
     { id: 'leaves', label: 'Leaves & Attendance', icon: Clock },
@@ -939,8 +1079,8 @@ export default function AdminDashboardPage() {
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <Link href="/" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity cursor-pointer" title="Go to Main Website">
-              <div className="w-9 h-9 rounded-xl bg-white p-1 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0">
-                <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+              <div className="w-9 h-9 rounded-xl bg-white p-0.5 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0 overflow-hidden">
+                <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
               </div>
               <div className="flex flex-col text-left">
                 <span className="font-serif text-base font-bold text-white leading-none">
@@ -964,7 +1104,7 @@ export default function AdminDashboardPage() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false); setSearchQuery(''); setStatusFilter('All'); }}
+                  onClick={() => handleTabChange(item.id)}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
                     isActive ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:bg-white/5 hover:text-white'
                   }`}
@@ -997,7 +1137,7 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <button onClick={handleAdminLogout} className="w-full py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer">
+          <button onClick={handleAdminLogout} className="w-full mt-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer">
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out Admin</span>
           </button>
@@ -1121,7 +1261,7 @@ export default function AdminDashboardPage() {
               {/* INTERACTIVE STAT CARDS (CLICK REVENUE ➔ EARNINGS, APPOINTMENTS ➔ APPOINTMENTS DESK, SPECIALISTS ➔ EMPLOYEES, CLIENT BASE ➔ CUSTOMERS) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div 
-                  onClick={() => setActiveTab('earnings')}
+                  onClick={() => handleTabChange('earnings')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 hover:shadow-glow-rosegold group"
                 >
                   <span className="text-xs text-gray-400 font-semibold uppercase group-hover:text-rosegold-300">Total Revenue</span>
@@ -1130,7 +1270,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div 
-                  onClick={() => setActiveTab('appointments')}
+                  onClick={() => handleTabChange('appointments')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
                   <span className="text-xs text-gray-400 font-semibold uppercase group-hover:text-white">Total Appointments</span>
@@ -1139,7 +1279,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div 
-                  onClick={() => setActiveTab('employees')}
+                  onClick={() => handleTabChange('employees')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
                   <span className="text-xs text-gray-400 font-semibold uppercase group-hover:text-purple-300">Active Specialists</span>
@@ -1148,7 +1288,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div 
-                  onClick={() => setActiveTab('customers')}
+                  onClick={() => handleTabChange('customers')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
                   <span className="text-xs text-gray-400 font-semibold uppercase group-hover:text-green-300">Client Base</span>
@@ -2830,6 +2970,181 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
+          {/* TAB 11: ENQUIRIES & LEADS CRM DESK */}
+          {activeTab === 'enquiries' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-2xl font-bold font-serif text-white flex items-center space-x-2">
+                    <span>Enquiries & Website Leads CRM</span>
+                    {enquiryNewCount > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-dark-900 font-extrabold text-[11px] uppercase tracking-wider animate-pulse">
+                        {enquiryNewCount} New
+                      </span>
+                    )}
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">Real-time incoming customer inquiries, lead status tracking, email alerts, and administrative follow-up notes.</p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={handleExportEnquiriesCsv}
+                    className="px-4 py-2.5 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Export CSV Report</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4 STATS SUMMARY CARDS */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="glass-card p-4 rounded-2xl border border-white/10 space-y-1">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Total Inquiries</span>
+                  <div className="text-2xl font-serif font-bold text-white">{enquiries.length}</div>
+                  <span className="text-[10px] text-gray-400 font-mono">Captured in CRM</span>
+                </div>
+                <div className="glass-card p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 space-y-1">
+                  <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider block">New / Unread</span>
+                  <div className="text-2xl font-serif font-bold text-amber-400">{enquiries.filter(e => e.status === 'New').length}</div>
+                  <span className="text-[10px] text-amber-300/80 font-mono">Action required</span>
+                </div>
+                <div className="glass-card p-4 rounded-2xl border border-purple-500/30 bg-purple-500/5 space-y-1">
+                  <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider block">In Progress / Contacted</span>
+                  <div className="text-2xl font-serif font-bold text-purple-300">{enquiries.filter(e => e.status === 'Contacted' || e.status === 'In Progress').length}</div>
+                  <span className="text-[10px] text-purple-300/80 font-mono">Under review</span>
+                </div>
+                <div className="glass-card p-4 rounded-2xl border border-green-500/30 bg-green-500/5 space-y-1">
+                  <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider block">Resolved / Closed</span>
+                  <div className="text-2xl font-serif font-bold text-green-400">{enquiries.filter(e => e.status === 'Resolved' || e.status === 'Closed').length}</div>
+                  <span className="text-[10px] text-green-300/80 font-mono">Successfully settled</span>
+                </div>
+              </div>
+
+              {/* SEARCH & STATUS FILTER RIBBON */}
+              <div className="glass-card p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search by customer name, email, phone, Enquiry ID, or message..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800 border border-white/10 text-white text-xs focus:outline-none focus:border-rosegold-500 transition-colors"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-2.5 text-gray-400 hover:text-white text-xs">✕</button>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar pb-1 md:pb-0 shrink-0">
+                  {['All', 'New', 'Contacted', 'In Progress', 'Resolved', 'Closed'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setStatusFilter(st)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        statusFilter === st
+                          ? 'rosegold-gradient-bg text-dark-900 shadow-md scale-105'
+                          : 'bg-dark-800 text-gray-400 hover:text-white border border-white/10'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ENQUIRIES DATA TABLE */}
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-hidden shadow-xl">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                      <tr>
+                        <th className="p-3.5">Enquiry ID</th>
+                        <th className="p-3.5">Customer Name & Contact</th>
+                        <th className="p-3.5">Message Excerpt</th>
+                        <th className="p-3.5">Status</th>
+                        <th className="p-3.5">Date & Time</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {filteredEnquiries.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-gray-400">
+                            <Mail className="w-8 h-8 mx-auto mb-2 opacity-40 text-rosegold-400" />
+                            <p className="font-semibold">No customer enquiries found matching criteria.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredEnquiries.map((enq) => {
+                          const statusColor = 
+                            enq.status === 'New' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-extrabold animate-pulse' :
+                            enq.status === 'Contacted' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                            enq.status === 'In Progress' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
+                            enq.status === 'Resolved' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
+                            'bg-gray-500/20 text-gray-300 border-gray-500/40';
+
+                          return (
+                            <tr key={enq._id || enq.enquiryId} className="hover:bg-white/5 transition-colors">
+                              <td className="p-3.5 font-mono font-bold text-rosegold-400">
+                                {enq.enquiryId}
+                              </td>
+                              <td className="p-3.5">
+                                <div className="font-bold text-white">{enq.name}</div>
+                                <div className="text-[11px] text-gray-400 flex items-center space-x-2 mt-0.5">
+                                  <span>📧 {enq.email}</span>
+                                  {enq.phone && <span>📞 {enq.phone}</span>}
+                                </div>
+                              </td>
+                              <td className="p-3.5 max-w-xs">
+                                <p className="text-gray-300 text-xs line-clamp-2 italic font-sans">
+                                  "{enq.message}"
+                                </p>
+                                {enq.adminNotes && (
+                                  <span className="inline-block mt-1 text-[10px] text-rosegold-300/90 font-mono bg-dark-900 px-1.5 py-0.5 rounded border border-rosegold-500/20">
+                                    📝 Note: {enq.adminNotes}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3.5">
+                                <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${statusColor}`}>
+                                  {enq.status}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-gray-400 font-mono text-[11px]">
+                                {new Date(enq.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                              </td>
+                              <td className="p-3.5 text-right space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedEnquiry(enq);
+                                    setEnquiryAdminNotes(enq.adminNotes || '');
+                                    setIsEnquiryModalOpen(true);
+                                  }}
+                                  className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  View & Manage
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEnquiry(enq._id || enq.enquiryId)}
+                                  className="p-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/30 transition-all cursor-pointer inline-flex items-center"
+                                  title="Delete Enquiry"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
@@ -3810,6 +4125,126 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* ENQUIRY DETAIL & CRM MANAGEMENT MODAL */}
+      {isEnquiryModalOpen && selectedEnquiry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-2xl glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/40 space-y-6 text-left shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-dark-900">
+            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div>
+                <div className="inline-flex items-center space-x-2 text-[10px] font-mono text-rosegold-400 font-bold uppercase tracking-wider">
+                  <span>Inquiry Reference ID:</span>
+                  <span className="bg-dark-800 px-2 py-0.5 rounded border border-rosegold-500/30 text-white font-extrabold">{selectedEnquiry.enquiryId}</span>
+                </div>
+                <h3 className="text-2xl font-serif font-bold text-white mt-1">{selectedEnquiry.name}</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsEnquiryModalOpen(false);
+                  setSelectedEnquiry(null);
+                }} 
+                className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Customer Contact Meta Ribbon */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs p-4 rounded-2xl bg-dark-800 border border-white/10">
+              <div>
+                <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Customer Email</span>
+                <a href={`mailto:${selectedEnquiry.email}`} className="text-rosegold-400 font-bold hover:underline">{selectedEnquiry.email}</a>
+              </div>
+              <div>
+                <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Phone Number</span>
+                <span className="text-white font-bold">{selectedEnquiry.phone || 'Not Provided'}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Submission Timestamp</span>
+                <span className="text-gray-300 font-mono">{new Date(selectedEnquiry.createdAt).toLocaleString()}</span>
+              </div>
+              <div>
+                <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Customer IP Address</span>
+                <span className="text-gray-300 font-mono">{selectedEnquiry.ipAddress || '127.0.0.1'}</span>
+              </div>
+            </div>
+
+            {/* Full Inquiry Message */}
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300 uppercase font-semibold block">Customer Message Content</label>
+              <div className="p-4 rounded-2xl bg-dark-800 border border-white/10 text-gray-200 text-sm italic leading-relaxed font-sans">
+                "{selectedEnquiry.message}"
+              </div>
+            </div>
+
+            {/* Status Update Pills */}
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300 uppercase font-semibold block">Update Lead Status</label>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(['New', 'Contacted', 'In Progress', 'Resolved', 'Closed'] as const).map((st) => (
+                  <button
+                    key={st}
+                    disabled={isUpdatingEnquiry}
+                    onClick={() => handleUpdateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.enquiryId, st)}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-50 ${
+                      selectedEnquiry.status === st
+                        ? 'rosegold-gradient-bg text-dark-900 border-rosegold-400 shadow-md font-extrabold scale-105'
+                        : 'bg-dark-800 text-gray-400 border-white/10 hover:text-white'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Admin Follow-up Notes */}
+            <div className="space-y-2">
+              <label className="text-xs text-gray-300 uppercase font-semibold block">Internal Admin Follow-up Notes</label>
+              <textarea
+                rows={3}
+                value={enquiryAdminNotes}
+                onChange={(e) => setEnquiryAdminNotes(e.target.value)}
+                placeholder="e.g. Spoke with customer on phone. Confirmed appointment details..."
+                className="w-full p-3 rounded-2xl bg-dark-800 border border-white/10 text-white text-xs focus:outline-none focus:border-rosegold-500 resize-none transition-colors"
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+              <button
+                onClick={() => handleDeleteEnquiry(selectedEnquiry._id || selectedEnquiry.enquiryId)}
+                className="px-4 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 font-bold text-xs hover:bg-red-500/25 transition-all cursor-pointer"
+              >
+                Delete Record
+              </button>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    setIsEnquiryModalOpen(false);
+                    setSelectedEnquiry(null);
+                  }}
+                  className="px-5 py-2.5 rounded-full bg-dark-800 border border-white/10 text-gray-300 font-bold text-xs cursor-pointer hover:text-white"
+                >
+                  Close
+                </button>
+                <button
+                  disabled={isUpdatingEnquiry}
+                  onClick={() => {
+                    handleUpdateEnquiryStatus(selectedEnquiry._id || selectedEnquiry.enquiryId, selectedEnquiry.status, enquiryAdminNotes);
+                    setIsEnquiryModalOpen(false);
+                  }}
+                  className="px-6 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer disabled:opacity-50"
+                >
+                  Save Notes & Finish
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       {/* EXECUTIVE BUSINESS BRIEF PDF REPORT MODAL */}
       {showAiBriefModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
@@ -3877,5 +4312,17 @@ export default function AdminDashboardPage() {
       )}
 
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center text-rosegold-400 font-serif animate-pulse">
+        Loading SPY Salon Executive Admin Portal...
+      </div>
+    }>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

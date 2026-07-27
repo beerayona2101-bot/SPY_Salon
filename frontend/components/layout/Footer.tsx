@@ -24,8 +24,8 @@ export default function Footer() {
           {/* Col 1: Brand Info & Logo */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-white p-1 border border-rosegold-500/40 flex items-center justify-center overflow-hidden shadow-glow-rosegold">
-                <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+              <div className="w-12 h-12 rounded-2xl bg-white p-0.5 border border-rosegold-500/40 flex items-center justify-center overflow-hidden shadow-glow-rosegold shrink-0">
+                <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
               </div>
               <div>
                 <span className="font-serif text-2xl font-extrabold tracking-widest text-white">SPY <span className="text-rosegold-400 font-extrabold">SALON</span></span>

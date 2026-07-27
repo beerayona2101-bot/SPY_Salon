@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -69,24 +70,34 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-6 relative z-10">
         
         {/* Header & Logo */}
-        <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-white p-1.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
-            <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center space-y-3"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-white p-1 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden animate-float">
+            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
           </div>
           <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
             <span>SPY Salon Account Registration</span>
           </div>
           <h1 className="text-3xl font-bold font-serif text-white">Create Account</h1>
           <p className="text-gray-400 text-xs sm:text-sm">Enjoy instant online booking, member discounts, and priority concierge access.</p>
-        </div>
+        </motion.div>
 
         {/* Register Form Card */}
-        <div className="rosegold-glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30">
+        <motion.div 
+          initial={{ opacity: 0, y: 25, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="rosegold-glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30"
+        >
           
           {/* Notifications */}
           {errorMessage && (
-            <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2.5 animate-fadeIn">
+            <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2.5 animate-shake">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </div>
@@ -208,7 +219,7 @@ export default function RegisterPage() {
             </Link>
           </div>
 
-        </div>
+        </motion.div>
 
         {/* Security Badge */}
         <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">

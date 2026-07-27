@@ -12,6 +12,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const userRoutes = require('./routes/userRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const rateLimiter = require('./middlewares/rateLimiter');
 const ApiError = require('./utils/apiError');
@@ -70,6 +71,7 @@ app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/user', userRoutes);
 app.use('/api/v1/employee', employeeRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1', publicRoutes);
 
 // 404 Route Not Found Middleware

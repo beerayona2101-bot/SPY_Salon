@@ -1,4 +1,6 @@
 const store = require('../data/store');
+const Enquiry = require('../models/Enquiry');
+const { sendCustomerEnquiryConfirmation, sendAdminEnquiryNotification } = require('../services/emailService');
 
 const fallbackBranches = [
   { id: 'b1', name: 'SPY Salon - Flagship Jubilee Hills', code: 'JUB-01', address: 'Road No. 36, Jubilee Hills', city: 'Hyderabad', phone: '+91 98765 43210', email: 'jubilee@spysalon.com', operatingHours: '09:00 AM - 09:00 PM', rating: 4.9, isMainBranch: true },
@@ -227,14 +229,111 @@ exports.bookAppointment = async (req, res) => {
   }
 };
 
-// Contact Us submit endpoint
+// Contact Us submit endpoint with persistent database save, unique Enquiry ID, Socket.io alerts & Email dispatch
 exports.submitContact = async (req, res) => {
-  const { name, email, phone, message } = req.body;
-  if (!name || !email || !message) {
-    return res.status(400).json({ success: false, message: 'Please fill in required contact details.' });
+  try {
+    const { name, email, phone, message } = req.body;
+    
+    // 1. Validation & Input Sanitization
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Please provide your name.' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, message: 'Please provide a valid email address.' });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid email format.' });
+    }
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Please write your inquiry message.' });
+    }
+
+    // 2. Generate Unique Enquiry ID (e.g. ENQ-748291)
+    const enquiryId = 'ENQ-' + Math.floor(100000 + Math.random() * 900000);
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '';
+
+    // 3. Save to Database with in-memory store fallback
+    let enquiryRecord;
+    try {
+      enquiryRecord = await Enquiry.create({
+        enquiryId,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone ? phone.trim() : '',
+        message: message.trim(),
+        status: 'New',
+        ipAddress
+      });
+    } catch (dbErr) {
+      console.warn('[PublicController] MongoDB Enquiry save fallback to memory store:', dbErr.message);
+      enquiryRecord = {
+        _id: 'enq_' + Date.now(),
+        enquiryId,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone ? phone.trim() : '',
+        message: message.trim(),
+        status: 'New',
+        ipAddress,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      if (!store.enquiries) store.enquiries = [];
+      store.enquiries.unshift(enquiryRecord);
+    }
+
+    // Also sync memory store for fast admin listing
+    if (!store.enquiries) store.enquiries = [];
+    const existsInMemory = store.enquiries.some(e => e.enquiryId === enquiryId);
+    if (!existsInMemory) {
+      store.enquiries.unshift(enquiryRecord.toObject ? enquiryRecord.toObject() : enquiryRecord);
+    }
+
+    // 4. Broadcast Realtime Socket.io Notification to Admin
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('new_enquiry', enquiryRecord);
+      io.emit('enquiry_created', enquiryRecord);
+      console.log(`[Socket] Broadcasted new_enquiry event for ID: ${enquiryId}`);
+    }
+
+    // 5. Send Async Email Notifications
+    sendCustomerEnquiryConfirmation({
+      email: enquiryRecord.email,
+      name: enquiryRecord.name,
+      enquiryId: enquiryRecord.enquiryId,
+      message: enquiryRecord.message
+    }).catch(err => console.error('[EmailService] Customer confirmation error:', err.message));
+
+    sendAdminEnquiryNotification({
+      name: enquiryRecord.name,
+      email: enquiryRecord.email,
+      phone: enquiryRecord.phone,
+      message: enquiryRecord.message,
+      enquiryId: enquiryRecord.enquiryId,
+      createdAt: enquiryRecord.createdAt
+    }).catch(err => console.error('[EmailService] Admin notification alert error:', err.message));
+
+    return res.status(201).json({
+      success: true,
+      message: 'Thank you for reaching out! Your enquiry has been received and our concierge team will respond shortly.',
+      data: {
+        enquiryId: enquiryRecord.enquiryId,
+        name: enquiryRecord.name,
+        email: enquiryRecord.email,
+        phone: enquiryRecord.phone,
+        status: enquiryRecord.status,
+        createdAt: enquiryRecord.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('[PublicController] Error submitting enquiry:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Failed to process inquiry submission. Please try again or call support.',
+      error: error.message 
+    });
   }
-  return res.status(200).json({
-    success: true,
-    message: 'Thank you for reaching out to SPY Salon! We will respond within 2 hours.'
-  });
 };

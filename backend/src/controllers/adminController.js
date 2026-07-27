@@ -6,6 +6,9 @@ const adminService = require('../services/adminService');
 const ApiResponse = require('../utils/apiResponse');
 const ApiError = require('../utils/apiError');
 const store = require('../data/store');
+const Enquiry = require('../models/Enquiry');
+const { sendEnquiryResolutionEmail } = require('../services/emailService');
+const { dispatchNotification } = require('./notificationController');
 
 // ================= ANALYTICS & REPORTS =================
 exports.getAnalytics = async (req, res, next) => {
@@ -420,6 +423,187 @@ exports.exportData = async (req, res, next) => {
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename=spy_salon_${moduleName}_export.csv`);
     return res.status(200).send(csvContent);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ================= ENQUIRY & LEADS CRM =================
+exports.getEnquiries = async (req, res, next) => {
+  try {
+    const { status, q } = req.query;
+    let list = [];
+    
+    try {
+      let query = {};
+      if (status && status !== 'All') {
+        query.status = status;
+      }
+      if (q && q.trim()) {
+        const regex = new RegExp(q.trim(), 'i');
+        query.$or = [
+          { name: regex },
+          { email: regex },
+          { phone: regex },
+          { enquiryId: regex },
+          { message: regex }
+        ];
+      }
+      list = await Enquiry.find(query).sort({ createdAt: -1 });
+    } catch (dbErr) {
+      console.warn('[AdminController] MongoDB Enquiry fetch fallback to memory store:', dbErr.message);
+      list = store.enquiries || [];
+    }
+
+    if ((!list || list.length === 0) && store.enquiries && store.enquiries.length > 0) {
+      list = store.enquiries;
+    }
+
+    // Filter in-memory if needed
+    if (status && status !== 'All') {
+      list = list.filter(e => e.status === status);
+    }
+    if (q && q.trim()) {
+      const queryStr = q.trim().toLowerCase();
+      list = list.filter(e => 
+        (e.name && e.name.toLowerCase().includes(queryStr)) ||
+        (e.email && e.email.toLowerCase().includes(queryStr)) ||
+        (e.phone && e.phone.toLowerCase().includes(queryStr)) ||
+        (e.enquiryId && e.enquiryId.toLowerCase().includes(queryStr)) ||
+        (e.message && e.message.toLowerCase().includes(queryStr))
+      );
+    }
+
+    return ApiResponse.success(res, list, 'Enquiries list retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getEnquiryStats = async (req, res, next) => {
+  try {
+    let list = [];
+    try {
+      list = await Enquiry.find({});
+    } catch (err) {
+      list = store.enquiries || [];
+    }
+    if (!list || list.length === 0) {
+      list = store.enquiries || [];
+    }
+
+    const stats = {
+      total: list.length,
+      new: list.filter(e => e.status === 'New').length,
+      contacted: list.filter(e => e.status === 'Contacted').length,
+      inProgress: list.filter(e => e.status === 'In Progress').length,
+      resolved: list.filter(e => e.status === 'Resolved').length,
+      closed: list.filter(e => e.status === 'Closed').length
+    };
+
+    return ApiResponse.success(res, stats, 'Enquiry statistics retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateEnquiryStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, adminNotes } = req.body;
+
+    let updatedRecord = null;
+    try {
+      updatedRecord = await Enquiry.findByIdAndUpdate(
+        id,
+        { 
+          ...(status && { status }),
+          ...(adminNotes !== undefined && { adminNotes })
+        },
+        { new: true }
+      );
+    } catch (err) {}
+
+    if (!updatedRecord) {
+      try {
+        updatedRecord = await Enquiry.findOne({ $or: [{ _id: id }, { enquiryId: id }] });
+        if (updatedRecord) {
+          if (status) updatedRecord.status = status;
+          if (adminNotes !== undefined) updatedRecord.adminNotes = adminNotes;
+          await updatedRecord.save();
+        }
+      } catch (err) {}
+    }
+
+    if (store.enquiries) {
+      const match = store.enquiries.find(e => String(e._id) === String(id) || e.enquiryId === id);
+      if (match) {
+        if (status) match.status = status;
+        if (adminNotes !== undefined) match.adminNotes = adminNotes;
+        if (!updatedRecord) updatedRecord = match;
+      }
+    }
+
+    if (!updatedRecord) {
+      throw ApiError.notFound('Enquiry record not found');
+    }
+
+    // Broadcast real-time Socket.io update
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('enquiry_updated', updatedRecord);
+    }
+
+    // If status is updated to Resolved or Closed, send thank-you & summary email to customer
+    if (status === 'Resolved' || status === 'Closed') {
+      sendEnquiryResolutionEmail({
+        email: updatedRecord.email,
+        name: updatedRecord.name,
+        enquiryId: updatedRecord.enquiryId,
+        status: updatedRecord.status,
+        adminNotes: updatedRecord.adminNotes || adminNotes || '',
+        message: updatedRecord.message || ''
+      }).catch(err => console.error('[EmailService] Failed to send resolution thank-you email:', err.message));
+
+      dispatchNotification(req.app, {
+        role: 'user',
+        title: `Inquiry #${updatedRecord.enquiryId} ${updatedRecord.status}`,
+        message: `Your inquiry ${updatedRecord.enquiryId} has been marked as ${updatedRecord.status}. Thank you for contacting SPY Salon!`,
+        type: 'enquiry',
+        priority: 'normal'
+      }).catch(err => console.error('[NotificationController] Error dispatching enquiry notification:', err.message));
+    }
+
+    return ApiResponse.success(res, updatedRecord, `Enquiry status updated to ${updatedRecord.status || 'Updated'}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteEnquiry = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    try {
+      await Enquiry.findByIdAndDelete(id);
+    } catch (err) {
+      try {
+        await Enquiry.deleteOne({ enquiryId: id });
+      } catch (e2) {}
+    }
+
+    if (store.enquiries) {
+      const idx = store.enquiries.findIndex(e => String(e._id) === String(id) || e.enquiryId === id);
+      if (idx !== -1) {
+        store.enquiries.splice(idx, 1);
+      }
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('enquiry_deleted', { id });
+    }
+
+    return ApiResponse.success(res, null, 'Enquiry record deleted successfully');
   } catch (error) {
     next(error);
   }

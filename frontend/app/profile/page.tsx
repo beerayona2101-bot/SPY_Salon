@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   User, 
   Crown, 
@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   LogOut
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { API_BASE_URL } from '@/lib/api';
@@ -48,9 +49,17 @@ interface OfferRecord {
   validUntil: string;
 }
 
-export default function UserProfilePage() {
+function UserProfileContent() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const activeTabFromUrl = searchParams.get('tab');
+  const activeTab = activeTabFromUrl === 'history' ? 'history' : 'schedules';
+
+  const handleTabChange = (newTab: string) => {
+    router.push(`/profile?tab=${newTab}`);
+  };
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);
   const [offers, setOffers] = useState<OfferRecord[]>([]);
@@ -89,25 +98,26 @@ export default function UserProfilePage() {
     }
   };
 
-  // STRICT ROLE REDIRECT: Admin must ONLY use Admin Dashboard (/admin).
+  // ROLE REDIRECT: Admin/Employee role check
   useEffect(() => {
     if (isLoading) return;
 
     if (user?.role === 'admin' || user?.email?.includes('admin')) {
-      router.replace('/admin');
+      router.push('/admin');
       return;
     }
     if (user?.role === 'employee') {
-      router.replace('/employee');
+      router.push('/employee');
       return;
     }
 
-    fetchProfileData();
-    // Auto-fetch appointment status updates from Admin / Employee every 4 seconds
-    const intervalId = setInterval(() => {
+    if (user) {
       fetchProfileData();
-    }, 4000);
-    return () => clearInterval(intervalId);
+      const intervalId = setInterval(() => {
+        fetchProfileData();
+      }, 4000);
+      return () => clearInterval(intervalId);
+    }
   }, [user, isLoading, router]);
 
   const { socket } = useSocket();
@@ -155,8 +165,38 @@ export default function UserProfilePage() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/');
+    router.push('/');
   };
+
+  if (!isLoading && !user) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-6 animate-fadeIn">
+        <div className="w-16 h-16 rounded-2xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-400 flex items-center justify-center mx-auto shadow-glow-rosegold">
+          <User className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-serif font-bold text-white">Sign In to View Profile</h2>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Sign in to view your appointment history, active membership pass, loyalty discounts, and notification preferences.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <button
+            onClick={() => router.push('/login?redirect=/profile')}
+            className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-transform cursor-pointer"
+          >
+            Sign In / Register →
+          </button>
+          <Link
+            href="/"
+            className="w-full py-3.5 rounded-full bg-dark-800 text-gray-300 hover:text-white font-semibold text-xs border border-white/10 text-center"
+          >
+            Return to Homepage
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (user?.role === 'admin' || user?.email?.includes('admin') || user?.role === 'employee') {
     return (
@@ -170,9 +210,14 @@ export default function UserProfilePage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 responsive-card-container">
       
       {/* User Header Profile Card */}
-      <div className="rosegold-glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/40 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-glow-rosegold">
+      <motion.div 
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="rosegold-glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/40 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-glow-rosegold hover-lift"
+      >
         <div className="flex flex-col sm:flex-row items-center text-center sm:text-left space-y-3 sm:space-y-0 sm:space-x-5">
-          <div className="w-20 h-20 rounded-3xl rosegold-gradient-bg text-dark-900 font-extrabold text-2xl flex items-center justify-center shadow-lg shrink-0">
+          <div className="w-20 h-20 rounded-3xl rosegold-gradient-bg text-dark-900 font-extrabold text-2xl flex items-center justify-center shadow-lg shrink-0 animate-float">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : 'VIP'}
           </div>
 
@@ -181,7 +226,7 @@ export default function UserProfilePage() {
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white">
                 {user?.name || 'Valued VIP Guest'}
               </h1>
-              <Crown className="w-5 h-5 text-rosegold-400 shrink-0" />
+              <Crown className="w-5 h-5 text-rosegold-400 shrink-0 animate-pulse" />
             </div>
 
             <p className="text-xs text-gray-300">{user?.email || 'vip.guest@spysalon.com'} • {user?.phone || '+91 98765 43210'}</p>
@@ -198,15 +243,17 @@ export default function UserProfilePage() {
         </div>
 
         <div className="flex items-center space-x-3 w-full sm:w-auto justify-center">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={handleLogout}
             className="px-5 py-2.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold text-xs border border-red-500/30 flex items-center space-x-1.5 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
       {/* SECTION 1: MEMBERSHIP OR ACTIVE OFFERS */}
       <div className="space-y-4">
@@ -480,5 +527,17 @@ export default function UserProfilePage() {
       )}
 
     </div>
+  );
+}
+
+export default function UserProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center text-rosegold-400 font-serif animate-pulse">
+        Loading VIP User Profile...
+      </div>
+    }>
+      <UserProfileContent />
+    </Suspense>
   );
 }

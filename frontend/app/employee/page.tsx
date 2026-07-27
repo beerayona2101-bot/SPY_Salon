@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Calendar, 
@@ -86,13 +86,22 @@ interface SalarySlip {
   status: string;
 }
 
-export default function EmployeeDashboardPage() {
+function EmployeeDashboardContent() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'queue' | 'clockin' | 'payrolls' | 'bank' | 'leaves' | 'schedule' | 'performance'>('queue');
   
+  const tabFromUrl = searchParams.get('tab');
+  const validTabs = ['queue', 'clockin', 'payrolls', 'bank', 'leaves', 'schedule', 'performance'];
+  const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'queue';
+
+  const handleTabChange = (newTab: string) => {
+    setSidebarOpen(false);
+    router.push(`/employee?tab=${newTab}`);
+  };
+
   // Shift & Queue Control States
   const [shiftStatus, setShiftStatus] = useState<'Not Checked In' | 'Checked In' | 'On Break' | 'Checked Out'>('Not Checked In');
   const [queueFilter, setQueueFilter] = useState<'All' | 'In Queue' | 'Completed'>('All');
@@ -191,7 +200,6 @@ export default function EmployeeDashboardPage() {
 
     if (!currentUser) {
       setIsAuthorized(false);
-      router.push('/employee/login');
       return;
     }
 
@@ -368,7 +376,7 @@ export default function EmployeeDashboardPage() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/');
+    router.push('/');
   };
 
   if (isAuthorized === false) {
@@ -380,8 +388,8 @@ export default function EmployeeDashboardPage() {
         <h1 className="text-2xl font-serif font-bold text-white">Employee Sign In Required</h1>
         <p className="text-gray-400 text-sm max-w-sm">Please sign in with your staff credentials to open your assigned service queue and shift schedule.</p>
         <button
-          onClick={() => router.push('/employee/login')}
-          className="px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm"
+          onClick={() => router.push('/login?redirect=/employee')}
+          className="px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm cursor-pointer"
         >
           Sign In to Employee Portal
         </button>
@@ -419,8 +427,8 @@ export default function EmployeeDashboardPage() {
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <Link href="/" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity cursor-pointer" title="Go to Main Website">
-              <div className="w-9 h-9 rounded-xl bg-white p-1 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0">
-                <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+              <div className="w-9 h-9 rounded-xl bg-white p-0.5 border border-rosegold-500 flex items-center justify-center shadow-glow-rosegold shrink-0 overflow-hidden">
+                <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
               </div>
               <div className="flex flex-col text-left">
                 <span className="font-serif text-base font-bold text-white leading-none">
@@ -448,7 +456,7 @@ export default function EmployeeDashboardPage() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => { setActiveTab(item.id as any); setSidebarOpen(false); }}
+                  onClick={() => handleTabChange(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${
                     isActive 
                       ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' 
@@ -493,7 +501,7 @@ export default function EmployeeDashboardPage() {
 
           <button
             onClick={() => { setSidebarOpen(false); handleLogout(); }}
-            className="w-full py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer"
+            className="w-full mt-2 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out Staff Portal</span>
@@ -1316,5 +1324,17 @@ export default function EmployeeDashboardPage() {
       )}
 
     </div>
+  );
+}
+
+export default function EmployeeDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center text-rosegold-400 font-serif animate-pulse">
+        Loading SPY Salon Employee Desk...
+      </div>
+    }>
+      <EmployeeDashboardContent />
+    </Suspense>
   );
 }

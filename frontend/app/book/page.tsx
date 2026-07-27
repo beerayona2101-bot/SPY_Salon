@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, User, ShieldCheck, Sparkles, CheckCircle2, MapPin, CreditCard, ArrowRight, Smartphone, DollarSign, Lock, AlertCircle, X, Check } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
-export default function BookingPage() {
+function BookingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const serviceParam = searchParams.get('service');
+  const staffParam = searchParams.get('staff') || searchParams.get('specialist');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const [selectedBranch, setSelectedBranch] = useState('Jubilee Hills Flagship Studio');
@@ -49,6 +53,11 @@ export default function BookingPage() {
     'Meera Kapoor (Nail Artist)',
     'Any Available Specialist'
   ]);
+
+  useEffect(() => {
+    if (serviceParam) setSelectedService(serviceParam);
+    if (staffParam) setSelectedStaff(staffParam);
+  }, [serviceParam, staffParam]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -120,8 +129,6 @@ export default function BookingPage() {
     const userToken = localStorage.getItem('spy_user') || localStorage.getItem('spy_token');
     if (!userToken) {
       setIsAuthenticated(false);
-      const currentPath = window.location.pathname + window.location.search;
-      router.push(`/login?redirect=${encodeURIComponent(currentPath)}&auth_required=true`);
     } else {
       setIsAuthenticated(true);
       try {
@@ -308,6 +315,39 @@ export default function BookingPage() {
           </Link>
           <Link href="/" className="px-6 py-3 rounded-full bg-dark-800 text-gray-300 hover:text-white font-bold text-xs border border-white/10">
             Return to Homepage
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-6 animate-fadeIn">
+        <div className="w-16 h-16 rounded-2xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-400 flex items-center justify-center mx-auto shadow-glow-rosegold">
+          <Lock className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-serif font-bold text-white">Sign In Required to Book</h2>
+          <p className="text-xs text-gray-400 leading-relaxed">
+            Please sign in or create an account to lock in your appointment slot, manage reservations, and access exclusive member discounts.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          <button
+            onClick={() => {
+              const currentPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/book';
+              router.push(`/login?redirect=${encodeURIComponent(currentPath)}&auth_required=true`);
+            }}
+            className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-transform cursor-pointer"
+          >
+            Sign In / Register Now →
+          </button>
+          <Link
+            href="/services"
+            className="w-full py-3.5 rounded-full bg-dark-800 text-gray-300 hover:text-white font-semibold text-xs border border-white/10 text-center"
+          >
+            Browse Services First
           </Link>
         </div>
       </div>
@@ -656,5 +696,17 @@ export default function BookingPage() {
       )}
 
     </div>
+  );
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-dark-900 flex items-center justify-center text-rosegold-400 font-serif animate-pulse">
+        Loading SPY Salon Appointment Booking Engine...
+      </div>
+    }>
+      <BookingContent />
+    </Suspense>
   );
 }

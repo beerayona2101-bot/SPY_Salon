@@ -61,7 +61,10 @@ router.delete('/payrolls/:id', adminController.deletePayroll);
 router.get('/transactions', adminController.getTransactions);
 router.post('/transactions', adminController.createTransaction);
 
-// AI Power BI Reports Data Model Route
-router.get('/ai-reports', adminController.getAiPowerBiReport);
+// Enquiry & Lead Management Routes
+router.get('/enquiries', adminController.getEnquiries);
+router.get('/enquiries/stats', adminController.getEnquiryStats);
+router.patch('/enquiries/:id/status', adminController.updateEnquiryStatus);
+router.delete('/enquiries/:id', adminController.deleteEnquiry);
 
 module.exports = router;

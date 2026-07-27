@@ -92,8 +92,8 @@ export default function ForgotPasswordPage() {
         
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-white p-1.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
-            <img src="/logo.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+          <div className="w-16 h-16 rounded-2xl bg-white p-1 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden">
+            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain scale-[1.28] transform" />
           </div>
           <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
             <Sparkles className="w-3.5 h-3.5" />
