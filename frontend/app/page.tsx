@@ -96,18 +96,18 @@ export default function Home() {
 
             {/* Left / Center Hero Content */}
             <motion.div
-              initial={{ opacity: 0, y: 25 }}
+              initial={{ opacity: 1, y: 0 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="lg:col-span-7 space-y-4 sm:space-y-5 text-center lg:text-left"
             >
 
               {/* Mobile, Tablet & iPad Brand Logo Showcase Image */}
               <div className="lg:hidden flex justify-center pt-3 sm:pt-2 pb-2">
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 1, scale: 1 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0.3 }}
                   className="relative max-w-[220px] sm:max-w-[280px] w-full mx-auto"
                 >
                   <img
@@ -120,9 +120,9 @@ export default function Home() {
 
               {/* Tagline Badge */}
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.5 }}
+                transition={{ duration: 0.3 }}
                 className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm"
               >
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0 animate-pulse" />
@@ -131,9 +131,9 @@ export default function Home() {
 
               {/* Main Responsive Headline */}
               <motion.h1
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
+                transition={{ duration: 0.3 }}
                 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-serif"
               >
                 Unveil Your <span className="rosegold-gradient-text">Radiant Beauty</span>
@@ -141,9 +141,9 @@ export default function Home() {
 
               {/* Sub-description / Quote */}
               <motion.p
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
+                transition={{ duration: 0.3 }}
                 className="text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
               >
                 “Beauty is not created—it is unveiled from within.”
@@ -151,9 +151,9 @@ export default function Home() {
 
               {/* Action Buttons */}
               <motion.div
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
+                transition={{ duration: 0.3 }}
                 className="flex flex-row items-center justify-center lg:justify-start gap-2 sm:gap-3 pt-1 w-full"
               >
                 <Link
@@ -249,10 +249,9 @@ export default function Home() {
 
       {/* STATS BANNER WITH SCROLL REVEAL */}
       <motion.section
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-50px" }}
-        transition={{ duration: 0.6 }}
+        initial={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
       >
         <div className="glass-panel rounded-2xl p-5 sm:p-8 grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center border border-rosegold-500/20 shadow-xl">
@@ -272,10 +271,9 @@ export default function Home() {
 
       {/* SERVICE CATEGORIES WITH SCROLL REVEAL & HOVER LIFT */}
       <motion.section
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-50px" }}
-        transition={{ duration: 0.6 }}
+        initial={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8"
       >
         <div className="text-center space-y-2">

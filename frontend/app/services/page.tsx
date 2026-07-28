@@ -13,9 +13,9 @@ function ServicesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const activeTabFromUrl = searchParams.get('cat') || searchParams.get('category');
+  const activeTabFromUrl = searchParams?.get('cat') || searchParams?.get('category');
   const activeTab = activeTabFromUrl || 'All';
-  const searchQueryFromUrl = searchParams.get('q') || '';
+  const searchQueryFromUrl = searchParams?.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(searchQueryFromUrl);
 
   useEffect(() => {
@@ -90,9 +90,9 @@ function ServicesContent() {
       
       {/* Header */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
         className="text-center space-y-3"
       >
         <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
@@ -105,9 +105,9 @@ function ServicesContent() {
 
       {/* Search & Filter Bar */}
       <motion.div 
-        initial={{ opacity: 0, y: 15 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15, duration: 0.5 }}
+        transition={{ duration: 0.3 }}
         className="glass-panel p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 border border-rosegold-500/20 shadow-xl"
       >
         
@@ -150,10 +150,10 @@ function ServicesContent() {
             <motion.div 
               key={service.id}
               layout
-              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              initial={{ opacity: 1, scale: 1, y: 0 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: -15 }}
-              transition={{ duration: 0.4, delay: idx * 0.05 }}
+              transition={{ duration: 0.2 }}
               whileHover={{ y: -6 }}
               onClick={() => router.push(`/services/${service.id}`)}
               className="glass-card rounded-3xl overflow-hidden border border-rosegold-500/20 hover:border-rosegold-500/60 transition-all group flex flex-col justify-between cursor-pointer hover:shadow-glow-rosegold h-full"

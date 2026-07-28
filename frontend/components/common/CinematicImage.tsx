@@ -30,14 +30,14 @@ export default function CinematicImage({
         src={src}
         alt={alt}
         loading={priority ? 'eager' : 'lazy'}
-        initial={{ opacity: 0, scale: 1.0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, margin: '-40px' }}
+        decoding="async"
+        initial={{ opacity: 1, scale: 1.0 }}
         animate={{
-          scale: [1.0, 1.08, 1.0]
+          scale: [1.0, 1.08, 1.0],
+          opacity: 1
         }}
         transition={{
-          opacity: { duration: 0.6, ease: 'easeOut' },
+          opacity: { duration: 0.3, ease: 'easeOut' },
           scale: {
             duration: duration,
             repeat: Infinity,

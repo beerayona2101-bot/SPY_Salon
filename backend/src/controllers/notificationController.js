@@ -6,7 +6,7 @@ const store = require('../data/store');
 /**
  * Universal Notification Dispatcher (Saves to Mongo + Emits Socket.io Event + Memory Sync)
  */
-const dispatchNotification = async (reqApp, notifData) => {
+exports.dispatchNotification = async (reqApp, notifData) => {
   try {
     const notificationId = notifData.notificationId || ('NOTIF-' + Date.now() + '-' + Math.floor(100 + Math.random() * 900));
     const payload = {
@@ -82,7 +82,12 @@ exports.getNotifications = async (req, res, next) => {
           ]
         };
       }
-      list = await Notification.find(query).sort({ createdAt: -1 }).limit(100);
+      const limitNum = Math.min(parseInt(req.query.limit) || 25, 50);
+      list = await Notification.find(query)
+        .select('notificationId title message type icon priority isRead link createdAt')
+        .sort({ createdAt: -1 })
+        .limit(limitNum)
+        .lean();
     } catch (err) {
       list = store.notifications || [];
     }
@@ -304,4 +309,3 @@ exports.clearAllNotifications = async (req, res, next) => {
   }
 };
 
-module.exports.dispatchNotification = dispatchNotification;

@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 function ResetPasswordPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || '';
+  const token = searchParams?.get('token') || '';
 
   const { resetPassword } = useAuth();
 

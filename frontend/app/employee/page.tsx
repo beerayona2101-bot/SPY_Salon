@@ -93,7 +93,7 @@ function EmployeeDashboardContent() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  const tabFromUrl = searchParams.get('tab');
+  const tabFromUrl = searchParams?.get('tab');
   const validTabs = ['queue', 'clockin', 'payrolls', 'bank', 'leaves', 'schedule', 'performance'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'queue';
 

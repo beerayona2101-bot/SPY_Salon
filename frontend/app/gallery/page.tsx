@@ -4,31 +4,32 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, X, Maximize2 } from 'lucide-react';
+import LazyImage from '@/components/ui/LazyImage';
 
 function GalleryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const activeFilterFromUrl = searchParams.get('cat') || searchParams.get('category');
+  const activeFilterFromUrl = searchParams?.get('cat') || searchParams?.get('category');
   const activeFilter = activeFilterFromUrl || 'All';
-  const imgFromUrl = searchParams.get('img');
+  const imgFromUrl = searchParams?.get('img');
 
   const [selectedImage, setSelectedImage] = useState<any | null>(null);
 
   const categories = ['All', 'Hair', 'Facials', 'Bridal', 'Interiors'];
 
   const images = [
-    { title: 'Balayage Blonde Transformation', category: 'Hair', url: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80' },
-    { title: '24K Gold Ritual Treatment', category: 'Facials', url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80' },
-    { title: 'Royal HD Bridal Glam', category: 'Bridal', url: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80' },
-    { title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80' },
-    { title: 'Keratin Gloss Finish', category: 'Hair', url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80' },
-    { title: 'Aroma Hydro Therapy', category: 'Facials', url: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80' }
+    { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80' },
+    { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80' },
+    { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80' },
+    { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80' },
+    { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80' },
+    { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80' }
   ];
 
   useEffect(() => {
     if (imgFromUrl) {
-      const match = images.find(i => i.title.toLowerCase() === imgFromUrl.toLowerCase());
+      const match = images.find(i => i.id === imgFromUrl);
       if (match) setSelectedImage(match);
     }
   }, [imgFromUrl]);

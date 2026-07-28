@@ -42,6 +42,13 @@ export default function ContactPage() {
         });
         setSubmitted(true);
         setFormData({ name: '', email: '', phone: '', message: '' });
+
+        // Directly open Admin WhatsApp chat with default pre-filled message in a new window
+        try {
+          window.open(adminWaUrl, '_blank');
+        } catch (openErr) {
+          console.warn('Window open failed:', openErr);
+        }
       } else {
         setErrorMsg(data.message || 'Failed to submit inquiry. Please try again.');
       }
@@ -56,9 +63,9 @@ export default function ContactPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
         className="text-center space-y-3"
       >
         <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-xs font-medium uppercase">
@@ -73,9 +80,9 @@ export default function ContactPage() {
         
         {/* Contact Form */}
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 1, x: 0 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.3 }}
           className="lg:col-span-7 glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30"
         >
           <h2 className="text-2xl font-bold font-serif text-white">Send Us a Message</h2>
@@ -212,9 +219,9 @@ export default function ContactPage() {
 
         {/* Branch Outlets */}
         <motion.div 
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 1, x: 0 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.3 }}
           className="lg:col-span-5 space-y-4"
         >
           <h2 className="text-2xl font-bold font-serif text-white">Our Outlets</h2>
@@ -226,9 +233,9 @@ export default function ContactPage() {
           ].map((branch, i) => (
             <motion.div 
               key={i}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 1, y: 0 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
+              transition={{ duration: 0.3 }}
               whileHover={{ y: -4, scale: 1.02 }}
               className="glass-card p-5 rounded-2xl space-y-2 border border-rosegold-500/20 hover:border-rosegold-400 transition-all cursor-pointer shadow-lg"
             >

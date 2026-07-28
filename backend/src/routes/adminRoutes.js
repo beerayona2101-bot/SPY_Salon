@@ -5,6 +5,7 @@ const adminController = require('../controllers/adminController');
 // Analytics & Reports
 router.get('/analytics', adminController.getAnalytics);
 router.get('/activity-logs', adminController.getActivityLogs);
+router.post('/activity-logs', adminController.createActivityLog);
 router.get('/notifications', adminController.getNotifications);
 router.put('/notifications/read', adminController.markNotificationRead);
 router.get('/export/:module', adminController.exportData);

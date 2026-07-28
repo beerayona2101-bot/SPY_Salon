@@ -24,6 +24,15 @@ class AdminService {
     return { data: logs, total: logs.length };
   }
 
+  async createActivityLog({ action, details, user, method, customerName, enquiryId }) {
+    const logItem = store.logActivity(
+      action || `Admin contacted customer via ${method || 'Quick Contact'}`,
+      details || `Admin ${user || 'Executive'} contacted ${customerName || 'customer'} via ${method || 'Quick Contact'}.${enquiryId ? ` (Enquiry #${enquiryId})` : ''}`,
+      user || 'Admin Executive'
+    );
+    return logItem;
+  }
+
   // Notifications Filtered
   async getNotifications() {
     const actionable = store.notifications.filter(n => {

@@ -4,7 +4,8 @@ module.exports = {
       name: 'spy-salon-backend',
       script: 'src/server.js',
       cwd: './backend',
-      instances: 1,
+      instances: 'max',
+      exec_mode: 'cluster',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
@@ -29,3 +30,4 @@ module.exports = {
     }
   ]
 };
+

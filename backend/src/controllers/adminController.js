@@ -29,6 +29,16 @@ exports.getActivityLogs = async (req, res, next) => {
   }
 };
 
+exports.createActivityLog = async (req, res, next) => {
+  try {
+    const { action, details, user, method, customerName, enquiryId } = req.body;
+    const logItem = await adminService.createActivityLog({ action, details, user, method, customerName, enquiryId });
+    return ApiResponse.created(res, logItem, 'Activity log created successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getNotifications = async (req, res, next) => {
   try {
     const notifications = await adminService.getNotifications();

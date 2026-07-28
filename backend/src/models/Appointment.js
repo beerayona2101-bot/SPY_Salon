@@ -33,4 +33,12 @@ const appointmentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Performance Database Indexes
+appointmentSchema.index({ appointmentDate: -1, status: 1 });
+appointmentSchema.index({ customerPhone: 1 });
+appointmentSchema.index({ customerEmail: 1 });
+appointmentSchema.index({ branch: 1 });
+appointmentSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Appointment', appointmentSchema);
+

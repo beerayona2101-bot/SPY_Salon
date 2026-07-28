@@ -10,8 +10,8 @@ import { API_BASE_URL } from '@/lib/api';
 function BookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const serviceParam = searchParams.get('service');
-  const staffParam = searchParams.get('staff') || searchParams.get('specialist');
+  const serviceParam = searchParams?.get('service');
+  const staffParam = searchParams?.get('staff') || searchParams?.get('specialist');
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const [selectedBranch, setSelectedBranch] = useState('Jubilee Hills Flagship Studio');

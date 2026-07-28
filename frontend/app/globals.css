@@ -1,12 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Poppins:wght@300;400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-serif: 'Cinzel', 'Playfair Display', Georgia, serif;
-  --font-sans: 'Poppins', 'Inter', sans-serif;
+  --font-serif: var(--font-cinzel), var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-poppins), var(--font-inter), sans-serif;
   color-scheme: dark;
 }
 
@@ -249,6 +247,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .animate-float-gentle {
   animation: floatGentle 5s ease-in-out infinite;
   will-change: transform;
+}
+
+/* Performance & Render Optimization Utilities */
+.lazy-render {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 400px;
 }
 
 /* Shiny Sweep Hover Effect */

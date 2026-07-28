@@ -51,6 +51,7 @@ import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, APP_BASE_URL } from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import ImageUploader from '@/components/ui/ImageUploader';
+import QuickContactActions from '@/components/admin/QuickContactActions';
 
 interface Employee {
   _id: string;
@@ -190,7 +191,7 @@ function AdminDashboardContent() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  const tabFromUrl = searchParams.get('tab');
+  const tabFromUrl = searchParams?.get('tab');
   const validTabs = ['analytics', 'calendar', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'analytics';
 
@@ -3115,14 +3116,23 @@ function AdminDashboardContent() {
                               <td className="p-3.5 text-gray-400 font-mono text-[11px]">
                                 {new Date(enq.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                               </td>
-                              <td className="p-3.5 text-right space-x-2">
+                              <td className="p-3.5 text-right flex items-center justify-end space-x-2">
+                                <QuickContactActions
+                                  enquiry={enq}
+                                  adminUser={user || { name: 'Admin Executive' }}
+                                  size="sm"
+                                  showLabel={false}
+                                  onStatusUpdate={(newStatus) => {
+                                    setEnquiries(prev => prev.map(e => (e.enquiryId === enq.enquiryId || e._id === enq._id) ? { ...e, status: newStatus as any } : e));
+                                  }}
+                                />
                                 <button
                                   onClick={() => {
                                     setSelectedEnquiry(enq);
                                     setEnquiryAdminNotes(enq.adminNotes || '');
                                     setIsEnquiryModalOpen(true);
                                   }}
-                                  className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
                                 >
                                   View & Manage
                                 </button>
@@ -4156,20 +4166,7 @@ function AdminDashboardContent() {
               </div>
               <div>
                 <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Phone Number</span>
-                <div className="flex items-center space-x-2">
-                  <span className="text-white font-bold">{selectedEnquiry.phone || 'Not Provided'}</span>
-                  {selectedEnquiry.phone && (
-                    <a
-                      href={`https://wa.me/${selectedEnquiry.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Hello ${selectedEnquiry.name}, this is SPY Salon Concierge regarding your inquiry #${selectedEnquiry.enquiryId}.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2 py-0.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600 border border-emerald-500/40 text-emerald-300 hover:text-white text-[10px] font-bold inline-flex items-center space-x-1 transition-all"
-                      title="Open direct WhatsApp chat with customer"
-                    >
-                      <span>💬 Chat on WhatsApp</span>
-                    </a>
-                  )}
-                </div>
+                <span className="text-white font-bold">{selectedEnquiry.phone || 'Not Provided'}</span>
               </div>
               <div>
                 <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Submission Timestamp</span>
@@ -4179,6 +4176,18 @@ function AdminDashboardContent() {
                 <span className="text-gray-400 uppercase font-semibold text-[10px] block mb-0.5">Customer IP Address</span>
                 <span className="text-gray-300 font-mono">{selectedEnquiry.ipAddress || '127.0.0.1'}</span>
               </div>
+            </div>
+
+            {/* Quick Contact Actions Module */}
+            <div className="p-4 rounded-2xl bg-dark-800/90 border border-rosegold-500/30">
+              <QuickContactActions
+                enquiry={selectedEnquiry}
+                adminUser={user || { name: 'Admin Executive' }}
+                onStatusUpdate={(newStatus) => {
+                  setSelectedEnquiry(prev => prev ? { ...prev, status: newStatus as any } : null);
+                  setEnquiries(prev => prev.map(e => (e.enquiryId === selectedEnquiry.enquiryId || e._id === selectedEnquiry._id) ? { ...e, status: newStatus as any } : e));
+                }}
+              />
             </div>
 
             {/* Full Inquiry Message */}

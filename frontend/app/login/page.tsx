@@ -10,8 +10,8 @@ import { useAuth, UserProfile } from '@/context/AuthContext';
 function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTarget = searchParams.get('redirect') || '/';
-  const isAuthRequired = searchParams.get('auth_required') === 'true';
+  const redirectTarget = searchParams?.get('redirect') || '/';
+  const isAuthRequired = searchParams?.get('auth_required') === 'true';
 
   const { login, sendOtp, verifyOtp } = useAuth();
 
@@ -24,8 +24,8 @@ function LoginPageInner() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const isRegistered = searchParams.get('registered') === 'true';
-    const emailParam = searchParams.get('email');
+    const isRegistered = searchParams?.get('registered') === 'true';
+    const emailParam = searchParams?.get('email');
     if (emailParam) {
       setFormData(prev => ({ ...prev, email: emailParam }));
     }

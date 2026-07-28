@@ -54,7 +54,7 @@ function UserProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const activeTabFromUrl = searchParams.get('tab');
+  const activeTabFromUrl = searchParams?.get('tab');
   const activeTab = activeTabFromUrl === 'history' ? 'history' : 'schedules';
 
   const handleTabChange = (newTab: string) => {
@@ -212,9 +212,9 @@ function UserProfileContent() {
       
       {/* User Header Profile Card */}
       <motion.div 
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        initial={{ opacity: 1, y: 0, scale: 1 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
         className="rosegold-glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/40 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-glow-rosegold hover-lift"
       >
         <div className="flex flex-col sm:flex-row items-center text-center sm:text-left space-y-3 sm:space-y-0 sm:space-x-5">
