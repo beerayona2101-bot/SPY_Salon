@@ -27,6 +27,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiFetch, API_BASE_URL } from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import VIPBadge from '@/components/common/VIPBadge';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -463,12 +464,19 @@ export default function Navbar() {
                     className="flex items-center space-x-1.5 sm:space-x-2 p-1 sm:px-3 sm:py-1.5 rounded-full bg-dark-800 border border-rosegold-500/40 text-white font-medium text-xs hover:border-rosegold-400 transition-all shadow-glow-rosegold cursor-pointer"
                     title="User Profile & Account"
                   >
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold flex items-center justify-center text-[10px] sm:text-[11px] shadow-sm shrink-0">
-                      {getInitials(user.name)}
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold flex items-center justify-center text-[10px] sm:text-[11px] shadow-sm shrink-0 overflow-hidden">
+                      {user.avatar || user.avatarVariants?.navbar ? (
+                        <img src={user.avatarVariants?.navbar || user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(user.name)
+                      )}
                     </div>
                     <span className="hidden sm:inline font-serif font-bold text-xs truncate max-w-[90px] sm:max-w-[120px]">
                       {user.name ? user.name.split(' ')[0] : 'Profile'}
                     </span>
+                    {(user.membership?.badge || user.membership?.tier) && (
+                      <VIPBadge badge={user.membership?.badge} tier={user.membership?.tier || user.membership?.code} size="sm" className="hidden lg:inline-flex" />
+                    )}
                     <ChevronDown className={`hidden sm:inline-block w-3.5 h-3.5 text-rosegold-400 transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                 ) : (

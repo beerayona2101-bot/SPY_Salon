@@ -4,6 +4,7 @@ const userController = require('../controllers/userController');
 
 router.get('/appointments', userController.getUserAppointments);
 router.post('/appointments/:id/reschedule', userController.requestReschedule);
+router.post('/appointments/:id/cancel', userController.cancelAppointment);
 router.get('/membership', userController.getUserMembership);
 router.get('/notifications', userController.getUserNotifications);
 router.put('/notifications/read', userController.markNotificationRead);

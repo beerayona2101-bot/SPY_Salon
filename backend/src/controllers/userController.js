@@ -54,6 +54,38 @@ exports.requestReschedule = async (req, res, next) => {
   }
 };
 
+exports.cancelAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    const appointment = store.appointments.find(a => String(a._id) === String(id) || String(a.bookingId) === String(id));
+    if (!appointment) throw ApiError.notFound('Appointment not found');
+
+    appointment.status = 'Cancelled';
+    appointment.cancellationReason = reason || 'Cancelled by customer';
+
+    store.addNotification(
+      'Appointment Cancelled 🔴',
+      `Booking #${appointment.bookingId} (${appointment.service}) was cancelled by client.`,
+      'warning'
+    );
+
+    store.logActivity(
+      'Appointment Cancelled',
+      `Booking #${appointment.bookingId} cancelled. Reason: ${appointment.cancellationReason}`
+    );
+
+    broadcastEvent('appointment:cancelled', appointment);
+    broadcastEvent('appointment:updated', { appointment });
+    broadcastEvent('stats:updated', store.getAnalyticsStats());
+
+    return ApiResponse.success(res, appointment, 'Appointment cancelled successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getUserMembership = async (req, res, next) => {
   try {
     const membershipData = {

@@ -9,6 +9,30 @@ export interface UserProfile {
   phone: string;
   role: 'admin' | 'manager' | 'receptionist' | 'employee' | 'customer';
   isVerified?: boolean;
+  avatar?: string;
+  avatarVariants?: {
+    thumbnail?: string;
+    navbar?: string;
+    card?: string;
+    full?: string;
+  };
+  gender?: string;
+  dob?: string;
+  anniversary?: string;
+  address?: string;
+  emergencyContact?: string;
+  preferredLanguage?: string;
+  preferredCommunication?: string;
+  notificationPreferences?: {
+    emailAlerts?: boolean;
+    smsAlerts?: boolean;
+    whatsappAlerts?: boolean;
+    promoOffers?: boolean;
+  };
+  profileCompleteness?: number;
+  missingFields?: string[];
+  membership?: any;
+  packages?: any[];
 }
 
 interface AuthContextType {
@@ -23,6 +47,7 @@ interface AuthContextType {
   resetPassword: (emailOrOtp: string, otpOrPassword: string, newPassword?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  updateProfileUser: (updatedData: Partial<UserProfile>) => void;
 }
 
 import { apiFetch } from '@/lib/api';
@@ -241,6 +266,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updateProfileUser = (updatedData: Partial<UserProfile>) => {
+    setUser(prev => {
+      const base = prev || {
+        id: 'u100',
+        name: 'Valued VIP Guest',
+        email: 'vip.guest@spysalon.com',
+        phone: '+91 98765 43210',
+        role: 'customer'
+      };
+      const nextUser = { ...base, ...updatedData };
+      try {
+        localStorage.setItem('spy_user', JSON.stringify(nextUser));
+      } catch (e) {}
+      return nextUser as UserProfile;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -254,7 +296,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         forgotPassword,
         resetPassword,
         logout,
-        refreshAuth
+        refreshAuth,
+        updateProfileUser
       }}
     >
       {children}

@@ -49,13 +49,15 @@ import {
   Phone,
   MessageCircle,
   AlertCircle,
-  User
+  User,
+  Crown
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, APP_BASE_URL } from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
 import ImageUploader from '@/components/ui/ImageUploader';
 import QuickContactActions from '@/components/admin/QuickContactActions';
+import VIPBadge from '@/components/common/VIPBadge';
 
 interface Employee {
   _id: string;
@@ -198,7 +200,7 @@ function AdminDashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const tabFromUrl = searchParams?.get('tab');
-  const validTabs = ['analytics', 'calendar', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries'];
+  const validTabs = ['analytics', 'calendar', 'memberships', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'analytics';
 
   const handleTabChange = (newTab: string) => {
@@ -498,9 +500,13 @@ function AdminDashboardContent() {
 
 
 
+  const [membershipsData, setMembershipsData] = useState<any>(null);
+  const [membSearchQuery, setMembSearchQuery] = useState<string>('');
+  const [membFilterTier, setMembFilterTier] = useState<string>('All');
+
   const fetchAdminData = async () => {
     try {
-      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes] = await Promise.all([
+      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes, membRes] = await Promise.all([
         fetch(`${API_BASE_URL}/admin/analytics`).then(r => r.json()).catch(() => ({ data: null })),
         fetch(`${API_BASE_URL}/admin/employees`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/customers`).then(r => r.json()).catch(() => ({ data: [] })),
@@ -513,7 +519,8 @@ function AdminDashboardContent() {
         fetch(`${API_BASE_URL}/admin/notifications`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/transactions`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/attendance/report`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`${API_BASE_URL}/admin/enquiries`).then(r => r.json()).catch(() => ({ data: [] }))
+        fetch(`${API_BASE_URL}/admin/enquiries`).then(r => r.json()).catch(() => ({ data: [] })),
+        fetch(`${API_BASE_URL}/membership/admin/analytics`).then(r => r.json()).catch(() => ({ data: null }))
       ]);
 
       if (anaRes.data) setAnalytics(anaRes.data);
@@ -533,6 +540,7 @@ function AdminDashboardContent() {
       if (txnRes.data) setTransactions(txnRes.data);
       if (attReportRes.data) setAttendanceReport(attReportRes.data);
       if (enqRes.data) setEnquiries(enqRes.data);
+      if (membRes.data) setMembershipsData(membRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -1059,6 +1067,7 @@ function AdminDashboardContent() {
   const navMenuItems = [
     { id: 'analytics', label: 'Dashboard & Reports', icon: TrendingUp },
     { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
+    { id: 'memberships', label: '👑 VIP Memberships', icon: Crown },
     { id: 'appointments', label: 'Appointments Desk', icon: Calendar },
     { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign },
     { id: 'employees', label: 'Employee Management', icon: Users },
@@ -2026,6 +2035,262 @@ function AdminDashboardContent() {
               </div>
             );
           })()}
+
+          {/* TAB: VIP MEMBERSHIPS MANAGEMENT */}
+          {activeTab === 'memberships' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              {/* HEADER */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-rosegold-500/30 shadow-2xl">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 text-xs font-bold uppercase tracking-wider">
+                    <Crown className="w-3.5 h-3.5 fill-current" />
+                    <span>👑 Executive VIP Membership Hub</span>
+                  </div>
+                  <h2 className="text-2xl font-bold font-serif text-white">VIP Membership Management & Analytics</h2>
+                  <p className="text-xs text-gray-400">Track active VIP packages, membership revenue, tier distribution, auto-renewals, and member status.</p>
+                </div>
+
+                <div className="flex items-center space-x-3 shrink-0">
+                  <button
+                    onClick={() => handleExportReport('memberships')}
+                    className="px-4 py-2.5 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* METRICS SUMMARY CARDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="glass-card p-4 rounded-3xl border border-rosegold-500/30 space-y-1">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold block">Total Package Revenue</span>
+                  <span className="text-2xl font-serif font-bold text-rosegold-400 block">
+                    ₹{(membershipsData?.totalRevenue || 124990).toLocaleString('en-IN')}
+                  </span>
+                  <span className="text-[10px] text-green-400 block font-mono">Gross Subscription Inflow</span>
+                </div>
+
+                <div className="glass-card p-4 rounded-3xl border border-white/10 space-y-1">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold block">Active VIP Members</span>
+                  <span className="text-2xl font-serif font-bold text-green-400 block">
+                    {membershipsData?.activeCount || 12} Active 🟢
+                  </span>
+                  <span className="text-[10px] text-gray-400 block font-mono">Current Pass Holders</span>
+                </div>
+
+                <div className="glass-card p-4 rounded-3xl border border-white/10 space-y-1">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold block">Gold VIP Pass Holders</span>
+                  <span className="text-2xl font-serif font-bold text-yellow-400 block">
+                    {membershipsData?.tierBreakdown?.gold || 5} Gold VIPs 👑
+                  </span>
+                  <span className="text-[10px] text-yellow-300 block font-mono">20% Flat Discount Tier</span>
+                </div>
+
+                <div className="glass-card p-4 rounded-3xl border border-white/10 space-y-1">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold block">Expired / Cancelled</span>
+                  <span className="text-2xl font-serif font-bold text-amber-400 block">
+                    {membershipsData?.expiredCount || 2} Expired 🔴
+                  </span>
+                  <span className="text-[10px] text-gray-400 block font-mono">Renewal Pending</span>
+                </div>
+
+                <div className="glass-card p-4 rounded-3xl border border-white/10 space-y-1">
+                  <span className="text-[10px] text-gray-400 uppercase font-semibold block">Most Popular Tier</span>
+                  <span className="text-xl font-serif font-bold text-white block">
+                    {membershipsData?.popularPlan || 'Gold VIP'}
+                  </span>
+                  <span className="text-[10px] text-rosegold-400 block font-mono">Top Revenue Driver</span>
+                </div>
+              </div>
+
+              {/* SEARCH & FILTER CONTROLS */}
+              <div className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-rosegold-500/20">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search member name, email, phone, ID..."
+                    value={membSearchQuery}
+                    onChange={(e) => setMembSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 rounded-xl bg-dark-800 text-white text-xs border border-white/10 focus:outline-none focus:border-rosegold-500"
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2 w-full sm:w-auto overflow-x-auto custom-scrollbar">
+                  <span className="text-xs text-gray-400 font-bold shrink-0">Filter Tier:</span>
+                  {['All', 'Gold', 'Premium', 'Standard', 'Expired'].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setMembFilterTier(t)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        membFilterTier === t
+                          ? 'rosegold-gradient-bg text-dark-900 shadow-sm'
+                          : 'bg-dark-800 text-gray-400 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* MEMBERSHIP TABLE */}
+              <div className="glass-card rounded-3xl border border-rosegold-500/30 overflow-hidden shadow-2xl">
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-rosegold-400 font-serif text-xs uppercase tracking-wider bg-dark-900/60">
+                        <th className="p-4">Customer Details</th>
+                        <th className="p-4">VIP Tier & Badge</th>
+                        <th className="p-4">Membership ID</th>
+                        <th className="p-4">Discount</th>
+                        <th className="p-4">Cycle & Price</th>
+                        <th className="p-4">Validity / Expiry</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-gray-300">
+                      {(membershipsData?.recentMemberships || [
+                        {
+                          membershipId: 'MEMB-849201',
+                          customerName: 'Ananya Roy',
+                          customerEmail: 'ananya.roy@example.com',
+                          customerPhone: '+91 98765 43210',
+                          planName: 'Gold VIP Membership',
+                          planCode: 'gold',
+                          badge: '👑 Gold Member',
+                          discountPercentage: 20,
+                          billingCycle: 'yearly',
+                          pricePaid: 49999,
+                          startDate: '2026-01-15',
+                          expiryDate: '2027-01-15',
+                          status: 'Active'
+                        },
+                        {
+                          membershipId: 'MEMB-739104',
+                          customerName: 'Karan Malhotra',
+                          customerEmail: 'karan.m@example.com',
+                          customerPhone: '+91 98765 11223',
+                          planName: 'Premium Membership',
+                          planCode: 'premium',
+                          badge: '🥈 Premium Member',
+                          discountPercentage: 10,
+                          billingCycle: 'monthly',
+                          pricePaid: 2499,
+                          startDate: '2026-07-01',
+                          expiryDate: '2026-08-01',
+                          status: 'Active'
+                        },
+                        {
+                          membershipId: 'MEMB-510293',
+                          customerName: 'Priya Sharma',
+                          customerEmail: 'priya.s@example.com',
+                          customerPhone: '+91 98112 33445',
+                          planName: 'Standard Membership',
+                          planCode: 'standard',
+                          badge: '🥉 Standard Member',
+                          discountPercentage: 5,
+                          billingCycle: 'monthly',
+                          pricePaid: 999,
+                          startDate: '2026-05-10',
+                          expiryDate: '2026-06-10',
+                          status: 'Expired'
+                        }
+                      ])
+                        .filter((m: any) => {
+                          const matchesQuery = !membSearchQuery || 
+                            m.customerName?.toLowerCase().includes(membSearchQuery.toLowerCase()) ||
+                            m.customerEmail?.toLowerCase().includes(membSearchQuery.toLowerCase()) ||
+                            m.customerPhone?.includes(membSearchQuery) ||
+                            m.membershipId?.toLowerCase().includes(membSearchQuery.toLowerCase());
+                          
+                          const matchesTier = membFilterTier === 'All' ||
+                            (membFilterTier === 'Expired' && m.status === 'Expired') ||
+                            (m.planCode && m.planCode.toLowerCase().includes(membFilterTier.toLowerCase()));
+                          
+                          return matchesQuery && matchesTier;
+                        })
+                        .map((m: any, idx: number) => (
+                          <tr key={m._id || idx} className="hover:bg-white/5 transition-colors">
+                            <td className="p-4 space-y-0.5">
+                              <strong className="text-white font-bold block">{m.customerName}</strong>
+                              <span className="text-gray-400 text-[11px] block">{m.customerEmail}</span>
+                              <span className="text-gray-400 text-[10px] block font-mono">{m.customerPhone}</span>
+                            </td>
+
+                            <td className="p-4">
+                              <VIPBadge badge={m.badge} tier={m.planCode} size="sm" />
+                            </td>
+
+                            <td className="p-4 font-mono font-bold text-rosegold-300">
+                              {m.membershipId}
+                            </td>
+
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px]">
+                                {m.discountPercentage}% OFF
+                              </span>
+                            </td>
+
+                            <td className="p-4 space-y-0.5">
+                              <span className="font-bold text-white block">₹{m.pricePaid?.toLocaleString('en-IN')}</span>
+                              <span className="text-[10px] text-gray-400 uppercase block font-semibold">{m.billingCycle}</span>
+                            </td>
+
+                            <td className="p-4 text-[11px] text-gray-300 font-mono">
+                              {new Date(m.expiryDate || Date.now()).toLocaleDateString()}
+                            </td>
+
+                            <td className="p-4">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                                m.status === 'Active' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
+                                m.status === 'Expired' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                                'bg-red-500/20 text-red-300 border-red-500/40'
+                              }`}>
+                                {m.status === 'Active' ? 'Active 🟢' : m.status === 'Expired' ? 'Expired 🔴' : 'Cancelled ⚪'}
+                              </span>
+                            </td>
+
+                            <td className="p-4 text-right space-x-1.5">
+                              <button
+                                onClick={async () => {
+                                  await fetch(`${API_BASE_URL}/membership/admin/status`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ membershipId: m.membershipId, status: 'Active' })
+                                  });
+                                  fetchAdminData();
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-dark-900 font-bold text-[10px] transition-colors cursor-pointer"
+                                title="Renew / Reactivate Pass"
+                              >
+                                Renew
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  await fetch(`${API_BASE_URL}/membership/admin/status`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ membershipId: m.membershipId, status: 'Cancelled' })
+                                  });
+                                  fetchAdminData();
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white font-bold text-[10px] transition-colors cursor-pointer"
+                                title="Cancel Membership Pass"
+                              >
+                                Cancel
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* TAB 3: EMPLOYEE MANAGEMENT */}
           {activeTab === 'employees' && (

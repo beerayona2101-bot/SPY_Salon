@@ -4,9 +4,11 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import QuickEnquiryTemplates, { QuickTemplate } from '@/components/contact/QuickEnquiryTemplates';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<{ enquiryId: string; name: string; email: string; whatsappAdminLink?: string } | null>(null);
@@ -180,6 +182,15 @@ export default function ContactPage() {
                   />
                 </div>
               </div>
+
+              {/* ✨ QUICK MESSAGE TEMPLATES */}
+              <QuickEnquiryTemplates
+                selectedId={selectedTemplateId}
+                onSelectTemplate={(tmpl) => {
+                  setSelectedTemplateId(tmpl.id);
+                  setFormData(prev => ({ ...prev, message: tmpl.message }));
+                }}
+              />
 
               <div>
                 <label className="text-xs text-gray-300 uppercase font-semibold block mb-1">Message *</label>

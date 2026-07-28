@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { SALON_CATALOGUE } from '@/lib/servicesData';
+import VIPBadge from '@/components/common/VIPBadge';
+import { Crown } from 'lucide-react';
 import LazyImage from '@/components/ui/LazyImage';
 
 // Flatten Master Catalogue fallback list
@@ -317,6 +319,8 @@ function BookingContent() {
     fetchBookedSlots(selectedDate, selectedStaff);
   }, [selectedDate, selectedStaff]);
 
+  const [currentUserObj, setCurrentUserObj] = useState<any>(null);
+
   // User Auth state check
   useEffect(() => {
     const userToken = localStorage.getItem('spy_user') || localStorage.getItem('spy_token');
@@ -324,6 +328,7 @@ function BookingContent() {
       try {
         const parsed = JSON.parse(userToken);
         if (parsed && typeof parsed === 'object') {
+          setCurrentUserObj(parsed);
           setFormData(prev => ({
             ...prev,
             name: parsed.name || prev.name,
@@ -340,11 +345,20 @@ function BookingContent() {
     '09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'
   ];
 
-  // Dynamic Pricing Calculation
+  // Dynamic Pricing & VIP Membership Discount Calculation
   const subtotalPrice = activeTierObj ? activeTierObj.price : (selectedServiceObj?.price || 1499);
-  const discountAmount = appliedPromo ? Math.round(subtotalPrice * (appliedPromo.discountPercentage / 100)) : 0;
-  const taxAmount = Math.round((subtotalPrice - discountAmount) * 0.05); // 5% GST
-  const grandTotal = Math.max(subtotalPrice - discountAmount + taxAmount, 0);
+  
+  const membershipInfo = currentUserObj?.membership;
+  const membershipDiscountPercent = membershipInfo?.status === 'Active' || membershipInfo?.discountPercent
+    ? (membershipInfo.discountPercent || (membershipInfo.tier === 'Gold' ? 20 : membershipInfo.tier === 'Premium' ? 10 : 5))
+    : 0;
+
+  const vipDiscountAmount = membershipDiscountPercent > 0 ? Math.round(subtotalPrice * (membershipDiscountPercent / 100)) : 0;
+  const promoDiscountAmount = appliedPromo ? Math.round(subtotalPrice * (appliedPromo.discountPercentage / 100)) : 0;
+  const totalDiscountAmount = vipDiscountAmount + promoDiscountAmount;
+
+  const taxAmount = Math.round(Math.max(subtotalPrice - totalDiscountAmount, 0) * 0.05); // 5% GST
+  const grandTotal = Math.max(subtotalPrice - totalDiscountAmount + taxAmount, 0);
 
   const estimatedEndTime = useMemo(() => {
     const minutes = activeTierObj ? activeTierObj.durationMinutes : (selectedServiceObj?.durationMinutes || 60);
@@ -819,10 +833,20 @@ function BookingContent() {
                   <span>₹{subtotalPrice}</span>
                 </div>
 
+                {membershipDiscountPercent > 0 && (
+                  <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
+                    <span className="flex items-center space-x-1">
+                      <Crown className="w-3.5 h-3.5 fill-current" />
+                      <span>VIP ({membershipInfo?.tier || 'Gold'} {membershipDiscountPercent}%)</span>
+                    </span>
+                    <span>-₹{vipDiscountAmount}</span>
+                  </div>
+                )}
+
                 {appliedPromo && (
                   <div className="flex justify-between text-green-400 font-bold">
                     <span>Discount ({appliedPromo.code})</span>
-                    <span>-₹{discountAmount}</span>
+                    <span>-₹{promoDiscountAmount}</span>
                   </div>
                 )}
 

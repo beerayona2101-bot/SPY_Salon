@@ -14,6 +14,9 @@ const employeeRoutes = require('./routes/employeeRoutes');
 const uploadRoutes = require('./routes/uploadRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const whatsappRoutes = require('./routes/whatsappRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
+const profileRoutes = require('./routes/profileRoutes');
+const enquiryTemplateRoutes = require('./routes/enquiryTemplateRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const rateLimiter = require('./middlewares/rateLimiter');
 const ApiError = require('./utils/apiError');
@@ -74,6 +77,9 @@ app.use('/api/v1/employee', employeeRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/whatsapp', whatsappRoutes);
+app.use('/api/v1/membership', membershipRoutes);
+app.use('/api/v1/user/profile', profileRoutes);
+app.use('/api/v1/enquiry-templates', enquiryTemplateRoutes);
 app.use('/api/v1', publicRoutes);
 
 // 404 Route Not Found Middleware
