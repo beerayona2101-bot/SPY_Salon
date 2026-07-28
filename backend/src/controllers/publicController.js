@@ -292,6 +292,9 @@ I have submitted an enquiry on the website.
     const cleanAdminNum = adminWhatsAppNumber.split(',')[0].replace(/[^0-9]/g, '') || '919490644434';
     const whatsappAdminLink = `https://wa.me/${cleanAdminNum}?text=${encodeURIComponent(defaultAdminMsg)}`;
 
+    const cleanCustomerNum = enquiryRecord.phone ? enquiryRecord.phone.replace(/[^0-9]/g, '') : '';
+    const customerWaUrl = cleanCustomerNum ? `https://wa.me/${cleanCustomerNum}` : '';
+
     return res.status(201).json({
       success: true,
       message: 'Thank you for reaching out! Your enquiry has been received and our concierge team will respond shortly.',

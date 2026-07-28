@@ -45,7 +45,11 @@ import {
   CreditCard,
   FileText,
   Printer,
-  Home
+  Home,
+  Phone,
+  MessageCircle,
+  AlertCircle,
+  User
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, APP_BASE_URL } from '@/lib/api';
@@ -117,6 +121,8 @@ interface AppointmentItem {
   status: string;
   paymentMethod: string;
   paymentStatus: string;
+  price?: number | string;
+  totalAmount?: number | string;
   bookingDateTime?: string;
   bookingDate?: string;
   bookingTimeFormatted?: string;
@@ -211,6 +217,8 @@ function AdminDashboardContent() {
   // Schedule Calendar States
   const [selectedCalDate, setSelectedCalDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [calMonthView, setCalMonthView] = useState<Date>(new Date());
+  const [calSearchQuery, setCalSearchQuery] = useState<string>('');
+  const [calStatusFilter, setCalStatusFilter] = useState<string>('All');
 
   // Security Authorization Guard
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
@@ -1602,6 +1610,36 @@ function AdminDashboardContent() {
 
             const monthNameYear = calMonthView.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
+            // Calculate metrics for selected date
+            const selectedDateRevenue = selectedApps.reduce((acc, app) => {
+              if (app.price) return acc + Number(app.price);
+              if (app.totalAmount) return acc + Number(app.totalAmount);
+              return acc + 1499;
+            }, 0);
+
+            const confirmedCount = selectedApps.filter(a => a.status === 'Confirmed').length;
+            const inProgressCount = selectedApps.filter(a => a.status === 'In Progress').length;
+            const completedCount = selectedApps.filter(a => a.status === 'Completed').length;
+            const cancelledCount = selectedApps.filter(a => a.status === 'Cancelled').length;
+
+            // Check staff on leave for this date
+            const staffOnLeave = leaves ? leaves.filter(l => {
+              if (l.status !== 'Approved') return false;
+              return selectedCalDate >= l.startDate && selectedCalDate <= l.endDate;
+            }) : [];
+
+            // Filter appointments by search & status
+            const filteredApps = selectedApps.filter(app => {
+              const matchesSearch = !calSearchQuery || 
+                app.customerName?.toLowerCase().includes(calSearchQuery.toLowerCase()) ||
+                app.customerPhone?.includes(calSearchQuery) ||
+                app.specialistName?.toLowerCase().includes(calSearchQuery.toLowerCase()) ||
+                app.service?.toLowerCase().includes(calSearchQuery.toLowerCase());
+              
+              const matchesStatus = calStatusFilter === 'All' || app.status === calStatusFilter;
+              return matchesSearch && matchesStatus;
+            });
+
             return (
               <div className="space-y-6 animate-fadeIn text-left">
                 
@@ -1613,21 +1651,24 @@ function AdminDashboardContent() {
                       <span>Executive Schedule Calendar</span>
                     </div>
                     <h2 className="text-2xl font-bold font-serif text-white">Daily Appointment Schedules</h2>
-                    <p className="text-xs text-gray-400">Click any date on the calendar to view full time-slotted appointments, assigned specialists, client details, and status.</p>
+                    <p className="text-xs text-gray-400">Click any date on the calendar grid to inspect date details, staff availability, and time-slotted client bookings in the right sidebar.</p>
                   </div>
 
                   <div className="flex items-center space-x-3 shrink-0">
                     <button
-                      onClick={() => setModalType('addApp')}
+                      onClick={() => {
+                        setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
+                        setModalType('addApp');
+                      }}
                       className="px-5 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Book Appointment</span>
+                      <span>+ Book Appointment ({selectedCalDate})</span>
                     </button>
                   </div>
                 </div>
 
-                {/* 2-COLUMN LAYOUT: CALENDAR GRID ON LEFT (7 COLS), SELECTED DAY SCHEDULE ON RIGHT (5 COLS) */}
+                {/* 2-COLUMN LAYOUT: CALENDAR GRID ON LEFT (7 COLS), SELECTED DAY RIGHT SIDEBAR (5 COLS) */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   
                   {/* LEFT COLUMN: INTERACTIVE MONTH CALENDAR GRID (LG: 7 COLS) */}
@@ -1691,7 +1732,7 @@ function AdminDashboardContent() {
                       <span>Sun</span>
                     </div>
 
-                    {/* 35/42 CALENDAR DAY CELLS */}
+                    {/* CALENDAR DAY CELLS */}
                     <div className="grid grid-cols-7 gap-1.5 pt-1">
                       {calendarDays.map((day, idx) => {
                         const isSelected = selectedCalDate === day.dateStr;
@@ -1703,11 +1744,11 @@ function AdminDashboardContent() {
                           <button
                             key={idx}
                             onClick={() => setSelectedCalDate(day.dateStr)}
-                            className={`min-h-[72px] sm:min-h-[82px] p-2 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border ${
+                            className={`min-h-[76px] sm:min-h-[86px] p-2 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border ${
                               isSelected
-                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-glow-rosegold scale-[1.02] z-10'
+                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-glow-rosegold scale-[1.03] z-10'
                                 : isToday
-                                ? 'bg-dark-800 border-green-500/60 text-white font-bold shadow-md hover:border-rosegold-400'
+                                ? 'bg-dark-800 border-green-500/70 text-white font-bold shadow-md hover:border-rosegold-400'
                                 : day.isCurrentMonth
                                 ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800 hover:border-rosegold-500/40'
                                 : 'bg-dark-900/40 border-transparent text-gray-600 hover:text-gray-400'
@@ -1766,29 +1807,118 @@ function AdminDashboardContent() {
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN: DETAILED TIMELINE FOR SELECTED DATE (LG: 5 COLS) */}
-                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 flex flex-col justify-between">
+                  {/* RIGHT COLUMN: INTERACTIVE SIDEBAR FOR CLICKED DATE (LG: 5 COLS) */}
+                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 flex flex-col justify-between shadow-2xl">
                     
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                      {/* DATE HEADER & DIRECT ADD BUTTON */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
                         <div>
-                          <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-wider block">Selected Schedule Date</span>
-                          <h3 className="text-lg font-serif font-bold text-white">{formattedSelectedDate}</h3>
+                          <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-wider block">Selected Date Sidebar</span>
+                          <h3 className="text-xl font-serif font-bold text-white">{formattedSelectedDate}</h3>
                         </div>
 
-                        <span className="px-3 py-1 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 text-xs font-bold">
-                          {selectedApps.length} {selectedApps.length === 1 ? 'Appointment' : 'Appointments'}
-                        </span>
+                        <button
+                          onClick={() => {
+                            setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
+                            setModalType('addApp');
+                          }}
+                          className="px-3.5 py-2 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all inline-flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Add Appointment</span>
+                        </button>
                       </div>
 
-                      {/* SCHEDULE TIMELINE CARDS */}
-                      {selectedApps.length === 0 ? (
-                        <div className="py-12 text-center space-y-3 bg-dark-850/60 rounded-2xl border border-white/5 p-6">
+                      {/* DATE METRICS SUMMARY GRID */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Total Bookings</span>
+                          <span className="text-base font-bold text-white block">{selectedApps.length}</span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Est. Revenue</span>
+                          <span className="text-base font-bold text-rosegold-400 block">₹{selectedDateRevenue.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-green-400 uppercase font-semibold block">Confirmed / Done</span>
+                          <span className="text-base font-bold text-green-400 block">{confirmedCount + completedCount}</span>
+                        </div>
+                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-amber-400 uppercase font-semibold block">In Progress</span>
+                          <span className="text-base font-bold text-amber-400 block">{inProgressCount}</span>
+                        </div>
+                      </div>
+
+                      {/* STAFF ON LEAVE / AVAILABILITY BANNER */}
+                      {staffOnLeave.length > 0 ? (
+                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center space-x-2 text-xs text-amber-300">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                          <div>
+                            <span className="font-bold block">Staff Leave Notice ({formattedSelectedDate})</span>
+                            <span className="text-[11px] text-amber-200">
+                              {staffOnLeave.map(l => l.employeeName || 'Specialist').join(', ')} on approved leave.
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center space-x-2 text-xs text-green-400">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                          <span className="text-[11px] font-semibold">All Salon Specialists Available for Booking</span>
+                        </div>
+                      )}
+
+                      {/* SEARCH & STATUS FILTER BAR */}
+                      <div className="space-y-2.5">
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Search client, specialist, service..."
+                            value={calSearchQuery}
+                            onChange={(e) => setCalSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-900 text-white text-xs border border-white/10 focus:outline-none focus:border-rosegold-500 placeholder-gray-500"
+                          />
+                          {calSearchQuery && (
+                            <button
+                              onClick={() => setCalSearchQuery('')}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+
+                        {/* STATUS FILTER PILLS */}
+                        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 custom-scrollbar text-[10px]">
+                          {['All', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'].map((st) => (
+                            <button
+                              key={st}
+                              onClick={() => setCalStatusFilter(st)}
+                              className={`px-2.5 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer ${
+                                calStatusFilter === st
+                                  ? 'rosegold-gradient-bg text-dark-900 shadow-sm'
+                                  : 'bg-dark-900 text-gray-400 hover:text-white border border-white/5'
+                              }`}
+                            >
+                              {st}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* SCHEDULE TIMELINE CARDS FOR SELECTED DATE */}
+                      {filteredApps.length === 0 ? (
+                        <div className="py-10 text-center space-y-3 bg-dark-850/60 rounded-2xl border border-white/5 p-6">
                           <div className="w-12 h-12 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400 mx-auto">
                             <Calendar className="w-6 h-6" />
                           </div>
-                          <h4 className="text-white font-serif font-bold text-base">No Schedules for This Date</h4>
-                          <p className="text-xs text-gray-400 max-w-xs mx-auto">There are no appointments registered for {formattedSelectedDate}. Click below to add a client appointment.</p>
+                          <h4 className="text-white font-serif font-bold text-base">No Appointments Found</h4>
+                          <p className="text-xs text-gray-400 max-w-xs mx-auto">
+                            {calSearchQuery || calStatusFilter !== 'All' 
+                              ? `No appointments match filters for ${formattedSelectedDate}.`
+                              : `There are no appointments registered for ${formattedSelectedDate}.`}
+                          </p>
                           <button
                             onClick={() => {
                               setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
@@ -1797,23 +1927,24 @@ function AdminDashboardContent() {
                             className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md hover:scale-105 transition-transform inline-flex items-center space-x-1.5 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Add Appointment for Date</span>
+                            <span>+ Add Appointment for Date</span>
                           </button>
                         </div>
                       ) : (
-                        <div className="space-y-3.5 max-h-[580px] overflow-y-auto pr-1 custom-scrollbar">
-                          {selectedApps.map((app) => (
+                        <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
+                          {filteredApps.map((app) => (
                             <div 
                               key={app._id}
-                              className="p-4 rounded-2xl bg-dark-800/90 border border-rosegold-500/25 space-y-3 hover:border-rosegold-400 transition-all text-xs"
+                              className="p-3.5 rounded-2xl bg-dark-900/90 border border-rosegold-500/25 space-y-2.5 hover:border-rosegold-400 transition-all text-xs"
                             >
-                              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                              {/* CARD HEADER */}
+                              <div className="flex items-center justify-between border-b border-white/10 pb-2">
                                 <div className="flex items-center space-x-2">
-                                  <Clock className="w-4 h-4 text-rosegold-400 shrink-0" />
+                                  <Clock className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
                                   <span className="text-rosegold-300 font-extrabold text-xs">
                                     {app.appointmentTime || app.bookingTimeFormatted || '11:00 AM'}
                                   </span>
-                                  <span className="text-gray-500 text-[10px]">({app.bookingId})</span>
+                                  <span className="text-gray-500 text-[10px]">({app.bookingId || 'APP-' + app._id?.slice(-4)})</span>
                                 </div>
 
                                 <select
@@ -1837,21 +1968,43 @@ function AdminDashboardContent() {
                                 </select>
                               </div>
 
+                              {/* CLIENT & SPECIALIST DETAILS */}
                               <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                <div className="bg-dark-900 p-2.5 rounded-xl border border-white/5">
-                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Client Name</span>
+                                <div className="bg-dark-800 p-2.5 rounded-xl border border-white/5 space-y-1">
+                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Client Details</span>
                                   <strong className="text-white font-bold block truncate">{app.customerName}</strong>
-                                  <span className="text-gray-400 text-[10px] block">{app.customerPhone}</span>
+                                  <div className="flex items-center justify-between pt-0.5">
+                                    <span className="text-gray-400 text-[10px] truncate">{app.customerPhone}</span>
+                                    <div className="flex items-center space-x-1 shrink-0">
+                                      <a
+                                        href={`tel:${app.customerPhone}`}
+                                        className="p-1 rounded-md bg-rosegold-500/10 text-rosegold-400 hover:bg-rosegold-500 hover:text-dark-900 transition-colors"
+                                        title="Call Customer"
+                                      >
+                                        <Phone className="w-3 h-3" />
+                                      </a>
+                                      <a
+                                        href={`https://wa.me/${app.customerPhone?.replace(/[^0-9]/g, '')}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-dark-900 transition-colors"
+                                        title="WhatsApp Customer"
+                                      >
+                                        <MessageCircle className="w-3 h-3" />
+                                      </a>
+                                    </div>
+                                  </div>
                                 </div>
 
-                                <div className="bg-dark-900 p-2.5 rounded-xl border border-white/5">
+                                <div className="bg-dark-800 p-2.5 rounded-xl border border-white/5 space-y-1">
                                   <span className="text-gray-400 text-[9px] uppercase font-semibold block">Assigned Specialist</span>
                                   <strong className="text-rosegold-300 font-bold block truncate">{app.specialistName}</strong>
-                                  <span className="text-gray-400 text-[10px] block">{app.branch || 'Jubilee Hills Flagship'}</span>
+                                  <span className="text-gray-400 text-[10px] block truncate">{app.branch || 'Jubilee Hills Flagship'}</span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center justify-between bg-dark-900/60 p-2.5 rounded-xl border border-white/5">
+                              {/* TREATMENT SERVICE & PAYMENT STATUS */}
+                              <div className="flex items-center justify-between bg-dark-800/80 p-2.5 rounded-xl border border-white/5">
                                 <div>
                                   <span className="text-gray-400 text-[9px] uppercase font-semibold block">Treatment Service</span>
                                   <span className="text-white font-bold text-xs">{app.service}</span>
