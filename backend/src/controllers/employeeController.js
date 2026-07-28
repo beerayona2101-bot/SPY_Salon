@@ -270,3 +270,22 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getCalendarOverview = async (req, res, next) => {
+  try {
+    const appointments = store.appointments || [];
+    const attendance = store.attendance || [];
+    const leaves = store.leaves || [];
+    const payrolls = store.payrolls || [];
+
+    return ApiResponse.success(res, {
+      appointments,
+      attendance,
+      leaves,
+      payrolls,
+      summary: store.getAnalyticsStats()
+    }, 'Employee calendar overview retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};

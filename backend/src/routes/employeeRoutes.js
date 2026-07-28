@@ -22,4 +22,7 @@ router.get('/payrolls', employeeController.getEmployeePayrolls);
 // Bank & UPI Payout Details Update
 router.put('/bank-details', employeeController.updateBankDetails);
 
+// Employee Calendar Overview
+router.get('/calendar', employeeController.getCalendarOverview);
+
 module.exports = router;

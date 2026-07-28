@@ -34,6 +34,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { API_BASE_URL } from '@/lib/api';
+import EmployeeCalendarModule from '@/components/employee/EmployeeCalendarModule';
 
 interface AssignedAppointment {
   _id: string;
@@ -94,7 +95,7 @@ function EmployeeDashboardContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const tabFromUrl = searchParams?.get('tab');
-  const validTabs = ['queue', 'clockin', 'payrolls', 'bank', 'leaves', 'schedule', 'performance'];
+  const validTabs = ['queue', 'calendar', 'clockin', 'payrolls', 'bank', 'leaves', 'schedule', 'performance'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'queue';
 
   const handleTabChange = (newTab: string) => {
@@ -399,6 +400,7 @@ function EmployeeDashboardContent() {
 
   const navMenuItems = [
     { id: 'queue', label: "Today's Service Queue", icon: Scissors, badge: appointments.length },
+    { id: 'calendar', label: 'My Calendar', icon: Calendar, badge: null },
     { id: 'clockin', label: 'Clock-In & Attendance', icon: CheckSquare, badge: null },
     { id: 'payrolls', label: 'My Salary Slips & Payouts', icon: FileText, badge: payrolls.length },
     { id: 'bank', label: 'Bank & UPI Account Details', icon: Building, badge: null },
@@ -580,6 +582,21 @@ function EmployeeDashboardContent() {
         {/* Dashboard Main Content Body */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-8 flex-1">
           
+          {/* TAB: MY CALENDAR MODULE */}
+          {activeTab === 'calendar' && (
+            <EmployeeCalendarModule
+              user={user}
+              appointments={appointments}
+              attendance={attendance}
+              leaves={leaves}
+              payrolls={payrolls}
+              onSubmitLeave={form => {
+                setLeaveForm(form);
+                handleSubmitLeave({ preventDefault: () => {} } as any);
+              }}
+            />
+          )}
+
           {/* TAB 1: TODAY'S ASSIGNED SERVICE QUEUE */}
           {activeTab === 'queue' && (
             <div className="space-y-6 animate-fadeIn text-left">

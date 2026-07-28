@@ -128,7 +128,7 @@ export default function ServiceDetails({
 
             <div className="flex items-center space-x-3">
               <Link
-                href={`/book?service=${encodeURIComponent(service.name)}`}
+                href={`/book?serviceId=${encodeURIComponent(service.id)}&category=${encodeURIComponent(service.gender || '')}&subcategory=${encodeURIComponent(service.subCategory || '')}&service=${encodeURIComponent(service.name)}`}
                 className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-serif font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-all flex items-center space-x-2 cursor-pointer"
               >
                 <Calendar className="w-4 h-4" />

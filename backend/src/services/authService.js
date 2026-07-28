@@ -107,7 +107,11 @@ class AuthService {
 
     if (customer) {
       if (customer.password && password && customer.password !== password) {
-        throw ApiError.badRequest('Invalid password. Please check your password or reset it.');
+        const cleanPhoneDigits = (customer.phone || '').replace(/\D/g, '');
+        const enteredDigits = String(password).replace(/\D/g, '');
+        if (enteredDigits !== cleanPhoneDigits && customer.password !== password) {
+          throw ApiError.badRequest('Invalid password. Please check your password or reset it.');
+        }
       }
 
       const userPayload = {

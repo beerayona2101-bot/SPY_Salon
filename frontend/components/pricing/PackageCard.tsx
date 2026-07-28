@@ -81,7 +81,7 @@ export default function PackageCard({ packageData, serviceName, onEnquireClick }
       {/* ACTION BUTTONS */}
       <div className="space-y-2 pt-2">
         <Link
-          href={`/book?service=${encodeURIComponent(`${serviceName} - ${name}`)}`}
+          href={`/book?serviceId=${encodeURIComponent(packageData.id)}&service=${encodeURIComponent(serviceName)}&package=${encodeURIComponent(name)}`}
           className="w-full py-3 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center justify-center space-x-2 shadow-lg hover:scale-[1.02] transition-transform cursor-pointer text-center"
         >
           <span>Book {name}</span>

@@ -1,6 +1,7 @@
 const store = require('../data/store');
 const Enquiry = require('../models/Enquiry');
 const enquiryService = require('../services/enquiryService');
+const guestBookingService = require('../services/guestBookingService');
 const { getCustomerWhatsAppChatUrl } = require('../services/whatsappService');
 
 const fallbackBranches = [
@@ -21,6 +22,33 @@ exports.getServices = async (req, res) => {
     success: true,
     count: store.services.length,
     data: store.services
+  });
+};
+
+// Get Single Service by ID, Slug, or Name
+exports.getServiceById = async (req, res) => {
+  const { id } = req.params;
+  const target = String(id).toLowerCase().trim();
+  const normalizeSlug = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+  const match = store.services.find(s => 
+    String(s._id).toLowerCase() === target ||
+    String(s.id).toLowerCase() === target ||
+    (s.slug && String(s.slug).toLowerCase() === target) ||
+    normalizeSlug(s.name) === normalizeSlug(target) ||
+    normalizeSlug(s.title) === normalizeSlug(target)
+  );
+
+  if (!match) {
+    return res.status(404).json({
+      success: false,
+      message: `Selected service '${id}' not found`
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: match
   });
 };
 
@@ -208,22 +236,33 @@ exports.bookAppointment = async (req, res) => {
       'success'
     );
 
-    // Sync Audit Activity Log & Send Realtime Notification to Admin
-    store.logActivity(
-      'Customer Reschedule Completed',
-      `Client ${customerName} (${customerPhone}) rescheduled ${service} with ${chosenSpecialist} for ${appointmentDate} at ${appointmentTime}`
-    );
+    const targetAppointment = existingIndex !== -1 ? store.appointments[existingIndex] : newAppointment;
 
-    store.addNotification(
-      'Appointment Slot Updated 🟢',
-      `Client ${customerName} rescheduled ${service} to ${appointmentDate} at ${appointmentTime}. Status: Confirmed.`,
-      'success'
-    );
+    // Async Guest Booking Workflow (Auto-account creation, linking, credentials email, admin alerts, CRM sync)
+    setImmediate(async () => {
+      try {
+        await guestBookingService.processGuestBooking({
+          appointment: targetAppointment,
+          customerName,
+          customerEmail,
+          customerPhone,
+          service,
+          branch,
+          specialistName: chosenSpecialist,
+          appointmentDate,
+          appointmentTime,
+          paymentMethod: chosenPayment,
+          paymentStatus: initialPaymentStatus
+        });
+      } catch (gErr) {
+        console.error('[PublicController] Guest booking async processing error:', gErr);
+      }
+    });
 
     return res.status(201).json({
       success: true,
-      message: 'Appointment rescheduled and confirmed successfully!',
-      data: existingIndex !== -1 ? store.appointments[existingIndex] : newAppointment
+      message: existingIndex !== -1 ? 'Appointment rescheduled and confirmed successfully!' : 'Appointment booked successfully!',
+      data: targetAppointment
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to complete appointment booking.', error: error.message });

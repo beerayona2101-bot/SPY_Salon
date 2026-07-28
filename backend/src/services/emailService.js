@@ -362,10 +362,101 @@ const sendEnquiryResolutionEmail = async ({ email, name, enquiryId, status, admi
   }
 };
 
+/**
+ * Send Guest Welcome Credentials & Booking Confirmation Email
+ */
+const sendGuestWelcomeCredentialsEmail = async ({
+  name,
+  email,
+  phone,
+  loginId,
+  password,
+  bookingId,
+  service,
+  appointmentDate,
+  appointmentTime
+}) => {
+  const transporter = getTransporter();
+  const from = process.env.EMAIL_FROM || '"SPY Salon Guest Desk" <beerayona143@gmail.com>';
+  const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3000/login';
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0b090a; color: #f8f9fa; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #161214; border: 1px solid #d4af37; border-radius: 16px; padding: 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .logo-header { text-align: center; margin-bottom: 24px; }
+        .title { color: #f4c2c2; font-size: 24px; font-weight: bold; margin-bottom: 8px; text-align: center; }
+        .subtitle { color: #a1a1aa; font-size: 14px; text-align: center; margin-bottom: 24px; }
+        .card { background: #221c1f; border-left: 4px solid #d4af37; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .cred-item { margin: 10px 0; font-size: 14px; }
+        .label { color: #a1a1aa; font-weight: 600; }
+        .val { color: #ffffff; font-family: monospace; font-weight: bold; }
+        .btn { display: block; width: 240px; margin: 28px auto 10px auto; padding: 14px; background: linear-gradient(135deg, #f4c2c2 0%, #d4af37 100%); color: #0b090a; text-align: center; font-weight: bold; text-decoration: none; border-radius: 30px; font-size: 14px; }
+        .footer { text-align: center; font-size: 12px; color: #71717a; margin-top: 30px; border-t: 1px solid #27272a; padding-top: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo-header">
+          <h1 style="color:#d4af37; margin:0; font-family:serif;">SPY SALON</h1>
+          <span style="color:#a1a1aa; font-size:11px; letter-spacing:2px; text-transform:uppercase;">Luxury Beauty Studio</span>
+        </div>
+        
+        <div class="title">Welcome to SPY Salon</div>
+        <div class="subtitle">Dear <strong>${name}</strong>, thank you for booking with SPY Salon.</div>
+
+        <p style="font-size:14px; color:#d4d4d8; line-height:1.6;">
+          Your salon reservation <strong>#${bookingId || 'SPY'}</strong> for <strong>${service || 'Salon Treatment'}</strong> on <strong>${appointmentDate} at ${appointmentTime}</strong> has been confirmed.
+        </p>
+
+        <div class="card">
+          <div style="color:#d4af37; font-weight:bold; font-size:15px; margin-bottom:12px;">Your Account Credentials</div>
+          <div class="cred-item"><span class="label">User ID / Login ID:</span> <span class="val">${loginId || email || phone}</span></div>
+          <div class="cred-item"><span class="label">Password:</span> <span class="val">${password || phone}</span></div>
+          <div class="cred-item"><span class="label">Login Link:</span> <span class="val">${loginUrl}</span></div>
+        </div>
+
+        <p style="font-size:12px; color:#a1a1aa; text-align:center; font-style:italic;">
+          For security, please log in and change your password after your first login.
+        </p>
+
+        <a href="${loginUrl}" class="btn">Sign In to Customer VIP Dashboard</a>
+
+        <div class="footer">
+          SPY Salon Jubilee Hills Studio &bull; Official Booking Credentials Notice
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const recipientEmail = String(email || '').trim().toLowerCase();
+  console.log(`[EmailService] Dispatching guest welcome credentials email to ${recipientEmail}`);
+
+  try {
+    const info = await transporter.sendMail({
+      from,
+      to: recipientEmail,
+      subject: `✨ Welcome to SPY Salon - Account Credentials & Booking Confirmation #${bookingId}`,
+      html
+    });
+    console.log(`[EmailService] Guest credentials email sent successfully to ${recipientEmail} (ID: ${info.messageId})`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`[EmailService] Failed to send guest credentials email to ${recipientEmail}:`, error.message);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   sendEmployeeCredentialsEmail,
   sendPasswordResetOtpEmail,
   sendCustomerEnquiryConfirmation,
   sendAdminEnquiryNotification,
-  sendEnquiryResolutionEmail
+  sendEnquiryResolutionEmail,
+  sendGuestWelcomeCredentialsEmail
 };

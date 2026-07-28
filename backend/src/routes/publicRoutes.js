@@ -5,6 +5,7 @@ const { cacheMiddleware } = require('../middlewares/cacheMiddleware');
 
 // Public catalog routes with 5-minute memory cache
 router.get('/services', cacheMiddleware(300), publicController.getServices);
+router.get('/services/:id', cacheMiddleware(300), publicController.getServiceById);
 router.get('/specialists', cacheMiddleware(300), publicController.getSpecialists);
 router.get('/reviews', cacheMiddleware(180), publicController.getReviews);
 router.get('/branches', cacheMiddleware(600), publicController.getBranches);
