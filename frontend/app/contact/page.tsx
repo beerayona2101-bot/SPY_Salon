@@ -18,7 +18,7 @@ export default function ContactPage() {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
+    if (!formData.name.trim() || !formData.email.trim() || !formData.phone.trim() || !formData.message.trim()) {
       setErrorMsg('Please fill in all required fields.');
       return;
     }
@@ -171,9 +171,10 @@ export default function ContactPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-300 uppercase font-semibold block mb-1">Phone</label>
+                  <label className="text-xs text-gray-300 uppercase font-semibold block mb-1">Phone *</label>
                   <input
                     type="tel"
+                    required
                     disabled={isSubmitting}
                     placeholder="+91 98765 43210"
                     value={formData.phone}
