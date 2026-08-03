@@ -136,7 +136,7 @@ export default function Home() {
                 transition={{ duration: 0.3 }}
                 className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-serif"
               >
-                Unveil Your <span className="rosegold-gradient-text">Radiant Beauty</span>
+                Our <span className="rosegold-gradient-text">Radiant</span>
               </motion.h1>
 
               {/* Sub-description / Quote */}

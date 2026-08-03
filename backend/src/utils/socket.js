@@ -13,7 +13,7 @@ const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
-        // Always permit connecting origin (supports localhost, LAN IPs, and production domains)
+        //  Always permit connecting origin (supports localhost, LAN IPs, and production domains)
         callback(null, true);
       },
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
