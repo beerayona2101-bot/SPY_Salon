@@ -9,9 +9,20 @@ import dynamic from 'next/dynamic';
 import { SALON_CATALOGUE, GenderSection, CategoryCard, ServiceItem } from '@/lib/servicesData';
 import CategorySidebar, { GenderCategoryGroup } from '@/components/pricing/CategorySidebar';
 import ServiceSidebar from '@/components/pricing/ServiceSidebar';
-import ServiceDetails from '@/components/pricing/ServiceDetails';
 import SearchBar from '@/components/pricing/SearchBar';
 import useDebounce from '@/hooks/useDebounce';
+import { API_BASE_URL } from '@/lib/api';
+import { useSocket } from '@/context/SocketContext';
+
+const ServiceDetails = dynamic(() => import('@/components/pricing/ServiceDetails'), {
+  loading: () => (
+    <div className="p-12 text-center glass-card rounded-3xl border border-white/10 space-y-4 animate-pulse">
+      <Sparkles className="w-8 h-8 mx-auto text-rosegold-400 animate-spin" />
+      <p className="text-xs text-gray-400">Loading service details...</p>
+    </div>
+  )
+});
+
 
 // Wrapper with Suspense for Next.js query parameter hooks
 export default function PricingPageWrapper() {
@@ -82,7 +93,42 @@ function PricingPageContent() {
     });
   }, []);
 
-  // 2. Flatten all services for global search and counting
+  const [liveDbServices, setLiveDbServices] = useState<any[]>([]);
+  const { socket } = useSocket();
+
+  const fetchLiveServices = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/services`);
+      const data = await res.json();
+      if (data.data && Array.isArray(data.data)) {
+        setLiveDbServices(data.data);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchLiveServices();
+
+    if (!socket) return;
+
+    const handleServiceChange = () => {
+      fetchLiveServices();
+    };
+
+    socket.on('service:created', handleServiceChange);
+    socket.on('service:updated', handleServiceChange);
+    socket.on('service:deleted', handleServiceChange);
+
+    const intervalId = setInterval(fetchLiveServices, 4000);
+    return () => {
+      clearInterval(intervalId);
+      socket.off('service:created', handleServiceChange);
+      socket.off('service:updated', handleServiceChange);
+      socket.off('service:deleted', handleServiceChange);
+    };
+  }, [socket]);
+
+  // 2. Flatten all services & merge dynamic Admin services
   const allServices: ServiceItem[] = useMemo(() => {
     const list: ServiceItem[] = [];
     SALON_CATALOGUE.forEach((section) => {
@@ -98,8 +144,34 @@ function PricingPageContent() {
         });
       });
     });
+
+    if (liveDbServices && liveDbServices.length > 0) {
+      liveDbServices.forEach((dbSrv: any) => {
+        const existingIdx = list.findIndex(s => s.id === dbSrv._id || s.name.toLowerCase() === dbSrv.name.toLowerCase());
+        const mappedItem: ServiceItem = {
+          id: dbSrv._id || dbSrv.id,
+          name: dbSrv.name,
+          category: dbSrv.category || 'Hair Care',
+          subCategory: dbSrv.subCategory || dbSrv.category?.toLowerCase() || 'haircare',
+          gender: dbSrv.gender || 'all',
+          price: dbSrv.price,
+          originalPrice: dbSrv.discountPrice && dbSrv.discountPrice < dbSrv.price ? dbSrv.price : undefined,
+          duration: `${dbSrv.durationMinutes || 60} Min`,
+          description: dbSrv.description || 'Luxury SPY Salon service treatment.',
+          popular: dbSrv.isPopular,
+          image: dbSrv.image
+        };
+
+        if (existingIdx !== -1) {
+          list[existingIdx] = { ...list[existingIdx], ...mappedItem };
+        } else {
+          list.unshift(mappedItem);
+        }
+      });
+    }
+
     return list;
-  }, []);
+  }, [liveDbServices]);
 
   // 3. Filter services based on active Gender, Subcategory, and Debounced Search query
   const filteredServices: ServiceItem[] = useMemo(() => {

@@ -37,10 +37,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { API_BASE_URL } from '@/lib/api';
+import dynamic from 'next/dynamic';
 import VIPBadge from '@/components/common/VIPBadge';
-import ProfileImageModal from '@/components/profile/ProfileImageModal';
 import AppointmentCard from '@/components/appointments/AppointmentCard';
 import AppointmentStatusBadge from '@/components/appointments/AppointmentStatusBadge';
+
+const ProfileImageModal = dynamic(() => import('@/components/profile/ProfileImageModal'), {
+  ssr: false
+});
 
 interface AppointmentRecord {
   _id: string;

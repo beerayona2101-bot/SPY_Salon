@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Sparkles, Search, Check } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -111,7 +111,7 @@ interface QuickEnquiryTemplatesProps {
   onSelectTemplate: (template: QuickTemplate) => void;
 }
 
-export default function QuickEnquiryTemplates({
+const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
   selectedId,
   onSelectTemplate
 }: QuickEnquiryTemplatesProps) {
@@ -129,11 +129,14 @@ export default function QuickEnquiryTemplates({
       .catch(() => {});
   }, []);
 
-  const filteredTemplates = templates.filter(t => 
-    !searchQuery || 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredTemplates = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return templates;
+    return templates.filter(t => 
+      t.name.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q)
+    );
+  }, [templates, searchQuery]);
 
   return (
     <div className="space-y-2.5 text-left">
@@ -183,4 +186,7 @@ export default function QuickEnquiryTemplates({
       </div>
     </div>
   );
-}
+});
+
+export default QuickEnquiryTemplates;
+

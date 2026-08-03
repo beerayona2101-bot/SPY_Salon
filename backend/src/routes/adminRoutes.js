@@ -29,6 +29,12 @@ router.post('/services', adminController.createService);
 router.put('/services/:id', adminController.updateService);
 router.delete('/services/:id', adminController.deleteService);
 
+// Membership Routes (CRUD)
+router.get('/memberships', adminController.getAdminMemberships);
+router.post('/memberships', adminController.createMembership);
+router.put('/memberships/:id', adminController.updateMembership);
+router.delete('/memberships/:id', adminController.deleteMembership);
+
 // Appointment Routes (CRUD & Reschedule Workflow)
 router.get('/appointments', adminController.getAdminAppointments);
 router.post('/appointments', adminController.createAdminAppointment);

@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Search, X, Sparkles } from 'lucide-react';
+import React, { memo } from 'react';
+import { Search, X } from 'lucide-react';
 
 interface SearchBarProps {
   searchQuery: string;
@@ -10,7 +10,7 @@ interface SearchBarProps {
   totalResultsCount?: number;
 }
 
-export default function SearchBar({
+const SearchBar = memo(function SearchBar({
   searchQuery,
   onSearchChange,
   placeholder = 'Search categories, services, keratin, facials, beard, pricing...',
@@ -48,4 +48,7 @@ export default function SearchBar({
       </div>
     </div>
   );
-}
+});
+
+export default SearchBar;
+

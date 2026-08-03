@@ -28,8 +28,25 @@ const app = express();
 // Connect MongoDB
 connectDB();
 
-// Global Security, Compression & Performance Middlewares
-app.use(compression());
+// High-Performance Middleware Setup: Compression & Response Timer
+app.use(compression({
+  threshold: 512, // Compress payloads larger than 512 bytes
+  level: 6
+}));
+
+app.use((req, res, next) => {
+  const startMs = Date.now();
+  const oldWriteHead = res.writeHead;
+  res.writeHead = function (...args) {
+    const durationMs = Date.now() - startMs;
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time', `${durationMs}ms`);
+    }
+    return oldWriteHead.apply(res, args);
+  };
+  next();
+});
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   contentSecurityPolicy: false

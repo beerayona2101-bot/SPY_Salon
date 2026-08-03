@@ -12,7 +12,10 @@ const serviceSchema = new mongoose.Schema({
   reviewsCount: { type: Number, default: 42 },
   image: { type: String },
   isPopular: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true }
 }, { timestamps: true });
+
+serviceSchema.index({ category: 1, isActive: 1 });
+serviceSchema.index({ slug: 1 });
+serviceSchema.index({ isPopular: -1 });
 
 module.exports = mongoose.model('Service', serviceSchema);

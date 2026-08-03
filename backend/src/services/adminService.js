@@ -10,6 +10,7 @@ const store = require('../data/store');
 const ApiError = require('../utils/apiError');
 const emailService = require('./emailService');
 const { broadcastEvent } = require('../utils/socket');
+const { invalidateCache } = require('../middlewares/cacheMiddleware');
 
 class AdminService {
   // Summary Analytics Loading (Optimized to prevent over-fetching)
@@ -191,6 +192,8 @@ class AdminService {
       _id: `srv_${Date.now()}`,
       name: payload.name,
       category: payload.category || 'Hair Care',
+      gender: payload.gender || 'all',
+      subCategory: payload.subCategory || payload.category || 'Hair Care',
       price: Number(payload.price),
       discountPrice: Number(payload.discountPrice || payload.price),
       durationMinutes: Number(payload.durationMinutes || 60),
@@ -205,6 +208,10 @@ class AdminService {
 
     store.services.unshift(newService);
     store.logActivity('New Service Added', `Added ${newService.name} to pricing menu.`);
+    
+    invalidateCache('services');
+    invalidateCache('service');
+    broadcastEvent('service:created', { service: newService });
     return newService;
   }
 
@@ -213,6 +220,10 @@ class AdminService {
     if (index === -1) throw ApiError.notFound(`Service with ID '${id}' not found`);
 
     store.services[index] = { ...store.services[index], ...payload };
+    
+    invalidateCache('services');
+    invalidateCache('service');
+    broadcastEvent('service:updated', { service: store.services[index] });
     return store.services[index];
   }
 
@@ -220,7 +231,66 @@ class AdminService {
     const index = store.services.findIndex(s => String(s._id) === String(id));
     if (index === -1) throw ApiError.notFound(`Service with ID '${id}' not found`);
 
+    const removed = store.services[index];
     store.services.splice(index, 1);
+    
+    invalidateCache('services');
+    invalidateCache('service');
+    broadcastEvent('service:deleted', { id: removed._id });
+    return true;
+  }
+
+  // VIP Membership Plans CRUD
+  async getMemberships() {
+    const plans = store.membershipPlans || [];
+    return { data: plans, total: plans.length };
+  }
+
+  async createMembership(payload) {
+    if (!payload.name || !payload.monthlyPrice) throw ApiError.badRequest('Plan name and monthly price are required');
+    const newPlan = {
+      _id: `mem_${Date.now()}`,
+      code: (payload.code || payload.name).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      name: payload.name,
+      badge: payload.badge || `👑 ${payload.name}`,
+      monthlyPrice: Number(payload.monthlyPrice),
+      yearlyPrice: Number(payload.yearlyPrice || payload.monthlyPrice * 10),
+      discountPercentage: Number(payload.discountPercentage || 10),
+      tagline: payload.tagline || 'Exclusive VIP Membership Plan',
+      benefits: Array.isArray(payload.benefits) ? payload.benefits : (payload.benefits ? payload.benefits.split(',').map(b => b.trim()) : []),
+      isActive: true
+    };
+    store.membershipPlans.unshift(newPlan);
+    store.logActivity('New Membership Plan Created', `Added ${newPlan.name} membership plan.`);
+
+    invalidateCache('/membership');
+    broadcastEvent('membership:created', { plan: newPlan });
+    return newPlan;
+  }
+
+  async updateMembership(id, payload) {
+    const index = store.membershipPlans.findIndex(m => String(m._id) === String(id) || m.code === String(id));
+    if (index === -1) throw ApiError.notFound(`Membership plan '${id}' not found`);
+
+    if (payload.benefits && typeof payload.benefits === 'string') {
+      payload.benefits = payload.benefits.split(',').map(b => b.trim());
+    }
+    store.membershipPlans[index] = { ...store.membershipPlans[index], ...payload };
+
+    invalidateCache('/membership');
+    broadcastEvent('membership:updated', { plan: store.membershipPlans[index] });
+    return store.membershipPlans[index];
+  }
+
+  async deleteMembership(id) {
+    const index = store.membershipPlans.findIndex(m => String(m._id) === String(id) || m.code === String(id));
+    if (index === -1) throw ApiError.notFound(`Membership plan '${id}' not found`);
+
+    const removed = store.membershipPlans[index];
+    store.membershipPlans.splice(index, 1);
+
+    invalidateCache('/membership');
+    broadcastEvent('membership:deleted', { code: removed.code, id: removed._id });
     return true;
   }
 

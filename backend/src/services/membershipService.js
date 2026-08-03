@@ -148,15 +148,17 @@ if (!store.membershipPlans) store.membershipPlans = [...DEFAULT_PLANS];
  * Seed & Retrieve Membership Plans
  */
 const getMembershipPlans = async () => {
+  if (store.membershipPlans && store.membershipPlans.length > 0) {
+    return store.membershipPlans;
+  }
   try {
     let plans = await MembershipPlan.find({ isActive: true });
     if (!plans || plans.length === 0) {
-      plans = await MembershipPlan.insertMany(DEFAULT_PLANS);
+      plans = DEFAULT_PLANS;
     }
     return plans;
   } catch (err) {
-    console.warn('[MembershipService] Database lookup fallback to default plans store:', err.message);
-    return store.membershipPlans;
+    return store.membershipPlans || DEFAULT_PLANS;
   }
 };
 

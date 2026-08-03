@@ -152,7 +152,34 @@ export default function MembershipDetailsPage() {
   const router = useRouter();
 
   const tierKey = (params?.tier as string || 'gold').toLowerCase();
-  const planData = STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.gold;
+  const [dynamicPlanData, setDynamicPlanData] = useState<any>(null);
+
+  const fetchLivePlanData = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/membership/plans`);
+      const data = await res.json();
+      if (data.data && Array.isArray(data.data)) {
+        const match = data.data.find((p: any) => p.code?.toLowerCase() === tierKey || p._id === tierKey);
+        if (match) {
+          setDynamicPlanData({
+            ...(STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.gold),
+            ...match,
+            benefits: Array.isArray(match.benefits) ? match.benefits : (match.benefits ? match.benefits.split(',').map((b: string) => b.trim()) : (STATIC_PLANS_DATA[tierKey]?.benefits || []))
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Using fallback static membership data');
+    }
+  };
+
+  useEffect(() => {
+    fetchLivePlanData();
+    const intervalId = setInterval(fetchLivePlanData, 3000);
+    return () => clearInterval(intervalId);
+  }, [tierKey]);
+
+  const planData = dynamicPlanData || STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.gold;
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);

@@ -5,8 +5,10 @@ const express = require('express');
 const router = express.Router();
 const templateController = require('../controllers/enquiryTemplateController');
 
+const { cacheMiddleware } = require('../middlewares/cacheMiddleware');
+
 // Public REST Route
-router.get('/', templateController.getPublicTemplates);
+router.get('/', cacheMiddleware(300), templateController.getPublicTemplates);
 
 // Admin Management REST Routes
 router.get('/admin', templateController.adminGetTemplates);

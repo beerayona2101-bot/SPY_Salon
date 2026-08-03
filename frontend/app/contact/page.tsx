@@ -3,8 +3,14 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MapPin, Phone, Mail, Clock, Send, Sparkles, CheckCircle2, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { API_BASE_URL } from '@/lib/api';
-import QuickEnquiryTemplates, { QuickTemplate } from '@/components/contact/QuickEnquiryTemplates';
+import { QuickTemplate } from '@/components/contact/QuickEnquiryTemplates';
+
+const QuickEnquiryTemplates = dynamic(() => import('@/components/contact/QuickEnquiryTemplates'), {
+  ssr: false,
+  loading: () => <div className="p-2 text-xs text-gray-500 animate-pulse font-mono">Loading enquiry templates...</div>
+});
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });

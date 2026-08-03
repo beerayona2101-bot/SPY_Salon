@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Star, Clock, Sparkles, ArrowRight, Eye, CheckCircle2, Crown, Award, ShieldCheck } from 'lucide-react';
 import { servicesData as defaultStaticServices } from '@/data/servicesData';
 import { API_BASE_URL } from '@/lib/api';
+import { useSocket } from '@/context/SocketContext';
 import CinematicImage from '@/components/common/CinematicImage';
 
 function ServicesContent() {
@@ -40,6 +41,41 @@ function ServicesContent() {
   };
 
   const [services, setServices] = useState<any[]>(defaultStaticServices);
+  const [memberships, setMemberships] = useState<any[]>([
+    {
+      _id: 'mem1',
+      code: 'standard',
+      name: 'Standard Membership',
+      badge: '🥉 Standard Member',
+      monthlyPrice: 999,
+      yearlyPrice: 9999,
+      discountPercentage: 5,
+      tagline: 'Essential VIP privileges, priority booking, and birthday special offers.',
+      benefits: ['5% Discount on all services', 'Priority Booking Queue', 'Special Birthday Offer & Gift', 'Monthly Beauty Care Tips', 'Member Desk Support']
+    },
+    {
+      _id: 'mem2',
+      code: 'premium',
+      name: 'Premium Membership',
+      badge: '🥈 Premium Member',
+      monthlyPrice: 2499,
+      yearlyPrice: 24999,
+      discountPercentage: 10,
+      tagline: 'Enhanced luxury experience with free monthly Hair Spa treatments.',
+      benefits: ['10% Discount on all services', 'Priority Booking & Faster Queue', 'Free Skin & Hair Consultation', 'Free Hair Spa every month', 'Special Birthday Gift & Offers']
+    },
+    {
+      _id: 'mem3',
+      code: 'gold',
+      name: 'Gold VIP Membership',
+      badge: '👑 Gold Member',
+      monthlyPrice: 4999,
+      yearlyPrice: 49999,
+      discountPercentage: 20,
+      tagline: 'Ultimate luxury privilege with complimentary Hair Spa, Facial & VIP Lounge access.',
+      benefits: ['20% Discount on all services', 'Unlimited Priority Booking', 'Dedicated Executive VIP Support', 'Complimentary Hair Spa & Facial / mo', 'VIP Lounge Access & Gala Events']
+    }
+  ]);
 
   const categories = ['All', 'Hair', 'Skin', 'Spa', 'Nails', 'Bridal', 'Grooming'];
 
@@ -69,14 +105,54 @@ function ServicesContent() {
     }
   };
 
+  const fetchLiveMemberships = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/membership/plans`);
+      const data = await res.json();
+      if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+        setMemberships(data.data);
+      }
+    } catch (err) {}
+  };
+
+  const { socket } = useSocket();
+
   useEffect(() => {
     fetchLiveServices();
-    // Auto-fetch live changes from Admin every 4 seconds
+    fetchLiveMemberships();
+
+    if (!socket) return;
+
+    const handleServiceChange = () => {
+      fetchLiveServices();
+    };
+
+    const handleMembershipChange = () => {
+      fetchLiveMemberships();
+    };
+
+    socket.on('service:created', handleServiceChange);
+    socket.on('service:updated', handleServiceChange);
+    socket.on('service:deleted', handleServiceChange);
+    socket.on('membership:created', handleMembershipChange);
+    socket.on('membership:updated', handleMembershipChange);
+    socket.on('membership:deleted', handleMembershipChange);
+
     const intervalId = setInterval(() => {
       fetchLiveServices();
-    }, 4000);
-    return () => clearInterval(intervalId);
-  }, []);
+      fetchLiveMemberships();
+    }, 5000);
+
+    return () => {
+      clearInterval(intervalId);
+      socket.off('service:created', handleServiceChange);
+      socket.off('service:updated', handleServiceChange);
+      socket.off('service:deleted', handleServiceChange);
+      socket.off('membership:created', handleMembershipChange);
+      socket.off('membership:updated', handleMembershipChange);
+      socket.off('membership:deleted', handleMembershipChange);
+    };
+  }, [socket]);
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
@@ -262,142 +338,74 @@ function ServicesContent() {
           </div>
         </div>
 
-        {/* 3 MEMBERSHIP TIER CARDS */}
+        {/* DYNAMIC MEMBERSHIP TIER CARDS FROM API */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch pt-4">
-          
-          {/* 🥉 STANDARD MEMBERSHIP */}
-          <div className="glass-card p-6 rounded-3xl border border-amber-600/30 flex flex-col justify-between space-y-6 hover:border-amber-500/60 transition-all bg-dark-800/80">
-            <div className="space-y-4">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-900/60 text-amber-300 text-xs font-bold border border-amber-600/40">
-                <Award className="w-3.5 h-3.5" />
-                <span>🥉 Standard Member</span>
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-white">Standard Membership</h3>
-              <p className="text-xs text-gray-400">Essential VIP privileges, priority booking, and birthday special offers.</p>
-              
-              <div className="pt-2">
-                <span className="text-3xl font-serif font-bold text-amber-400">
-                  ₹{billingCycle === 'yearly' ? '9,999' : '999'}
-                </span>
-                <span className="text-xs text-gray-400">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
-                <span className="block text-[11px] text-green-400 font-bold mt-0.5">5% Flat Discount On All Services</span>
-              </div>
+          {memberships.map((m: any) => {
+            const isGold = m.code?.includes('gold') || m.name?.toLowerCase().includes('gold');
+            const price = billingCycle === 'yearly' ? (m.yearlyPrice || m.monthlyPrice * 10) : m.monthlyPrice;
+            const benefitsList = Array.isArray(m.benefits) 
+              ? m.benefits 
+              : (typeof m.benefits === 'string' ? m.benefits.split(',').map((b: string) => b.trim()) : []);
 
-              <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /><span>5% Discount on all services</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /><span>Priority Booking Queue</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /><span>Special Birthday Offer & Gift</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /><span>Monthly Beauty Care Tips</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" /><span>Member Desk Support</span></div>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-4 border-t border-white/10">
-              <button
-                onClick={() => router.push('/membership/standard')}
-                className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:border-amber-400 transition-all cursor-pointer"
+            return (
+              <div 
+                key={m._id || m.code} 
+                className={`glass-card p-6 rounded-3xl flex flex-col justify-between space-y-6 transition-all bg-dark-800/80 ${
+                  isGold 
+                    ? 'border-2 border-rosegold-400 shadow-glow-rosegold scale-[1.02] relative' 
+                    : 'border border-rosegold-500/30 hover:border-rosegold-500/60'
+                }`}
               >
-                View Details
-              </button>
-              <button
-                onClick={() => router.push('/membership/standard')}
-                className="w-full py-3 rounded-full bg-amber-500 text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
-              >
-                Buy Standard (5% Off)
-              </button>
-            </div>
-          </div>
+                {isGold && (
+                  <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full rosegold-gradient-bg text-dark-900 text-[10px] font-extrabold uppercase shadow-sm">
+                    Most Popular VIP
+                  </div>
+                )}
 
-          {/* 🥈 PREMIUM MEMBERSHIP */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-400/40 flex flex-col justify-between space-y-6 hover:border-slate-300 transition-all bg-dark-800/80">
-            <div className="space-y-4">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-200 text-xs font-bold border border-slate-400/50">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>🥈 Premium Member</span>
+                <div className="space-y-4">
+                  <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-rosegold-500/10 text-rosegold-300 text-xs font-bold border border-rosegold-500/30">
+                    <Crown className="w-3.5 h-3.5 fill-current" />
+                    <span>{m.badge || m.name}</span>
+                  </div>
+
+                  <h3 className="text-2xl font-serif font-bold text-white">{m.name}</h3>
+                  <p className="text-xs text-gray-400">{m.tagline || 'Essential VIP privileges & special perks.'}</p>
+
+                  <div className="pt-2">
+                    <span className="text-3xl font-serif font-bold text-rosegold-400">
+                      ₹{Number(price).toLocaleString()}
+                    </span>
+                    <span className="text-xs text-gray-400">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
+                    <span className="block text-[11px] text-green-400 font-bold mt-0.5">{m.discountPercentage}% Flat Discount On All Services</span>
+                  </div>
+
+                  <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
+                    {benefitsList.map((b: string, idx: number) => (
+                      <div key={idx} className="flex items-center space-x-2">
+                        <CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" />
+                        <span>{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-white/10">
+                  <button
+                    onClick={() => router.push(`/membership/${m.code || m._id}`)}
+                    className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:border-rosegold-400 transition-all cursor-pointer"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() => router.push(`/membership/${m.code || m._id}`)}
+                    className="w-full py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
+                  >
+                    Buy {m.name} ({m.discountPercentage}% Off)
+                  </button>
+                </div>
               </div>
-              <h3 className="text-2xl font-serif font-bold text-white">Premium Membership</h3>
-              <p className="text-xs text-gray-400">Enhanced luxury experience with free monthly Hair Spa treatments.</p>
-              
-              <div className="pt-2">
-                <span className="text-3xl font-serif font-bold text-slate-200">
-                  ₹{billingCycle === 'yearly' ? '24,999' : '2,499'}
-                </span>
-                <span className="text-xs text-gray-400">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
-                <span className="block text-[11px] text-green-400 font-bold mt-0.5">10% Flat Discount On All Services</span>
-              </div>
-
-              <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-300">
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span>10% Discount on all services</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span>Priority Booking & Faster Queue</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span>Free Skin & Hair Consultation</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span>Free Hair Spa every month</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" /><span>Special Birthday Gift & Offers</span></div>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-4 border-t border-white/10">
-              <button
-                onClick={() => router.push('/membership/premium')}
-                className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:border-slate-300 transition-all cursor-pointer"
-              >
-                View Details
-              </button>
-              <button
-                onClick={() => router.push('/membership/premium')}
-                className="w-full py-3 rounded-full bg-slate-200 text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
-              >
-                Buy Premium (10% Off)
-              </button>
-            </div>
-          </div>
-
-          {/* 🥇 GOLD VIP MEMBERSHIP */}
-          <div className="glass-card p-6 sm:p-7 rounded-3xl border-2 border-rosegold-400 flex flex-col justify-between space-y-6 shadow-glow-rosegold scale-[1.02] bg-dark-800/90 relative">
-            <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full rosegold-gradient-bg text-dark-900 text-[10px] font-extrabold uppercase shadow-sm">
-              Most Popular VIP
-            </div>
-
-            <div className="space-y-4">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full rosegold-gradient-bg text-dark-900 text-xs font-bold shadow-sm">
-                <Crown className="w-3.5 h-3.5 fill-current" />
-                <span>👑 Gold Member</span>
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-white">Gold VIP Membership</h3>
-              <p className="text-xs text-gray-300">Ultimate luxury privilege with complimentary Hair Spa, Facial & VIP Lounge access.</p>
-              
-              <div className="pt-2">
-                <span className="text-3xl font-serif font-bold text-rosegold-400">
-                  ₹{billingCycle === 'yearly' ? '49,999' : '4,999'}
-                </span>
-                <span className="text-xs text-gray-400">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
-                <span className="block text-[11px] text-green-400 font-bold mt-0.5">20% Flat Discount On All Services</span>
-              </div>
-
-              <div className="border-t border-white/10 pt-4 space-y-2.5 text-xs text-gray-200">
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" /><span>20% Discount on all services</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" /><span>Unlimited Priority Booking</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" /><span>Dedicated Executive VIP Support</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" /><span>Complimentary Hair Spa & Facial / mo</span></div>
-                <div className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-rosegold-400 shrink-0" /><span>VIP Lounge Access & Gala Events</span></div>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-4 border-t border-white/10">
-              <button
-                onClick={() => router.push('/membership/gold')}
-                className="w-full py-2.5 rounded-full bg-dark-900 text-rosegold-300 font-bold text-xs border border-rosegold-500/40 hover:bg-dark-700 transition-all cursor-pointer"
-              >
-                View Details
-              </button>
-              <button
-                onClick={() => router.push('/membership/gold')}
-                className="w-full py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
-              >
-                Buy Gold VIP (20% Off)
-              </button>
-            </div>
-          </div>
-
+            );
+          })}
         </div>
       </section>
 

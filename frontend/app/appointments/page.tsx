@@ -24,9 +24,13 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
+import dynamic from 'next/dynamic';
 import { API_BASE_URL } from '@/lib/api';
 import AppointmentCard, { AppointmentCardData } from '@/components/appointments/AppointmentCard';
-import AppointmentDetailsModal from '@/components/appointments/AppointmentDetailsModal';
+
+const AppointmentDetailsModal = dynamic(() => import('@/components/appointments/AppointmentDetailsModal'), {
+  ssr: false
+});
 
 function AppointmentsContent() {
   const { user, isLoading } = useAuth();

@@ -58,6 +58,7 @@ import { useSocket } from '@/context/SocketContext';
 import ImageUploader from '@/components/ui/ImageUploader';
 import QuickContactActions from '@/components/admin/QuickContactActions';
 import VIPBadge from '@/components/common/VIPBadge';
+import { SALON_CATALOGUE } from '@/lib/servicesData';
 
 interface Employee {
   _id: string;
@@ -296,7 +297,7 @@ function AdminDashboardContent() {
   });
 
   // Modal Controls
-  const [modalType, setModalType] = useState<'addEmp' | 'editEmp' | 'addCust' | 'addSrv' | 'editSrv' | 'addApp' | 'empCreds' | 'viewEmp' | 'addPay' | 'viewPay' | 'rescheduleNote' | null>(null);
+  const [modalType, setModalType] = useState<'addEmp' | 'editEmp' | 'addCust' | 'addSrv' | 'editSrv' | 'addMemb' | 'editMemb' | 'addApp' | 'empCreds' | 'viewEmp' | 'addPay' | 'viewPay' | 'rescheduleNote' | null>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [createdCredentials, setCreatedCredentials] = useState<any>(null);
   const [copiedCreds, setCopiedCreds] = useState(false);
@@ -458,9 +459,27 @@ function AdminDashboardContent() {
 
   const [custForm, setCustForm] = useState({ name: '', email: '', phone: '', membership: 'VIP Gold' });
   
+  const [servicesSubTab, setServicesSubTab] = useState<'memberships' | 'main-services' | 'full-catalogue'>('memberships');
+  const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
+  const [catalogueGenderFilter, setCatalogueGenderFilter] = useState<'all' | 'men' | 'women' | 'kids'>('all');
+  const [catalogueCatFilter, setCatalogueCatFilter] = useState<string>('All');
+
+  const [membForm, setMembForm] = useState({
+    code: '',
+    name: '',
+    badge: '👑 VIP Member',
+    monthlyPrice: 999,
+    yearlyPrice: 9999,
+    discountPercentage: 10,
+    tagline: 'Essential VIP Privileges & Special Perks',
+    benefits: '10% Discount on all salon services, Priority Salon Booking, Dedicated Support'
+  });
+
   const [srvForm, setSrvForm] = useState({
     name: '',
     category: 'Hair',
+    gender: 'all' as 'all' | 'men' | 'women' | 'kids',
+    subCategory: 'Hair Care',
     price: 1999,
     discountPrice: 1699,
     durationMinutes: 60,
@@ -506,7 +525,7 @@ function AdminDashboardContent() {
 
   const fetchAdminData = async () => {
     try {
-      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes, membRes] = await Promise.all([
+      const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes, membRes, membPlansRes] = await Promise.all([
         fetch(`${API_BASE_URL}/admin/analytics`).then(r => r.json()).catch(() => ({ data: null })),
         fetch(`${API_BASE_URL}/admin/employees`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/customers`).then(r => r.json()).catch(() => ({ data: [] })),
@@ -520,7 +539,8 @@ function AdminDashboardContent() {
         fetch(`${API_BASE_URL}/admin/transactions`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/attendance/report`).then(r => r.json()).catch(() => ({ data: [] })),
         fetch(`${API_BASE_URL}/admin/enquiries`).then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`${API_BASE_URL}/membership/admin/analytics`).then(r => r.json()).catch(() => ({ data: null }))
+        fetch(`${API_BASE_URL}/membership/admin/analytics`).then(r => r.json()).catch(() => ({ data: null })),
+        fetch(`${API_BASE_URL}/admin/memberships`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
       if (anaRes.data) setAnalytics(anaRes.data);
@@ -541,6 +561,7 @@ function AdminDashboardContent() {
       if (attReportRes.data) setAttendanceReport(attReportRes.data);
       if (enqRes.data) setEnquiries(enqRes.data);
       if (membRes.data) setMembershipsData(membRes.data);
+      if (membPlansRes.data && Array.isArray(membPlansRes.data)) setMembershipPlans(membPlansRes.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -738,6 +759,48 @@ function AdminDashboardContent() {
     if (!confirm('Delete service from menu?')) return;
     await fetch(`${API_BASE_URL}/admin/services/${id}`, { method: 'DELETE' });
     setServices(services.filter(s => s._id !== id));
+  };
+
+  // MEMBERSHIP PLANS CRUD HANDLERS
+  const handleSaveMembership = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      name: membForm.name,
+      code: membForm.code || membForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      badge: membForm.badge,
+      monthlyPrice: Number(membForm.monthlyPrice),
+      yearlyPrice: Number(membForm.yearlyPrice || membForm.monthlyPrice * 10),
+      discountPercentage: Number(membForm.discountPercentage),
+      tagline: membForm.tagline,
+      benefits: typeof membForm.benefits === 'string' ? membForm.benefits.split(',').map(b => b.trim()).filter(Boolean) : membForm.benefits,
+      isActive: true
+    };
+
+    if (modalType === 'editMemb' && selectedItem) {
+      const res = await fetch(`${API_BASE_URL}/admin/memberships/${selectedItem._id || selectedItem.code}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      const updated = data.data || payload;
+      setMembershipPlans(membershipPlans.map(m => (m._id === selectedItem._id || m.code === selectedItem.code) ? { ...m, ...updated } : m));
+    } else {
+      const res = await fetch(`${API_BASE_URL}/admin/memberships`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.data) setMembershipPlans([data.data, ...membershipPlans]);
+    }
+    setModalType(null);
+  };
+
+  const handleDeleteMembership = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this membership package?')) return;
+    await fetch(`${API_BASE_URL}/admin/memberships/${id}`, { method: 'DELETE' });
+    setMembershipPlans(membershipPlans.filter(m => m._id !== id && m.code !== id));
   };
 
   // PAYROLL & SALARY SLIP CRUD HANDLERS
@@ -2509,134 +2572,432 @@ function AdminDashboardContent() {
             </div>
           )}
 
-          {/* TAB 5: SERVICES MENU MANAGEMENT */}
+          {/* TAB 5: SERVICES MENU MANAGEMENT (3-SECTION HIERARCHICAL LAYOUT) */}
           {activeTab === 'services' && (
             <div className="space-y-6 animate-fadeIn text-left">
+              
+              {/* Header Banner & Global Action Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <h2 className="text-2xl font-bold font-serif text-white">Services & Pricing Menu Control</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Manage treatment titles, categories, pricing, durations, descriptions, procedure steps, and cover images.</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Full access control for VIP Membership Packages, Main Services, and Full Salon Menu Catalogue Pricings.</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   <button onClick={() => handleExportReport('services')} className="px-3.5 py-2 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
                     <Download className="w-3.5 h-3.5" />
                     <span>CSV</span>
                   </button>
-                  <button
-                    onClick={() => {
-                      setSrvForm({
-                        name: '',
-                        category: 'Hair',
-                        price: 1999,
-                        discountPrice: 1699,
-                        durationMinutes: 60,
-                        rating: 4.9,
-                        description: 'Luxury botanical treatment provided by SPY Salon certified specialists.',
-                        image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
-                        isPopular: true,
-                        benefits: 'Deep Cellular Hydration, 100% Organic Serums, Stress Relief via Pressure Point Therapy',
-                        step1Title: 'Specialist Consultation & Texture Analysis',
-                        step1Desc: 'In-depth assessment by certified SPY Salon specialists to tailor treatment formulations.',
-                        step2Title: 'Deep Cleansing & Botanical Exfoliation',
-                        step2Desc: 'Removal of micro-impurities using organic, hypoallergenic cleansers.',
-                        step3Title: 'Therapeutic Hydro-Mask & Steam Treatment',
-                        step3Desc: 'Deep penetration of active botanical nutrients combined with gentle stress relief massage.',
-                        step4Title: 'Post-Care Moisture Seal & Executive Finish',
-                        step4Desc: 'Final application of protection shield, nutrient lock, and professional executive finish.'
-                      });
-                      setModalType('addSrv');
-                    }}
-                    className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md flex items-center justify-center space-x-1 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>+ Add New Treatment Service</span>
-                  </button>
+                  
+                  {servicesSubTab === 'memberships' ? (
+                    <button
+                      onClick={() => {
+                        setMembForm({
+                          code: '',
+                          name: '',
+                          badge: '👑 VIP Member',
+                          monthlyPrice: 1499,
+                          yearlyPrice: 14999,
+                          discountPercentage: 15,
+                          tagline: 'Exclusive VIP Privileges & Monthly Perks',
+                          benefits: '15% Flat Discount on All Services, Priority Booking, Free Monthly Treatment'
+                        });
+                        setSelectedItem(null);
+                        setModalType('addMemb');
+                      }}
+                      className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md flex items-center justify-center space-x-1 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Add New Membership Package</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setSrvForm({
+                          name: '',
+                          category: 'Hair',
+                          gender: catalogueGenderFilter !== 'all' ? catalogueGenderFilter : 'all',
+                          subCategory: 'Hair Care',
+                          price: 1999,
+                          discountPrice: 1699,
+                          durationMinutes: 60,
+                          rating: 4.9,
+                          description: 'Luxury botanical treatment provided by SPY Salon certified specialists.',
+                          image: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
+                          isPopular: true,
+                          benefits: 'Deep Cellular Hydration, 100% Organic Serums, Stress Relief via Pressure Point Therapy',
+                          step1Title: 'Specialist Consultation & Texture Analysis',
+                          step1Desc: 'In-depth assessment by certified SPY Salon specialists to tailor treatment formulations.',
+                          step2Title: 'Deep Cleansing & Botanical Exfoliation',
+                          step2Desc: 'Removal of micro-impurities using organic, hypoallergenic cleansers.',
+                          step3Title: 'Therapeutic Hydro-Mask & Steam Treatment',
+                          step3Desc: 'Deep penetration of active botanical nutrients combined with gentle stress relief massage.',
+                          step4Title: 'Post-Care Moisture Seal & Executive Finish',
+                          step4Desc: 'Final application of protection shield, nutrient lock, and professional executive finish.'
+                        });
+                        setSelectedItem(null);
+                        setModalType('addSrv');
+                      }}
+                      className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md flex items-center justify-center space-x-1 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Add New Treatment Service</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Services Grid with Full Features */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {filteredServices.map((s) => (
-                  <div key={s._id} className="glass-card rounded-3xl border border-rosegold-500/30 overflow-hidden flex flex-col justify-between hover:border-rosegold-500/60 transition-all">
-                    <div>
-                      <div className="relative h-44 w-full bg-dark-800">
-                        <img src={s.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80'} alt={s.name} className="w-full h-full object-cover" />
-                        <span className="absolute top-3 left-3 bg-purple-900/80 backdrop-blur-md text-purple-200 border border-purple-500/40 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase">
-                          {s.category}
-                        </span>
-                        {s.isPopular && (
-                          <span className="absolute top-3 right-14 bg-rosegold-500 text-dark-900 font-bold text-[9px] px-2.5 py-0.5 rounded-full uppercase">
-                            Popular
-                          </span>
-                        )}
-                        <div className="absolute bottom-3 right-3 flex items-center space-x-1">
-                          <button
-                            onClick={() => {
-                              setSelectedItem(s);
-                              const steps = s.steps || [];
-                              setSrvForm({
-                                name: s.name,
-                                category: s.category || 'Hair',
-                                price: s.price,
-                                discountPrice: s.discountPrice || s.price,
-                                durationMinutes: s.durationMinutes || 60,
-                                rating: s.rating || 4.9,
-                                description: s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.',
-                                image: s.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
-                                isPopular: s.isPopular !== undefined ? s.isPopular : true,
-                                benefits: Array.isArray(s.benefits) ? s.benefits.join(', ') : 'Deep Cellular Hydration, 100% Organic Serums, Stress Relief',
-                                step1Title: steps[0]?.title || 'Specialist Consultation & Texture Analysis',
-                                step1Desc: steps[0]?.desc || 'In-depth assessment by certified SPY Salon specialists.',
-                                step2Title: steps[1]?.title || 'Deep Cleansing & Botanical Exfoliation',
-                                step2Desc: steps[1]?.desc || 'Removal of micro-impurities using organic cleansers.',
-                                step3Title: steps[2]?.title || 'Therapeutic Hydro-Mask & Steam Treatment',
-                                step3Desc: steps[2]?.desc || 'Deep penetration of active botanical nutrients.',
-                                step4Title: steps[3]?.title || 'Post-Care Moisture Seal & Executive Finish',
-                                step4Desc: steps[3]?.desc || 'Final application of protection shield and executive finish.'
-                              });
-                              setModalType('editSrv');
-                            }}
-                            className="p-1.5 rounded-lg bg-dark-900/80 text-white hover:bg-dark-900 cursor-pointer"
-                            title="Edit Service Details & Steps"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDeleteService(s._id)} className="p-1.5 rounded-lg bg-red-600/80 text-white hover:bg-red-600 cursor-pointer" title="Delete Service">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
+              {/* 3-Section Order Navigation Tabs */}
+              <div className="flex items-center space-x-2 border-b border-white/10 pb-3 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => setServicesSubTab('memberships')}
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+                    servicesSubTab === 'memberships'
+                      ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
+                      : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span>1. VIP Membership Packages ({membershipPlans.length || 3})</span>
+                </button>
 
-                      <div className="p-5 space-y-3 text-left">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-white font-serif font-bold text-base">{s.name}</h3>
-                          <div className="flex items-center space-x-1 text-xs text-yellow-400 font-bold">
-                            <Star className="w-3.5 h-3.5 fill-yellow-400" />
-                            <span>{s.rating || 4.9}</span>
+                <button
+                  type="button"
+                  onClick={() => setServicesSubTab('main-services')}
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+                    servicesSubTab === 'main-services'
+                      ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
+                      : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Star className="w-4 h-4 text-yellow-400" />
+                  <span>2. Main Featured Services ({services.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServicesSubTab('full-catalogue')}
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+                    servicesSubTab === 'full-catalogue'
+                      ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
+                      : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Scissors className="w-4 h-4 text-rosegold-400" />
+                  <span>3. Full Menu Pricing Catalogue</span>
+                </button>
+              </div>
+
+              {/* SECTION 1: MEMBERSHIP PACKAGES & PRICING */}
+              {servicesSubTab === 'memberships' && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-400">Manage VIP Tier Plans, Monthly/Yearly Pricing, Discount percentages, and custom benefits.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {membershipPlans.map((m: any) => (
+                      <div key={m._id || m.code} className="glass-card p-6 rounded-3xl border border-rosegold-500/30 flex flex-col justify-between hover:border-rosegold-500/60 transition-all space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold font-mono text-rosegold-400 bg-rosegold-500/10 px-3 py-1 rounded-full border border-rosegold-500/20">
+                              {m.badge || m.name}
+                            </span>
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedItem(m);
+                                  setMembForm({
+                                    code: m.code || m._id,
+                                    name: m.name,
+                                    badge: m.badge || '👑 VIP Member',
+                                    monthlyPrice: m.monthlyPrice || 999,
+                                    yearlyPrice: m.yearlyPrice || 9999,
+                                    discountPercentage: m.discountPercentage || 10,
+                                    tagline: m.tagline || 'Essential VIP Privileges & Perks',
+                                    benefits: Array.isArray(m.benefits) ? m.benefits.join(', ') : (m.benefits || '')
+                                  });
+                                  setModalType('editMemb');
+                                }}
+                                className="p-1.5 rounded-lg bg-dark-800 text-gray-300 hover:text-white cursor-pointer border border-white/10"
+                                title="Edit Package Details"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMembership(m._id || m.code)}
+                                className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 cursor-pointer border border-red-500/30"
+                                title="Delete Package"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <h3 className="text-xl font-bold font-serif text-white">{m.name}</h3>
+                          <p className="text-xs text-gray-400">{m.tagline}</p>
+
+                          <div className="p-3 rounded-2xl bg-dark-850 border border-white/10 space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-400">Monthly Plan:</span>
+                              <span className="text-rosegold-400 font-bold font-serif">₹{m.monthlyPrice} / mo</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-400">Yearly Plan:</span>
+                              <span className="text-white font-bold font-serif">₹{m.yearlyPrice} / yr</span>
+                            </div>
+                            <div className="flex justify-between text-xs pt-1 border-t border-white/10">
+                              <span className="text-gray-400">Member Discount:</span>
+                              <span className="text-green-400 font-bold">{m.discountPercentage}% OFF All Services</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 pt-1">
+                            <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Package Benefits:</span>
+                            <ul className="space-y-1 text-xs text-gray-300">
+                              {(Array.isArray(m.benefits) ? m.benefits : (m.benefits || '').split(',')).map((b: string, i: number) => (
+                                <li key={i} className="flex items-center space-x-1.5">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
+                                  <span className="line-clamp-1">{b}</span>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-400 line-clamp-2">{s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.'}</p>
-                        
-                        <div className="flex items-center space-x-2 text-xs text-gray-300">
-                          <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                          <span>Duration: <strong>{s.durationMinutes || 60} Minutes</strong></span>
+                        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                          <span className="text-green-400 font-bold text-[10px] bg-green-500/15 px-2.5 py-0.5 rounded-full border border-green-500/30">Active Package</span>
+                          <span className="text-gray-400 font-mono text-[10px]">Slug: {m.code}</span>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: MAIN FEATURED SERVICES & PRICING */}
+              {servicesSubTab === 'main-services' && (
+                <div className="space-y-4 animate-fadeIn">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {filteredServices.map((s) => (
+                      <div key={s._id} className="glass-card rounded-3xl border border-rosegold-500/30 overflow-hidden flex flex-col justify-between hover:border-rosegold-500/60 transition-all">
+                        <div>
+                          <div className="relative h-44 w-full bg-dark-800">
+                            <img src={s.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80'} alt={s.name} className="w-full h-full object-cover" />
+                            <span className="absolute top-3 left-3 bg-purple-900/80 backdrop-blur-md text-purple-200 border border-purple-500/40 px-3 py-0.5 rounded-full text-[10px] font-bold uppercase">
+                              {s.category}
+                            </span>
+                            {s.isPopular && (
+                              <span className="absolute top-3 right-14 bg-rosegold-500 text-dark-900 font-bold text-[9px] px-2.5 py-0.5 rounded-full uppercase">
+                                Popular
+                              </span>
+                            )}
+                            <div className="absolute bottom-3 right-3 flex items-center space-x-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedItem(s);
+                                  const steps = s.steps || [];
+                                  setSrvForm({
+                                    name: s.name,
+                                    category: s.category || 'Hair',
+                                    gender: (s as any).gender || 'all',
+                                    subCategory: (s as any).subCategory || s.category || 'Hair Care',
+                                    price: s.price,
+                                    discountPrice: s.discountPrice || s.price,
+                                    durationMinutes: s.durationMinutes || 60,
+                                    rating: s.rating || 4.9,
+                                    description: s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.',
+                                    image: s.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
+                                    isPopular: s.isPopular !== undefined ? s.isPopular : true,
+                                    benefits: Array.isArray(s.benefits) ? s.benefits.join(', ') : 'Deep Cellular Hydration, 100% Organic Serums, Stress Relief',
+                                    step1Title: steps[0]?.title || 'Specialist Consultation & Texture Analysis',
+                                    step1Desc: steps[0]?.desc || 'In-depth assessment by certified SPY Salon specialists.',
+                                    step2Title: steps[1]?.title || 'Deep Cleansing & Botanical Exfoliation',
+                                    step2Desc: steps[1]?.desc || 'Removal of micro-impurities using organic cleansers.',
+                                    step3Title: steps[2]?.title || 'Therapeutic Hydro-Mask & Steam Treatment',
+                                    step3Desc: steps[2]?.desc || 'Deep penetration of active botanical nutrients.',
+                                    step4Title: steps[3]?.title || 'Post-Care Moisture Seal & Executive Finish',
+                                    step4Desc: steps[3]?.desc || 'Final application of protection shield and executive finish.'
+                                  });
+                                  setModalType('editSrv');
+                                }}
+                                className="p-1.5 rounded-lg bg-dark-900/80 text-white hover:bg-dark-900 cursor-pointer"
+                                title="Edit Service Details & Steps"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => handleDeleteService(s._id)} className="p-1.5 rounded-lg bg-red-600/80 text-white hover:bg-red-600 cursor-pointer" title="Delete Service">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-5 space-y-3 text-left">
+                            <div className="flex items-center justify-between">
+                              <h3 className="text-white font-serif font-bold text-base">{s.name}</h3>
+                              <div className="flex items-center space-x-1 text-xs text-yellow-400 font-bold">
+                                <Star className="w-3.5 h-3.5 fill-yellow-400" />
+                                <span>{s.rating || 4.9}</span>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-gray-400 line-clamp-2">{s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.'}</p>
+                            
+                            <div className="flex items-center space-x-2 text-xs text-gray-300">
+                              <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+                              <span>Duration: <strong>{s.durationMinutes || 60} Minutes</strong></span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="px-5 pb-5 pt-2 border-t border-white/10 flex items-center justify-between">
+                          <div>
+                            <span className="text-rosegold-400 font-bold text-xl font-serif">₹{s.price}</span>
+                            {s.discountPrice && s.discountPrice < s.price && (
+                              <span className="text-gray-500 text-xs line-through ml-2">₹{s.discountPrice}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-green-400 bg-green-500/15 px-2.5 py-0.5 rounded-full border border-green-500/30">Active Menu</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 3: FULL SALON MENU PRICINGS CATALOGUE */}
+              {servicesSubTab === 'full-catalogue' && (
+                <div className="space-y-4 animate-fadeIn">
+                  
+                  {/* Catalogue Gender & Category Filter Bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-dark-850 border border-rosegold-500/30">
+                    <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto">
+                      <span className="text-xs text-gray-400 font-bold uppercase mr-1">Section:</span>
+                      {[
+                        { id: 'all', label: '🌟 All Sections' },
+                        { id: 'men', label: '👨 Men' },
+                        { id: 'women', label: '👩 Women' },
+                        { id: 'kids', label: '🧒 Kids' }
+                      ].map(g => (
+                        <button
+                          type="button"
+                          key={g.id}
+                          onClick={() => setCatalogueGenderFilter(g.id as any)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            catalogueGenderFilter === g.id
+                              ? 'rosegold-gradient-bg text-dark-900 font-extrabold'
+                              : 'bg-dark-800 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
                     </div>
 
-                    <div className="px-5 pb-5 pt-2 border-t border-white/10 flex items-center justify-between">
-                      <div>
-                        <span className="text-rosegold-400 font-bold text-xl font-serif">₹{s.price}</span>
-                        {s.discountPrice && s.discountPrice < s.price && (
-                          <span className="text-gray-500 text-xs line-through ml-2">₹{s.discountPrice}</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] font-bold text-green-400 bg-green-500/15 px-2.5 py-0.5 rounded-full border border-green-500/30">Active Menu</span>
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <select
+                        value={catalogueCatFilter}
+                        onChange={e => setCatalogueCatFilter(e.target.value)}
+                        className="px-3 py-1.5 rounded-xl bg-dark-900 border border-white/10 text-xs text-white focus:outline-none focus:border-rosegold-500 font-bold"
+                      >
+                        <option value="All">All Categories (Hair, Skin, Spa, Nails, Bridal, Grooming)</option>
+                        {categoriesList.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Catalogue Grid Items */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {SALON_CATALOGUE.flatMap(sec => 
+                      sec.categories.flatMap(cat => 
+                        cat.items.map(item => ({
+                          ...item,
+                          sectionGender: sec.id,
+                          categoryName: cat.name,
+                          categorySlug: cat.slug || cat.id
+                        }))
+                      )
+                    ).filter(item => {
+                      if (catalogueGenderFilter !== 'all' && item.sectionGender !== catalogueGenderFilter) return false;
+                      if (catalogueCatFilter !== 'All' && !item.categoryName.toLowerCase().includes(catalogueCatFilter.toLowerCase())) return false;
+                      return true;
+                    }).slice(0, 30).map((catItem) => (
+                      <div key={catItem.id} className="glass-card rounded-3xl border border-white/10 overflow-hidden flex flex-col justify-between hover:border-rosegold-500/50 transition-all">
+                        <div>
+                          <div className="relative h-40 w-full bg-dark-800">
+                            <img src={catItem.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80'} alt={catItem.name} className="w-full h-full object-cover" />
+                            <div className="absolute top-3 left-3 flex items-center space-x-1">
+                              <span className="bg-dark-900/80 backdrop-blur-md text-rosegold-300 border border-rosegold-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
+                                {catItem.sectionGender.toUpperCase()}
+                              </span>
+                              <span className="bg-purple-900/80 backdrop-blur-md text-purple-200 border border-purple-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                {catItem.categoryName}
+                              </span>
+                            </div>
+
+                            <div className="absolute bottom-3 right-3 flex items-center space-x-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedItem(catItem);
+                                  setSrvForm({
+                                    name: catItem.name,
+                                    category: catItem.categoryName,
+                                    gender: catItem.sectionGender as any,
+                                    subCategory: catItem.subCategory || catItem.categorySlug,
+                                    price: catItem.price,
+                                    discountPrice: catItem.originalPrice || catItem.price,
+                                    durationMinutes: parseInt(catItem.duration) || 60,
+                                    rating: 4.9,
+                                    description: catItem.description,
+                                    image: catItem.image || 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=500&auto=format&fit=crop&q=80',
+                                    isPopular: Boolean(catItem.popular),
+                                    benefits: 'Premium Organic Ingredients, Certified Specialist Execution',
+                                    step1Title: 'Consultation & Skin/Hair Analysis',
+                                    step1Desc: 'Detailed analysis before treatment start.',
+                                    step2Title: 'Therapeutic Preparation',
+                                    step2Desc: 'Preparation and deep cleansing.',
+                                    step3Title: 'Main Treatment Application',
+                                    step3Desc: 'Core treatment application.',
+                                    step4Title: 'Final Moisture Shield',
+                                    step4Desc: 'Protection seal and styling finish.'
+                                  });
+                                  setModalType('editSrv');
+                                }}
+                                className="p-1.5 rounded-lg bg-dark-900/90 text-white hover:bg-dark-900 cursor-pointer"
+                                title="Edit Item Details"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="p-4 space-y-2 text-left">
+                            <h3 className="text-white font-serif font-bold text-sm">{catItem.name}</h3>
+                            <p className="text-xs text-gray-400 line-clamp-2">{catItem.description}</p>
+                            <div className="flex items-center space-x-2 text-[11px] text-gray-300">
+                              <Clock className="w-3 h-3 text-rosegold-400" />
+                              <span>{catItem.duration}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="px-4 pb-4 pt-2 border-t border-white/10 flex items-center justify-between">
+                          <div>
+                            <span className="text-rosegold-400 font-bold text-lg font-serif">₹{catItem.price}</span>
+                            {catItem.originalPrice && catItem.originalPrice > catItem.price && (
+                              <span className="text-gray-500 text-xs line-through ml-2">₹{catItem.originalPrice}</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-bold text-rosegold-400 bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/20">Catalogue Item</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
 
@@ -4245,6 +4606,107 @@ function AdminDashboardContent() {
               </form>
             )}
 
+            {/* ADD / EDIT MEMBERSHIP PACKAGE MODAL */}
+            {(modalType === 'addMemb' || modalType === 'editMemb') && (
+              <form onSubmit={handleSaveMembership} className="space-y-3.5">
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Membership Package Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Gold VIP Membership"
+                    value={membForm.name}
+                    onChange={e => setMembForm({ ...membForm, name: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Package Code Slug *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. gold-vip"
+                      value={membForm.code}
+                      onChange={e => setMembForm({ ...membForm, code: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Badge Icon / Label *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 👑 Gold VIP Member"
+                      value={membForm.badge}
+                      onChange={e => setMembForm({ ...membForm, badge: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Monthly Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={membForm.monthlyPrice}
+                      onChange={e => setMembForm({ ...membForm, monthlyPrice: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-rosegold-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Yearly Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={membForm.yearlyPrice}
+                      onChange={e => setMembForm({ ...membForm, yearlyPrice: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-rosegold-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Discount Off (%) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={membForm.discountPercentage}
+                      onChange={e => setMembForm({ ...membForm, discountPercentage: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-green-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Tagline / Subtitle Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Essential VIP Privileges & Special Perks"
+                    value={membForm.tagline}
+                    onChange={e => setMembForm({ ...membForm, tagline: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Included Package Benefits (Comma Separated)</label>
+                  <textarea
+                    rows={3}
+                    placeholder="20% Flat Discount, Free Monthly Hair Spa, Priority Queue"
+                    value={membForm.benefits}
+                    onChange={e => setMembForm({ ...membForm, benefits: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                  />
+                </div>
+
+                <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                  {modalType === 'editMemb' ? 'Update Membership Package' : 'Publish New Membership Package'}
+                </button>
+              </form>
+            )}
+
             {/* ADD / EDIT SERVICE MODAL WITH CUSTOMIZABLE PROCEDURE STEPS & BENEFITS */}
             {(modalType === 'addSrv' || modalType === 'editSrv') && (
               <form onSubmit={handleSaveService} className="space-y-3.5">
@@ -4262,7 +4724,33 @@ function AdminDashboardContent() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Category *</label>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Target Gender / Section *</label>
+                    <select
+                      value={srvForm.gender}
+                      onChange={e => setSrvForm({ ...srvForm, gender: e.target.value as 'all' | 'men' | 'women' | 'kids' })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
+                    >
+                      <option value="all">🌟 All / General Salon</option>
+                      <option value="men">👨 Men's Salon & Grooming</option>
+                      <option value="women">👩 Women's Luxury Salon</option>
+                      <option value="kids">🧒 Kids & Teens Studio</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Subcategory / Service Group *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Hair Care, Facials, Keratin, Beard"
+                      value={srvForm.subCategory}
+                      onChange={e => setSrvForm({ ...srvForm, subCategory: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Category *</label>
                     <select 
                       value={isCustomCategory ? 'OTHER_CUSTOM' : srvForm.category} 
                       onChange={e => {
@@ -4273,7 +4761,7 @@ function AdminDashboardContent() {
                           setSrvForm({ ...srvForm, category: e.target.value });
                         }
                       }} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
                     >
                       {categoriesList.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -4296,13 +4784,13 @@ function AdminDashboardContent() {
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Duration (Minutes) *</label>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Duration (Minutes) *</label>
                     <input 
                       type="number" 
                       required 
                       value={srvForm.durationMinutes} 
                       onChange={e => setSrvForm({ ...srvForm, durationMinutes: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
                     />
                   </div>
                 </div>

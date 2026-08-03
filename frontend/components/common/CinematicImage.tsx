@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { memo } from 'react';
 
 interface CinematicImageProps {
   src: string;
@@ -14,43 +13,29 @@ interface CinematicImageProps {
   priority?: boolean;
 }
 
-export default function CinematicImage({
+const CinematicImage = memo(function CinematicImage({
   src,
   alt,
   className = '',
   containerClassName = '',
   overlay = false,
   overlayGradient = 'from-dark-900/80 via-transparent to-transparent',
-  duration = 16,
   priority = false
 }: CinematicImageProps) {
   return (
     <div className={`relative overflow-hidden isolation-auto ${containerClassName}`}>
-      <motion.img
+      <img
         src={src}
         alt={alt}
         loading={priority ? 'eager' : 'lazy'}
         decoding="async"
-        initial={{ opacity: 1, scale: 1.0 }}
-        animate={{
-          scale: [1.0, 1.08, 1.0],
-          opacity: 1
-        }}
-        transition={{
-          opacity: { duration: 0.3, ease: 'easeOut' },
-          scale: {
-            duration: duration,
-            repeat: Infinity,
-            repeatType: 'reverse',
-            ease: 'easeInOut'
-          }
-        }}
+        fetchPriority={priority ? 'high' : 'auto'}
         style={{
-          willChange: 'transform, opacity',
+          transform: 'translateZ(0)',
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden'
         }}
-        className={`w-full h-full object-cover gpu-accelerated ${className}`}
+        className={`w-full h-full object-cover transition-transform duration-700 ease-out hover:scale-105 ${className}`}
       />
 
       {overlay && (
@@ -58,4 +43,7 @@ export default function CinematicImage({
       )}
     </div>
   );
-}
+});
+
+export default CinematicImage;
+

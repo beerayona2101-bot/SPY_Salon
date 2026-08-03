@@ -196,6 +196,43 @@ exports.deleteService = async (req, res, next) => {
   }
 };
 
+// ================= MEMBERSHIP PLANS CRUD =================
+exports.getAdminMemberships = async (req, res, next) => {
+  try {
+    const result = await adminService.getMemberships();
+    return ApiResponse.success(res, result.data, 'Membership packages retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.createMembership = async (req, res, next) => {
+  try {
+    const created = await adminService.createMembership(req.body);
+    return ApiResponse.created(res, created, 'New membership package created');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateMembership = async (req, res, next) => {
+  try {
+    const updated = await adminService.updateMembership(req.params.id, req.body);
+    return ApiResponse.success(res, updated, 'Membership package updated');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteMembership = async (req, res, next) => {
+  try {
+    await adminService.deleteMembership(req.params.id);
+    return ApiResponse.success(res, null, 'Membership package removed');
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ================= APPOINTMENTS DESK =================
 exports.getAdminAppointments = async (req, res, next) => {
   try {

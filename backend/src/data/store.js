@@ -359,9 +359,49 @@ const addUserNotification = (customerPhone, customerEmail, title, message, type 
   broadcastEvent('notification:user', notifItem);
 };
 
+const membershipPlans = [
+  {
+    _id: 'mem1',
+    code: 'standard',
+    name: 'Standard Membership',
+    badge: '🥉 Standard Member',
+    monthlyPrice: 999,
+    yearlyPrice: 9999,
+    discountPercentage: 5,
+    tagline: 'Essential VIP Privileges & Special Perks',
+    benefits: ['5% Discount on all salon services', 'Priority Salon Booking', 'Special Birthday Offer & Gift', 'Dedicated Member Support Desk'],
+    isActive: true
+  },
+  {
+    _id: 'mem2',
+    code: 'premium',
+    name: 'Premium Membership',
+    badge: '🥈 Premium Member',
+    monthlyPrice: 2499,
+    yearlyPrice: 24999,
+    discountPercentage: 10,
+    tagline: 'Enhanced Luxury Experience & Monthly Spa Benefits',
+    benefits: ['10% Discount on all salon services', 'Priority Booking', 'Free Dermato-Cosmetology Consultation', 'Free Hair Spa Treatment every month', 'VIP Support'],
+    isActive: true
+  },
+  {
+    _id: 'mem3',
+    code: 'gold',
+    name: 'Gold VIP Membership',
+    badge: '👑 Gold VIP Member',
+    monthlyPrice: 4999,
+    yearlyPrice: 49999,
+    discountPercentage: 20,
+    tagline: 'The Ultimate All-Inclusive Salon Privilege & Concierge',
+    benefits: ['20% Flat Discount on ALL Treatments', 'Free Monthly 24K Gold Facial & Hair Spa', 'VIP Private Suite Access', 'Personal Senior Stylist Reserved', 'Unlimited Priority Queue'],
+    isActive: true
+  }
+];
+
 module.exports = {
   employees,
   services,
+  membershipPlans,
   appointments,
   leaves,
   attendance,

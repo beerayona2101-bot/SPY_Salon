@@ -1,37 +1,48 @@
 /**
- * High-performance In-Memory API Cache Middleware with ETag support
- * @param {number} ttlSeconds Time to live in seconds (default: 300 = 5 mins)
+ * In-Memory Response Caching Middleware
+ * Adds HTTP Cache-Control and ETag validation headers for fast response delivery.
  */
 const cache = new Map();
 
-const cacheMiddleware = (ttlSeconds = 300) => {
+/**
+ * Cache Middleware Generator
+ * @param {number} durationSeconds - Cache duration in seconds (default: 300)
+ */
+const cacheMiddleware = (durationSeconds = 300) => {
   return (req, res, next) => {
     // Only cache GET requests
     if (req.method !== 'GET') {
       return next();
     }
 
-    const key = req.originalUrl || req.url;
-    const cachedItem = cache.get(key);
-    const now = Date.now();
+    const cacheKey = req.originalUrl || req.url;
+    const cachedResponse = cache.get(cacheKey);
 
-    if (cachedItem && cachedItem.expiry > now) {
+    // Check if cache entry exists and is fresh
+    if (cachedResponse && (Date.now() - cachedResponse.timestamp) < durationSeconds * 1000) {
+      res.setHeader('Cache-Control', `public, max-age=${durationSeconds}, stale-while-revalidate=600`);
       res.setHeader('X-Cache', 'HIT');
-      res.setHeader('Cache-Control', `public, max-age=${ttlSeconds}`);
-      return res.status(200).json(cachedItem.data);
+      return res.status(cachedResponse.status).json(cachedResponse.data);
     }
 
-    // Intercept json() response to cache result before sending
+    // Intercept res.json to capture response payload
     const originalJson = res.json.bind(res);
     res.json = (body) => {
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        cache.set(key, {
+      // Store in memory cache if status is 200
+      if (res.statusCode === 200) {
+        if (cache.size > 1000) {
+          const oldestKey = cache.keys().next().value;
+          if (oldestKey) cache.delete(oldestKey);
+        }
+        cache.set(cacheKey, {
+          status: 200,
           data: body,
-          expiry: Date.now() + ttlSeconds * 1000,
+          timestamp: Date.now()
         });
       }
+
+      res.setHeader('Cache-Control', `public, max-age=${durationSeconds}, stale-while-revalidate=600`);
       res.setHeader('X-Cache', 'MISS');
-      res.setHeader('Cache-Control', `public, max-age=${ttlSeconds}`);
       return originalJson(body);
     };
 
@@ -40,18 +51,17 @@ const cacheMiddleware = (ttlSeconds = 300) => {
 };
 
 /**
- * Utility function to clear cache entries matching a prefix or pattern when data updates occur
+ * Utility to invalidate cache by pattern/url
  */
-const clearApiCache = (keyPrefix) => {
-  if (!keyPrefix) {
-    cache.clear();
-    return;
-  }
+const invalidateCache = (urlPattern) => {
   for (const key of cache.keys()) {
-    if (key.includes(keyPrefix)) {
+    if (key.includes(urlPattern)) {
       cache.delete(key);
     }
   }
 };
 
-module.exports = { cacheMiddleware, clearApiCache };
+module.exports = {
+  cacheMiddleware,
+  invalidateCache
+};
