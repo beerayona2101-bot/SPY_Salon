@@ -70,14 +70,14 @@ function BookingContent() {
   const serviceIdParam = searchParams?.get('serviceId') || searchParams?.get('id');
   const serviceParam = searchParams?.get('service');
   const categoryParam = searchParams?.get('category') || 'all';
-  const subcategoryParam = searchParams?.get('subcategory') || '';
-  const packageParam = searchParams?.get('package') || 'classic';
+  const rawPackageParam = searchParams?.get('package');
+  const packageParam = rawPackageParam && rawPackageParam.trim() ? rawPackageParam.trim().toLowerCase() : null;
   const staffParam = searchParams?.get('staff') || searchParams?.get('specialist');
 
   // Dynamic Service & Specialist States
   const [loadingService, setLoadingService] = useState(true);
   const [selectedServiceObj, setSelectedServiceObj] = useState<any | null>(null);
-  const [selectedPackageTier, setSelectedPackageTier] = useState<string>('classic');
+  const [selectedPackageTier, setSelectedPackageTier] = useState<string | null>(packageParam);
   const [specialistsList, setSpecialistsList] = useState<any[]>([]);
   const [offersList, setOffersList] = useState<any[]>([]);
 
@@ -279,7 +279,8 @@ function BookingContent() {
   }, [selectedServiceObj]);
 
   const activeTierObj = useMemo(() => {
-    return packageTiers.find(p => p.id === selectedPackageTier) || packageTiers[0];
+    if (!selectedPackageTier) return null;
+    return packageTiers.find(p => p.id === selectedPackageTier) || null;
   }, [packageTiers, selectedPackageTier]);
 
   // 4. Fetch Booked Slots
@@ -324,7 +325,7 @@ function BookingContent() {
   ];
 
   // Dynamic Pricing & VIP Membership Discount Calculation
-  const subtotalPrice = activeTierObj ? activeTierObj.price : (selectedServiceObj?.price || 0);
+  const subtotalPrice = activeTierObj ? activeTierObj.price : 0;
   
   const membershipInfo = currentUserObj?.membership;
   const membershipDiscountPercent = membershipInfo?.status === 'Active' || membershipInfo?.discountPercent
@@ -364,6 +365,16 @@ function BookingContent() {
     e.preventDefault();
     setConflictError(null);
 
+    // EXPLICIT PACKAGE SELECTION VALIDATION RULE
+    if (!selectedPackageTier || !activeTierObj) {
+      setConflictError('Please select a package tier before continuing.');
+      const pkgElement = document.getElementById('package-tier-selection');
+      if (pkgElement) {
+        pkgElement.scrollIntoView({ behavior: 'smooth' });
+      }
+      return;
+    }
+
     const { isValid, errors } = validateForm(formData, {
       name: [validateName('Full Name')],
       email: [validateEmail(true)],
@@ -390,15 +401,24 @@ function BookingContent() {
       return;
     }
 
+    if (paymentMethod === 'Razorpay') {
+      setShowRazorpayModal(true);
+      return;
+    }
+
     const activePayMethod = paymentMethod || 'Cash';
     await finalizeBooking(activePayMethod);
   };
 
   const finalizeBooking = async (payMethod: string, upiIdVal?: string, txnIdVal?: string) => {
+    if (!selectedPackageTier || !activeTierObj) {
+      setConflictError('Please select a package tier before continuing.');
+      return;
+    }
     setIsSubmitting(true);
     setConflictError(null);
     try {
-      const srvName = `${selectedServiceObj?.name || 'Salon Treatment'} (${activeTierObj?.name || 'Standard'})`;
+      const srvName = `${selectedServiceObj?.name || 'Salon Treatment'} (${activeTierObj.name})`;
       const response = await fetch(`${API_BASE_URL}/appointments/public-book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -658,13 +678,21 @@ function BookingContent() {
           </div>
 
           {/* 2. DYNAMIC PACKAGE TIERS (IF MULTIPLE PACKAGES) */}
-          <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
+          <div id="package-tier-selection" className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-serif font-bold text-base text-white flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-rosegold-400" />
                 <span>Select Package Tier</span>
               </h3>
-              <span className="text-[10px] text-rosegold-400 uppercase font-semibold">Custom Formulations</span>
+              {!selectedPackageTier ? (
+                <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider animate-pulse">
+                  Selection Required
+                </span>
+              ) : (
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
+                  Tier Selected: {activeTierObj?.name}
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -812,7 +840,11 @@ function BookingContent() {
 
               <div className="flex justify-between">
                 <span className="text-gray-400">Package Tier</span>
-                <span className="font-bold text-rosegold-300">{activeTierObj.name}</span>
+                {activeTierObj ? (
+                  <span className="font-bold text-rosegold-300">{activeTierObj.name}</span>
+                ) : (
+                  <span className="font-bold text-amber-400 font-sans text-xs animate-pulse">None Selected (Required)</span>
+                )}
               </div>
 
               <div className="flex justify-between">
@@ -984,7 +1016,13 @@ function BookingContent() {
               disabled={isSubmitting}
               className="w-full py-4 rounded-2xl rosegold-gradient-bg text-dark-900 font-serif font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-transform cursor-pointer flex items-center justify-center space-x-2"
             >
-              <span>{isSubmitting ? 'Confirming Reservation...' : `Confirm & Pay ₹${grandTotal} →`}</span>
+              <span>
+                {isSubmitting
+                  ? 'Confirming Reservation...'
+                  : !selectedPackageTier
+                  ? 'Please Select Package Tier Above ↑'
+                  : `Confirm & Pay ₹${grandTotal} →`}
+              </span>
             </AnimatedButton>
           </form>
 
