@@ -164,7 +164,7 @@ export default function ServiceDetails({
           <span className="text-xs font-mono text-gray-400">3 Tiers Available</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {packages.map((pkg) => (
             <PackageCard
               key={pkg.id}
