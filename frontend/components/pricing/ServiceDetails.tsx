@@ -92,18 +92,18 @@ export default function ServiceDetails({
 
         <div className="relative z-10 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="px-3 py-1 rounded-full bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 text-xs font-bold uppercase tracking-wider inline-flex items-center space-x-1">
-              <Sparkles className="w-3.5 h-3.5 text-rosegold-400" />
-              <span>{service.category}</span>
+            <span className="px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-dark-900/90 border border-rosegold-500/60 shadow-md text-xs font-extrabold uppercase tracking-wider inline-flex items-center space-x-1.5 backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-rosegold-600 dark:text-rosegold-400 shrink-0" />
+              <span className="text-gray-900 dark:text-rosegold-300 font-extrabold">{service.category}</span>
             </span>
 
-            <span className="px-3 py-1 rounded-full bg-dark-900/80 border border-white/10 text-gray-300 text-xs font-mono inline-flex items-center space-x-1">
-              <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-              <span>{service.duration}</span>
+            <span className="px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-dark-900/90 border border-rosegold-500/60 shadow-md text-xs font-mono font-bold inline-flex items-center space-x-1.5 backdrop-blur-md">
+              <Clock className="w-3.5 h-3.5 text-rosegold-600 dark:text-rosegold-400 shrink-0" />
+              <span className="text-gray-900 dark:text-gray-200 font-bold">{service.duration}</span>
             </span>
 
             {service.popular && (
-              <span className="px-3 py-1 rounded-full rosegold-gradient-bg text-dark-900 text-xs font-extrabold uppercase tracking-wider">
+              <span className="px-3.5 py-1.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs uppercase tracking-wider shadow-md backdrop-blur-md">
                 POPULAR CHOICE
               </span>
             )}
@@ -140,9 +140,9 @@ export default function ServiceDetails({
 
               <Link
                 href="/contact"
-                className="px-5 py-3.5 rounded-full bg-dark-800 border border-white/15 hover:border-rosegold-500/40 text-gray-200 hover:text-white font-bold text-xs flex items-center space-x-2 transition-colors cursor-pointer"
+                className="px-5 py-3.5 rounded-full bg-white/90 dark:bg-dark-800 border border-rosegold-500/40 text-gray-900 dark:text-gray-200 font-bold text-xs flex items-center space-x-2 transition-colors cursor-pointer shadow-md"
               >
-                <MessageSquare className="w-4 h-4 text-rosegold-400" />
+                <MessageSquare className="w-4 h-4 text-rosegold-600 dark:text-rosegold-400" />
                 <span>Inquire</span>
               </Link>
             </div>

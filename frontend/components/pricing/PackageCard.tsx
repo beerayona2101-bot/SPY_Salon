@@ -60,8 +60,8 @@ export default function PackageCard({ packageData, serviceName, onEnquireClick }
             </div>
           </div>
 
-          <div className="inline-flex items-center space-x-1 px-3 py-1 rounded-full bg-dark-900 border border-white/10 text-gray-300 text-xs font-mono">
-            <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+          <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-dark-900 border border-rosegold-500/50 text-gray-900 dark:text-gray-300 text-xs font-mono font-bold shadow-sm">
+            <Clock className="w-3.5 h-3.5 text-rosegold-600 dark:text-rosegold-400" />
             <span>{duration}</span>
           </div>
         </div>
