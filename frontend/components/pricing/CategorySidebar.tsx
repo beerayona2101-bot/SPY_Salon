@@ -48,7 +48,7 @@ export default function CategorySidebar({
             <Sparkles className="w-4 h-4 text-rosegold-400 animate-pulse" />
             <h2 className="text-lg font-serif font-bold text-white tracking-wide">Categories</h2>
           </div>
-          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-dark-800 text-rosegold-400 border border-rosegold-500/30">
+          <span className="text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-full bg-dark-800 text-rosegold-400 border border-rosegold-500/30 shadow-sm">
             {totalServiceCount} Total
           </span>
         </div>
@@ -57,18 +57,24 @@ export default function CategorySidebar({
         <button
           type="button"
           onClick={() => onSelectCategory('all', '')}
-          className={`w-full p-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all duration-300 cursor-pointer ${
+          className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold transition-all duration-300 cursor-pointer ${
             activeGender === 'all' && !activeSubcategory
-              ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold scale-[1.02] font-extrabold'
+              ? 'rosegold-gradient-bg !text-white shadow-glow-rosegold scale-[1.02] font-extrabold'
               : 'bg-dark-800 text-gray-300 border border-white/10 hover:border-rosegold-500/50 hover:text-white'
           }`}
         >
           <div className="flex items-center space-x-2.5">
             <span className="text-base">✨</span>
-            <span>All Categories</span>
+            <span className={activeGender === 'all' && !activeSubcategory ? '!text-white font-extrabold' : ''}>
+              All Categories
+            </span>
           </div>
-          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-            activeGender === 'all' && !activeSubcategory ? 'bg-dark-900 text-rosegold-300' : 'bg-dark-900/80 text-gray-400'
+
+          {/* ACTIVE vs INACTIVE COUNT BADGE (HIGH CONTRAST BOLD WHITE ON DARK BADGE) */}
+          <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full font-extrabold transition-all shadow-sm ${
+            activeGender === 'all' && !activeSubcategory
+              ? 'category-active-count-badge'
+              : 'bg-dark-900/90 text-gray-300 dark:text-gray-200 border border-white/10'
           }`}>
             {totalServiceCount}
           </span>
@@ -85,9 +91,9 @@ export default function CategorySidebar({
                 <button
                   type="button"
                   onClick={() => onSelectCategory(group.id, '')}
-                  className={`w-full p-3 rounded-2xl flex items-center justify-between text-xs font-bold transition-all duration-300 cursor-pointer ${
+                  className={`w-full p-3.5 rounded-2xl flex items-center justify-between text-xs font-bold transition-all duration-300 cursor-pointer ${
                     isGenderActive && !activeSubcategory
-                      ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold scale-[1.02] font-extrabold'
+                      ? 'rosegold-gradient-bg !text-white shadow-glow-rosegold scale-[1.02] font-extrabold'
                       : isGenderActive
                       ? 'bg-dark-800 text-rosegold-300 border border-rosegold-500/60 shadow-lg'
                       : 'bg-dark-800/80 text-gray-300 border border-white/10 hover:border-rosegold-500/40 hover:text-white'
@@ -95,17 +101,23 @@ export default function CategorySidebar({
                 >
                   <div className="flex items-center space-x-2.5">
                     <span className="text-base">{group.icon}</span>
-                    <span>{group.title}</span>
+                    <span className={isGenderActive && !activeSubcategory ? '!text-white font-extrabold' : ''}>
+                      {group.title}
+                    </span>
                   </div>
 
-                  <div className="flex items-center space-x-1.5">
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                      isGenderActive && !activeSubcategory ? 'bg-dark-900 text-rosegold-300' : 'bg-dark-900/80 text-gray-400'
+                  <div className="flex items-center space-x-2">
+                    {/* GENDER GROUP COUNT BADGE (HIGH CONTRAST ON ACTIVE BUTTON) */}
+                    <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full font-extrabold transition-all shadow-sm ${
+                      isGenderActive && !activeSubcategory
+                        ? 'category-active-count-badge'
+                        : 'bg-dark-900/90 text-gray-300 dark:text-gray-200 border border-white/10'
                     }`}>
                       {group.subcategories.reduce((acc, s) => acc + s.count, 0)}
                     </span>
+
                     {isGenderActive ? (
-                      <ChevronDown className="w-4 h-4 text-rosegold-400" />
+                      <ChevronDown className={`w-4 h-4 ${isGenderActive && !activeSubcategory ? '!text-white' : 'text-rosegold-400'}`} />
                     ) : (
                       <ChevronRight className="w-4 h-4 text-gray-400" />
                     )}
@@ -133,7 +145,12 @@ export default function CategorySidebar({
                             <span className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-rosegold-400 animate-ping' : 'bg-gray-600'}`} />
                             <span>{sub.name}</span>
                           </div>
-                          <span className="text-[10px] font-mono text-gray-500 group-hover:text-gray-300">
+                          
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold transition-all ${
+                            isSubActive
+                              ? 'bg-rosegold-500 text-dark-900 font-extrabold shadow-sm'
+                              : 'bg-dark-900/60 text-gray-400 border border-white/5'
+                          }`}>
                             {sub.count}
                           </span>
                         </button>

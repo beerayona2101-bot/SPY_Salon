@@ -487,15 +487,24 @@ html, body, * {
 
 /* 1. "Book Appointment Now" button text & icon MUST BE WHITE IN LIGHT MODE & DARK MODE */
 .light .rosegold-gradient-bg,
-.light .rosegold-gradient-bg *,
+.light .rosegold-gradient-bg *:not(.category-active-count-badge),
 .light button.rosegold-gradient-bg,
 .light a.rosegold-gradient-bg,
-.light a.rosegold-gradient-bg span,
-.light button.rosegold-gradient-bg span,
+.light a.rosegold-gradient-bg span:not(.category-active-count-badge),
+.light button.rosegold-gradient-bg span:not(.category-active-count-badge),
 .light a.rosegold-gradient-bg svg,
 .light button.rosegold-gradient-bg svg {
   color: #FFFFFF !important;
   fill: none !important;
+}
+
+/* Category Active Count Badge Fix for Light and Dark Mode */
+.category-active-count-badge {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border: 1px solid rgba(245, 213, 200, 0.6) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* 2. Specific requested hero texts MUST BE PURE BLACK IN LIGHT MODE ONLY */
