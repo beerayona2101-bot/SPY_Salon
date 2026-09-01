@@ -52,7 +52,10 @@ router.delete('/appointments/:id', adminController.deleteAppointment);
 
 // Leave Routes
 router.get('/leaves', adminController.getLeaves);
-router.post('/leaves', validateRequest({ required: ['leaveType', 'startDate', 'endDate'] }), adminController.createLeave);
+router.get('/leaves/:id', adminController.getLeaveById);
+router.post('/leaves', adminController.createLeave);
+router.patch('/leaves/:id/approve', adminController.approveLeave);
+router.patch('/leaves/:id/reject', adminController.rejectLeave);
 router.put('/leaves/:id/status', adminController.updateLeaveStatus);
 router.put('/leaves/:id', adminController.updateLeaveStatus);
 router.delete('/leaves/:id', adminController.deleteLeave);

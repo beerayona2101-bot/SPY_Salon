@@ -133,40 +133,187 @@ exports.updateAppointmentStatus = async (req, res, next) => {
   }
 };
 
+// Asia/Kolkata Timezone Helpers for Attendance
+const getKolkataDateStr = (dateObj = new Date()) => {
+  return dateObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); // YYYY-MM-DD
+};
+
+const getKolkataTimeStr = (dateObj = new Date()) => {
+  return dateObj.toLocaleTimeString('en-US', { 
+    timeZone: 'Asia/Kolkata', 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  }); // e.g. "10:46 AM"
+};
+
 // Attendance clock-in
 exports.clockInAttendance = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
     const employeeName = req.user.name;
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getKolkataDateStr();
 
-    // Prevent duplicate clock-ins
+    // Prevent clock-in on approved leave dates
+    const approvedLeave = await Leave.findOne({
+      $or: [{ employeeId: req.user._id }, { employee: req.user._id }],
+      status: 'Approved',
+      startDate: { $lte: todayStr },
+      endDate: { $gte: todayStr }
+    });
+
+    if (approvedLeave) {
+      throw ApiError.badRequest(`Attendance Blocked: You are on approved leave today (${approvedLeave.startDate} to ${approvedLeave.endDate}). Clock-in is restricted during leave.`);
+    }
+
+    // Prevent duplicate clock-ins and validate existing state
     const existingLog = await Attendance.findOne({ employeeId, date: todayStr });
     if (existingLog) {
+      if (existingLog.attendanceState === 'CLOCKED_IN') {
+        throw ApiError.badRequest('You are already clocked in.');
+      } else if (existingLog.attendanceState === 'ON_BREAK') {
+        throw ApiError.badRequest('Please end your break before continuing.');
+      } else if (existingLog.attendanceState === 'CLOCKED_OUT') {
+        throw ApiError.badRequest("Today's shift has already been completed.");
+      }
       throw ApiError.badRequest('You have already clocked in for today!');
     }
 
-    const clockInTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const clockInTime = getKolkataTimeStr(now);
+
     const log = await Attendance.create({
       employee: req.user._id,
       employeeId,
       employeeName,
       date: todayStr,
       clockIn: clockInTime,
-      clockOut: '06:00 PM',
+      clockOut: null, // MUST BE NULL while employee is working!
+      clockInTimestamp: now,
+      clockOutTimestamp: null,
       status: 'Present',
+      attendanceState: 'CLOCKED_IN',
+      breaks: [],
+      totalBreakDuration: 0,
+      totalShiftDuration: 0,
+      effectiveWorkingDuration: 0,
       branchId: req.user.branchId
     });
 
     await ActivityLog.create({
       action: 'Staff Clocked In',
-      details: `${employeeName} clocked in for the shift at ${clockInTime}.`,
+      details: `${employeeName} clocked in for shift at ${clockInTime}.`,
       user: employeeName,
       branchId: req.user.branchId
     });
 
-    broadcastEvent('attendance:clock_in', { employeeName, time: clockInTime });
+    broadcastEvent('attendance:clock_in', { employeeName, time: clockInTime, attendanceState: 'CLOCKED_IN' });
     return ApiResponse.created(res, log, `Successfully clocked in at ${clockInTime}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Start Break
+exports.startBreakAttendance = async (req, res, next) => {
+  try {
+    const employeeId = req.user._id.toString();
+    const todayStr = getKolkataDateStr();
+
+    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    if (!log) {
+      throw ApiError.badRequest('No clock-in record found for today. Please clock in first.');
+    }
+
+    if (log.attendanceState === 'ON_BREAK') {
+      throw ApiError.badRequest('You are already on break.');
+    }
+    if (log.attendanceState === 'CLOCKED_OUT') {
+      throw ApiError.badRequest("Today's shift has already been completed.");
+    }
+    if (log.attendanceState !== 'CLOCKED_IN') {
+      throw ApiError.badRequest('Invalid attendance state for starting a break.');
+    }
+
+    // Ensure only one active break exists
+    const activeBreak = log.breaks.find(b => !b.end || !b.endTimestamp);
+    if (activeBreak) {
+      throw ApiError.badRequest('You already have an active break in progress.');
+    }
+
+    const now = new Date();
+    const breakStartTime = getKolkataTimeStr(now);
+
+    log.breaks.push({
+      start: breakStartTime,
+      end: null,
+      startTimestamp: now,
+      endTimestamp: null,
+      duration: 0
+    });
+    log.attendanceState = 'ON_BREAK';
+    await log.save();
+
+    await ActivityLog.create({
+      action: 'Staff Started Break',
+      details: `${req.user.name} started break at ${breakStartTime}.`,
+      user: req.user.name,
+      branchId: req.user.branchId
+    });
+
+    broadcastEvent('attendance:start_break', { employeeName: req.user.name, time: breakStartTime, attendanceState: 'ON_BREAK' });
+    return ApiResponse.success(res, log, `Break started at ${breakStartTime}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// End Break
+exports.endBreakAttendance = async (req, res, next) => {
+  try {
+    const employeeId = req.user._id.toString();
+    const todayStr = getKolkataDateStr();
+
+    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    if (!log) {
+      throw ApiError.badRequest('No clock-in record found for today.');
+    }
+
+    if (log.attendanceState !== 'ON_BREAK') {
+      throw ApiError.badRequest('No active break found to end.');
+    }
+
+    // Find the active break
+    const activeBreak = log.breaks.find(b => !b.end || !b.endTimestamp);
+    if (!activeBreak) {
+      throw ApiError.badRequest('No active break found.');
+    }
+
+    const now = new Date();
+    const breakEndTime = getKolkataTimeStr(now);
+
+    activeBreak.end = breakEndTime;
+    activeBreak.endTimestamp = now;
+
+    // Calculate break duration in minutes
+    const startMs = activeBreak.startTimestamp ? new Date(activeBreak.startTimestamp).getTime() : now.getTime();
+    const durationMinutes = Math.max(1, Math.round((now.getTime() - startMs) / 60000));
+    activeBreak.duration = durationMinutes;
+
+    // Sum all completed break durations
+    log.totalBreakDuration = log.breaks.reduce((acc, b) => acc + (Number(b.duration) || 0), 0);
+    log.attendanceState = 'CLOCKED_IN';
+    await log.save();
+
+    await ActivityLog.create({
+      action: 'Staff Ended Break',
+      details: `${req.user.name} ended break at ${breakEndTime} (Duration: ${durationMinutes} mins).`,
+      user: req.user.name,
+      branchId: req.user.branchId
+    });
+
+    broadcastEvent('attendance:end_break', { employeeName: req.user.name, time: breakEndTime, attendanceState: 'CLOCKED_IN' });
+    return ApiResponse.success(res, log, `Break ended at ${breakEndTime} (${durationMinutes} mins)`);
   } catch (error) {
     next(error);
   }
@@ -176,26 +323,94 @@ exports.clockInAttendance = async (req, res, next) => {
 exports.clockOutAttendance = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getKolkataDateStr();
 
     const log = await Attendance.findOne({ employeeId, date: todayStr });
     if (!log) {
       throw ApiError.badRequest('No clock-in record found for today.');
     }
 
-    const clockOutTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (log.attendanceState === 'ON_BREAK') {
+      throw ApiError.badRequest('Please end your break before clocking out.');
+    }
+    if (log.attendanceState === 'CLOCKED_OUT') {
+      throw ApiError.badRequest("Today's shift has already been completed.");
+    }
+
+    const now = new Date();
+    const clockOutTime = getKolkataTimeStr(now);
+
     log.clockOut = clockOutTime;
+    log.clockOutTimestamp = now;
+
+    // Calculate shift durations
+    const clockInMs = log.clockInTimestamp ? new Date(log.clockInTimestamp).getTime() : now.getTime();
+    const totalShiftMins = Math.max(0, Math.round((now.getTime() - clockInMs) / 60000));
+    const totalBreakMins = log.breaks.reduce((acc, b) => acc + (Number(b.duration) || 0), 0);
+
+    const effectiveMins = Math.max(0, totalShiftMins - totalBreakMins);
+    log.totalShiftDuration = totalShiftMins;
+    log.totalBreakDuration = totalBreakMins;
+    log.effectiveWorkingDuration = effectiveMins;
+    log.attendanceState = 'CLOCKED_OUT';
+
+    // Enforce 7-hour threshold (420 mins) classification
+    const { classifyAttendanceType, aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    log.attendanceType = classifyAttendanceType(effectiveMins);
+    log.status = log.attendanceType === 'FULL_DAY' ? 'Present' : 'Half Day';
+
     await log.save();
 
     await ActivityLog.create({
       action: 'Staff Clocked Out',
-      details: `${req.user.name} clocked out at ${clockOutTime}.`,
+      details: `${req.user.name} clocked out at ${clockOutTime}. Effective work: ${effectiveMins} mins (${log.attendanceType}).`,
       user: req.user.name,
       branchId: req.user.branchId
     });
 
-    broadcastEvent('attendance:clock_out', { employeeName: req.user.name, time: clockOutTime });
-    return ApiResponse.success(res, log, `Successfully clocked out at ${clockOutTime}`);
+    broadcastEvent('attendance:clock_out', { employeeName: req.user.name, time: clockOutTime, attendanceState: 'CLOCKED_OUT', attendanceType: log.attendanceType });
+    return ApiResponse.success(res, log, `Successfully clocked out at ${clockOutTime} (${log.attendanceType})`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get monthly attendance aggregated summary
+exports.getMonthlyAttendance = async (req, res, next) => {
+  try {
+    const employeeId = req.user._id.toString();
+    const { month } = req.query;
+    const { aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    const data = await aggregateMonthlyAttendance(employeeId, month);
+    return ApiResponse.success(res, data, 'Monthly attendance aggregated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get today's attendance record
+exports.getTodayAttendance = async (req, res, next) => {
+  try {
+    const employeeId = req.user._id.toString();
+    const todayStr = getKolkataDateStr();
+    const log = await Attendance.findOne({ employeeId, date: todayStr });
+
+    const approvedLeave = await Leave.findOne({
+      $or: [{ employeeId: req.user._id }, { employee: req.user._id }],
+      status: 'Approved',
+      startDate: { $lte: todayStr },
+      endDate: { $gte: todayStr }
+    });
+
+    if (approvedLeave) {
+      const responseData = log ? (log.toObject ? log.toObject() : { ...log }) : {};
+      responseData.isOnApprovedLeave = true;
+      responseData.approvedLeaveDetails = approvedLeave;
+      responseData.attendanceState = log ? log.attendanceState : 'ON_LEAVE';
+      return ApiResponse.success(res, responseData, 'Staff is on approved leave today.');
+    }
+
+    return ApiResponse.success(res, log || null, 'Today attendance state retrieved');
   } catch (error) {
     next(error);
   }
@@ -219,17 +434,23 @@ exports.submitLeaveRequest = async (req, res, next) => {
     const employeeName = req.user.name;
     const { startDate, endDate, reason } = req.body;
 
-    if (!startDate || !endDate || !reason) {
-      throw ApiError.badRequest('Please provide start date, end date, and leave reason');
+    if (!startDate || !endDate || !reason || !String(reason).trim()) {
+      throw ApiError.badRequest('Please provide start date, end date, and leave reason.');
+    }
+
+    if (startDate > endDate) {
+      throw ApiError.badRequest('Start date cannot be after end date.');
     }
 
     const request = await Leave.create({
       employee: req.user._id,
       employeeId,
       employeeName,
+      employeeEmail: req.user.email || null,
+      employeePhone: req.user.phone || null,
       startDate,
       endDate,
-      reason,
+      reason: String(reason).trim(),
       status: 'Pending',
       branchId: req.user.branchId
     });
@@ -238,11 +459,12 @@ exports.submitLeaveRequest = async (req, res, next) => {
     const notificationController = require('./notificationController');
     await notificationController.dispatchNotification(req.app, {
       role: 'admin',
-      title: 'New Leave Request 📅',
-      message: `Staff member ${employeeName} applied for leave from ${startDate} to ${endDate}. Reason: ${reason}`,
+      title: `New Leave Request from ${employeeName}`,
+      message: `${employeeName} requested leave from ${startDate} to ${endDate}. Reason: ${reason}`,
       type: 'leave',
       priority: 'high',
-      link: '/admin?tab=leaves'
+      leaveRequestId: request._id.toString(),
+      link: `/admin?leaveId=${request._id}`
     });
 
     await ActivityLog.create({
@@ -263,8 +485,28 @@ exports.submitLeaveRequest = async (req, res, next) => {
 exports.getEmployeeLeaves = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
-    const list = await Leave.find({ employeeId }).sort({ createdAt: -1 });
+    const list = await Leave.find({
+      $or: [{ employeeId }, { employee: req.user._id }]
+    }).sort({ createdAt: -1 });
     return ApiResponse.success(res, list, 'Personal leave applications retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get single leave application by ID
+exports.getLeaveById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const leave = await Leave.findById(id);
+    if (!leave) throw ApiError.notFound('Leave request not found');
+
+    const empId = req.user._id.toString();
+    if (req.user.role !== 'admin' && String(leave.employeeId) !== empId && String(leave.employee) !== empId) {
+      throw ApiError.forbidden('Unauthorized access to leave request details.');
+    }
+
+    return ApiResponse.success(res, leave, 'Leave request retrieved successfully');
   } catch (error) {
     next(error);
   }

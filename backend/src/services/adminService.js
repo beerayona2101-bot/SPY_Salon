@@ -108,11 +108,10 @@ class AdminService {
   async getNotifications(branchId = null) {
     const filter = branchId ? { branchId } : {};
     
-    // Retrieve actionable administrative alerts
+    // Retrieve actionable administrative alerts including Leave Requests
     const list = await Notification.find({
       ...filter,
-      recipientRole: 'admin',
-      read: false
+      $or: [{ role: 'admin' }, { recipientRole: 'admin' }, { type: 'leave' }, { role: 'all' }]
     }).sort({ createdAt: -1 }).limit(100);
 
     return list.filter(n => {

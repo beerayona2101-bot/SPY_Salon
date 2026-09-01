@@ -19,6 +19,7 @@ const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 const Enquiry = require('../models/Enquiry');
 const LandingSettings = require('../models/LandingSettings');
+const ActivityLog = require('../models/ActivityLog');
 const { sendEnquiryResolutionEmail } = require('../services/emailService');
 const { broadcastEvent } = require('../utils/socket');
 
@@ -423,12 +424,23 @@ exports.getLeaves = async (req, res, next) => {
   }
 };
 
+exports.getLeaveById = async (req, res, next) => {
+  try {
+    const leave = await Leave.findById(req.params.id);
+    if (!leave) throw ApiError.notFound('Leave request not found');
+    return ApiResponse.success(res, leave, 'Leave request details retrieved');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.createLeave = async (req, res, next) => {
   try {
     const branchId = req.user.role === 'admin' ? req.body.branchId : req.user.branchId;
     const newLeave = await Leave.create({
       employeeName: req.body.employeeName || 'Staff Member',
-      employee: req.body.employeeId || null,
+      employeeId: req.body.employeeId || req.user._id.toString(),
+      employee: req.body.employeeId || req.user._id,
       startDate: req.body.startDate || new Date().toISOString().split('T')[0],
       endDate: req.body.endDate || new Date().toISOString().split('T')[0],
       reason: req.body.reason || 'Personal leave request',
@@ -441,44 +453,61 @@ exports.createLeave = async (req, res, next) => {
   }
 };
 
-exports.updateLeaveStatus = async (req, res, next) => {
+// Helper function for processing leave decision atomically
+const processLeaveDecision = async (req, res, targetStatus, rejectionReasonInput) => {
+  const { id } = req.params;
+  const adminId = req.user._id.toString();
+  const adminName = req.user.name || 'Admin Management';
+
+  // Atomic state transition: status MUST be Pending
+  const updatedLeave = await Leave.findOneAndUpdate(
+    { _id: id, status: 'Pending' },
+    {
+      status: targetStatus,
+      actionByAdminId: adminId,
+      actionByAdminName: adminName,
+      rejectionReason: targetStatus === 'Rejected' ? (rejectionReasonInput || 'Management rejected leave request') : null,
+      actionTimestamp: new Date()
+    },
+    { new: true }
+  );
+
+  if (!updatedLeave) {
+    const existingLeave = await Leave.findById(id);
+    if (!existingLeave) {
+      throw ApiError.notFound('Leave request not found');
+    }
+    throw ApiError.badRequest(`Leave request has already been processed (Current status: ${existingLeave.status}).`);
+  }
+
+  // Target notification strictly to the original staff member
   try {
-    const leave = await Leave.findById(req.params.id);
-    if (!leave) throw ApiError.notFound('Leave request not found');
+    const notificationController = require('./notificationController');
+    const isApproved = targetStatus === 'Approved';
+    const recipientStaffId = String(updatedLeave.employeeId || updatedLeave.employee);
+    
+    await notificationController.dispatchNotification(req.app, {
+      userId: recipientStaffId,
+      role: 'employee',
+      title: isApproved ? 'Leave Request Approved' : 'Leave Request Rejected',
+      message: isApproved
+        ? `Your leave request from ${updatedLeave.startDate} to ${updatedLeave.endDate} has been approved by Admin.`
+        : `Your leave request from ${updatedLeave.startDate} to ${updatedLeave.endDate} has been rejected by Admin.`,
+      type: 'leave',
+      priority: 'high',
+      leaveRequestId: updatedLeave._id.toString(),
+      link: '/employee?tab=calendar'
+    });
+  } catch (staffNotifErr) {
+    console.error('[AdminController] Staff leave notification error:', staffNotifErr);
+  }
 
-    if (req.user.role !== 'admin' && String(leave.branchId) !== String(req.user.branchId)) {
-      throw ApiError.forbidden('Unauthorized action for this leave request.');
-    }
-
-    const oldStatus = leave.status;
-    leave.status = req.body.status || 'Approved';
-    await leave.save();
-
-    // 1. Dispatch Notification directly to the Staff Member
+  // Trigger appointment reschedule side-effects on approval
+  if (targetStatus === 'Approved') {
     try {
-      const notificationController = require('./notificationController');
-      const isApproved = leave.status === 'Approved';
-      const statusEmoji = isApproved ? '✅' : '❌';
-      
-      await notificationController.dispatchNotification(req.app, {
-        userId: leave.employeeId ? String(leave.employeeId) : null,
-        role: 'employee',
-        title: `Leave Request ${leave.status}! ${statusEmoji}`,
-        message: `Dear ${leave.employeeName}, your leave request from ${leave.startDate} to ${leave.endDate} has been ${leave.status.toUpperCase()} by Management.`,
-        type: 'leave',
-        priority: 'high',
-        link: '/employee?tab=calendar'
-      });
-    } catch (staffNotifErr) {
-      console.error('[AdminController] Staff leave notification error:', staffNotifErr);
-    }
-
-    // 2. Trigger Side-effects on Approval
-    if (leave.status === 'Approved' && oldStatus !== 'Approved') {
-      // Find and handle affected appointments of this specialist
       const affectedAppointments = await Appointment.find({
-        specialistName: new RegExp(leave.employeeName.split(' ')[0], 'i'),
-        appointmentDate: { $gte: leave.startDate, $lte: leave.endDate },
+        specialistName: new RegExp(updatedLeave.employeeName.split(' ')[0], 'i'),
+        appointmentDate: { $gte: updatedLeave.startDate, $lte: updatedLeave.endDate },
         status: { $nin: ['Cancelled'] }
       });
 
@@ -488,12 +517,11 @@ exports.updateLeaveStatus = async (req, res, next) => {
         app.rescheduleData = {
           requestedDate: app.appointmentDate,
           requestedTime: app.appointmentTime,
-          reason: `Specialist ${leave.employeeName} approved leave on these dates.`,
+          reason: `Specialist ${updatedLeave.employeeName} approved leave on these dates.`,
           requestedAt: new Date().toISOString()
         };
         await app.save();
 
-        // Customer in-app alert
         const notificationController = require('./notificationController');
         await notificationController.dispatchNotification(req.app, {
           userId: app.customerId ? String(app.customerId) : null,
@@ -501,26 +529,49 @@ exports.updateLeaveStatus = async (req, res, next) => {
           title: 'Reschedule Needed 📅',
           message: `Your booking #${app.bookingId} for ${app.service} needs rescheduling as specialist is on leave.`,
           type: 'appointment',
-          priority: 'high',
-          bookingId: app.bookingId
-        }).catch(() => {});
+          appointmentId: app._id.toString()
+        });
       }
-
-      await adminService.createActivityLog({
-        action: 'Leave Approved',
-        details: `Approved leave request for ${leave.employeeName}. ${affectedAppointments.length} appointments marked for reschedule.`,
-        user: req.user.name,
-        branchId: leave.branchId
-      });
+    } catch (sideErr) {
+      console.warn('[AdminController] Affected appointments side-effect notice:', sideErr.message);
     }
+  }
 
-    // Broadcast Realtime Socket Event
-    broadcastEvent('leave:updated', { leave });
-    if (leave.status === 'Approved') {
-      broadcastEvent('leave:approved', { leave });
+  await ActivityLog.create({
+    action: `Leave Request ${targetStatus}`,
+    details: `Admin ${adminName} marked leave request for ${updatedLeave.employeeName} (${updatedLeave.startDate} to ${updatedLeave.endDate}) as ${targetStatus}.`,
+    user: adminName,
+    branchId: req.user.branchId
+  });
+
+  broadcastEvent('leave:status_updated', updatedLeave);
+  return ApiResponse.success(res, updatedLeave, `Leave request ${targetStatus.toLowerCase()} successfully`);
+};
+
+exports.approveLeave = async (req, res, next) => {
+  try {
+    return await processLeaveDecision(req, res, 'Approved');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.rejectLeave = async (req, res, next) => {
+  try {
+    const { rejectionReason } = req.body || {};
+    return await processLeaveDecision(req, res, 'Rejected', rejectionReason);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateLeaveStatus = async (req, res, next) => {
+  try {
+    const targetStatus = req.body.status || 'Approved';
+    if (targetStatus !== 'Approved' && targetStatus !== 'Rejected') {
+      throw ApiError.badRequest('Invalid status. Must be Approved or Rejected.');
     }
-
-    return ApiResponse.success(res, leave, `Leave request ${leave.status.toLowerCase()}`);
+    return await processLeaveDecision(req, res, targetStatus, req.body.rejectionReason);
   } catch (error) {
     next(error);
   }
@@ -558,30 +609,26 @@ exports.getAttendanceReport = async (req, res, next) => {
     const branchId = req.user.role === 'admin' ? req.query.branchId : req.user.branchId;
     const filter = branchId ? { branchId } : {};
     
+    const { month } = req.query;
+    const { aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    
     const employees = await Employee.find(filter).sort({ createdAt: 1 });
-    const salonOpenedDays = 26;
     
     const report = await Promise.all(employees.map(async (emp, index) => {
       const empIdStr = emp._id.toString();
-      const workedCount = await Attendance.countDocuments({
-        $or: [{ employeeId: empIdStr }, { employee: emp._id }],
-        status: { $in: ['Present', 'Late', 'Half Day'] }
-      });
+      const monthlyData = await aggregateMonthlyAttendance(empIdStr, month);
+      const summary = monthlyData.summary;
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const todayLog = await Attendance.findOne({
         $or: [{ employeeId: empIdStr }, { employee: emp._id }],
         date: todayStr
       });
 
-      const workedDays = workedCount;
-      const absentDays = Math.max(0, salonOpenedDays - workedDays);
-      const otLogs = await Attendance.find({
-        $or: [{ employeeId: empIdStr }, { employee: emp._id }],
-        otHours: { $gt: 0 }
-      });
-      const otHours = otLogs.reduce((sum, log) => sum + (log.otHours || 0), 0);
-      const otTimes = otLogs.length;
+      const totalOpenedDays = summary.fullDaysCount + summary.halfDaysCount + summary.absentDaysCount + summary.leaveDaysCount;
+      const attendancePct = totalOpenedDays > 0 
+        ? ((summary.attendanceEquivalent / totalOpenedDays) * 100).toFixed(1) + '%' 
+        : '0.0%';
 
       return {
         employeeId: emp._id,
@@ -589,13 +636,24 @@ exports.getAttendanceReport = async (req, res, next) => {
         name: emp.name,
         avatar: emp.avatar,
         specialties: emp.specialties,
-        salonOpenedDays,
-        workedDays,
-        absentDays,
-        otHours,
-        otTimes,
-        attendancePercentage: salonOpenedDays > 0 ? (((workedDays) / salonOpenedDays) * 100).toFixed(1) + '%' : '0.0%',
-        lastStatus: todayLog ? `${todayLog.status} (${todayLog.clockIn})` : 'Not Checked In'
+        salonOpenedDays: monthlyData.totalDaysInMonth,
+        workedDays: summary.attendanceEquivalent,
+        fullDays: summary.fullDaysCount,
+        halfDays: summary.halfDaysCount,
+        absentDays: summary.absentDaysCount,
+        leaveDays: summary.leaveDaysCount,
+        weeklyOffDays: summary.weeklyOffDaysCount,
+        holidayDays: summary.holidayDaysCount,
+        workingHours: summary.totalEffectiveWorkingHoursFormatted,
+        breakHours: summary.totalBreakHoursFormatted,
+        attendancePercentage: attendancePct,
+        lastStatus: todayLog 
+          ? (todayLog.clockOut 
+              ? `Completed (${todayLog.clockIn} - ${todayLog.clockOut})`
+              : todayLog.attendanceState === 'ON_BREAK'
+              ? `On Break (${todayLog.clockIn})`
+              : `Present (${todayLog.clockIn} - Working)`) 
+          : 'Not Checked In'
       };
     }));
 
@@ -608,13 +666,20 @@ exports.getAttendanceReport = async (req, res, next) => {
 exports.recordAttendance = async (req, res, next) => {
   try {
     const branchId = req.user.role === 'admin' ? req.body.branchId : req.user.branchId;
+    const now = new Date();
+    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const clockInTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
     const newLog = await Attendance.create({
-      date: new Date().toISOString().split('T')[0],
-      clockIn: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      clockOut: '19:00',
+      date: todayStr,
+      clockIn: clockInTime,
+      clockOut: null, // MUST BE NULL while employee is working!
+      clockInTimestamp: now,
+      clockOutTimestamp: null,
       status: 'Present',
+      attendanceState: 'CLOCKED_IN',
       employeeName: req.body.employeeName || 'Staff Member',
-      employeeId: req.body.employeeId || null,
+      employeeId: req.body.employeeId || `emp_${Date.now()}`,
       branchId
     });
     return ApiResponse.created(res, newLog, 'Clock-in recorded');

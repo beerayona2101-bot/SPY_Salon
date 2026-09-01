@@ -330,12 +330,12 @@ export default function Home() {
                   initial={{ opacity: 1, scale: 1 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="relative max-w-[220px] sm:max-w-[280px] w-full mx-auto"
+                  className="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto rounded-3xl bg-dark-850/80 border border-rosegold-500/35 p-3 shadow-glow-rosegold backdrop-blur-md flex items-center justify-center overflow-hidden"
                 >
                   <img
                     src="/logo-mobile-transparent.png?v=3"
                     alt="SPY Salon Luxury Brand Identity"
-                    className="w-full h-auto object-contain mx-auto drop-shadow-[0_0_20px_rgba(232,180,184,0.3)] animate-float"
+                    className="w-full h-full object-contain rounded-2xl mx-auto animate-float"
                   />
                 </motion.div>
               </div>

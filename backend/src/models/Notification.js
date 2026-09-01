@@ -69,6 +69,11 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     default: null,
     index: true
+  },
+  leaveRequestId: {
+    type: String,
+    default: null,
+    index: true
   }
 }, { timestamps: true });
 

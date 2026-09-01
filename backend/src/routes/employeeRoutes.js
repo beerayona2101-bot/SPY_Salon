@@ -13,14 +13,20 @@ router.get('/appointments', employeeController.getAssignedAppointments);
 router.post('/appointments/walkin', validateRequest({ required: ['customerName', 'customerPhone', 'service'] }), employeeController.createEmployeeWalkIn);
 router.put('/appointments/:id/status', employeeController.updateAppointmentStatus);
 
-// Attendance Clock-in, Clock-out & Log
+// Attendance Clock-in, Break, Clock-out & Logs
 router.post('/clock-in', employeeController.clockInAttendance);
+router.post('/start-break', employeeController.startBreakAttendance);
+router.post('/end-break', employeeController.endBreakAttendance);
 router.post('/clock-out', employeeController.clockOutAttendance);
 router.get('/attendance', employeeController.getEmployeeAttendance);
+router.get('/attendance/today', employeeController.getTodayAttendance);
+router.get('/attendance/monthly', employeeController.getMonthlyAttendance);
 
 // Leaves Submission & History
-router.post('/leaves', validateRequest({ required: ['leaveType', 'startDate', 'endDate'] }), employeeController.submitLeaveRequest);
+router.post('/leaves', employeeController.submitLeaveRequest);
 router.get('/leaves', employeeController.getEmployeeLeaves);
+router.get('/leaves/my', employeeController.getEmployeeLeaves);
+router.get('/leaves/:id', employeeController.getLeaveById);
 
 // Payroll & Salary Slips
 router.get('/payrolls', employeeController.getEmployeePayrolls);

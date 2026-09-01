@@ -349,40 +349,26 @@ export default function Navbar() {
             ? 'bg-dark-900/95 backdrop-blur-2xl border-b border-rosegold-500/20 shadow-glass' 
             : 'bg-dark-900/40 backdrop-blur-md border-b border-white/5'
         }`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-            <div className="flex items-center justify-center md:justify-between min-h-[44px]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between min-h-[44px] gap-2">
               
-              {/* Left Fixed Logo Icon on Mobile / Combined Logo & Brand Name on Desktop */}
+              {/* Brand Logo & Title Group (Left aligned on all viewports - No collision) */}
               <Link 
                 href="/" 
-                className="absolute left-4 sm:left-6 md:static flex items-center group shrink-0" 
+                className="flex items-center space-x-2 sm:space-x-3 group shrink-0" 
                 title="SPY Salon"
               >
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white p-0.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white p-0.5 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                   <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
                 </div>
-                <div className="hidden md:flex flex-col text-left ml-3">
-                  <span className={`font-serif text-xl font-bold tracking-widest leading-none ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>
+                <div className="flex flex-col text-left">
+                  <span className={`font-serif text-sm sm:text-lg md:text-xl font-bold tracking-widest leading-none ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>
                     SPY <span className="rosegold-gradient-text font-bold">SALON</span>
                   </span>
-                  <span className="text-[9px] tracking-[0.2em] text-rosegold-500 uppercase font-sans mt-0.5 font-bold">
-                    Flagship Studio • Jubilee Hills
+                  <span className="text-[7.5px] sm:text-[9px] tracking-[0.15em] sm:tracking-[0.2em] text-rosegold-500 uppercase font-sans mt-0.5 font-bold truncate max-w-[130px] sm:max-w-none">
+                    Jubilee Hills Studio
                   </span>
                 </div>
-              </Link>
-
-              {/* Mobile Centered Brand Name Text ONLY */}
-              <Link 
-                href="/" 
-                className="md:hidden flex flex-col items-center justify-center text-center mx-auto group" 
-                title="SPY Salon"
-              >
-                <span className={`font-serif text-sm font-bold tracking-widest leading-none ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>
-                  SPY <span className="rosegold-gradient-text font-bold">SALON</span>
-                </span>
-                <span className="text-[7.5px] sm:text-[8.5px] tracking-[0.18em] text-rosegold-500 uppercase font-sans mt-0.5 font-bold">
-                  Flagship Studio • Jubilee Hills
-                </span>
               </Link>
 
               {/* Desktop Nav Links */}
@@ -393,8 +379,8 @@ export default function Navbar() {
                 <Link href="/contact" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/contact' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Contact</Link>
               </div>
 
-              {/* Notification Bell Icon & Profile Avatar / Executive Desk Button - Right Fixed in Mobile View */}
-              <div className="flex items-center space-x-1.5 sm:space-x-2.5 absolute right-3 sm:right-6 md:static md:right-auto">
+              {/* Notification Bell Icon & Profile Avatar / Executive Desk Button - Right Action Group */}
+              <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
                 
                 {/* THEME TOGGLE BUTTON */}
                 <button

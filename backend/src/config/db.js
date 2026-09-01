@@ -37,6 +37,11 @@ const connectDB = async () => {
     });
     console.log(`[MongoDB Atlas Connected Successfully]: Host ${conn.connection.host}`);
     console.log(`[MongoDB Atlas Connected Successfully]: Database Name: ${conn.connection.db.databaseName}`);
+    
+    // Run safe attendance migration to clean up legacy default 6 PM clockOut records on active shifts
+    const migrateAttendanceRecords = require('../utils/attendanceMigration');
+    migrateAttendanceRecords();
+
     return conn;
   } catch (error) {
     console.error(`[FATAL DATABASE ERROR] MongoDB Atlas connection failed: ${error.message}`);

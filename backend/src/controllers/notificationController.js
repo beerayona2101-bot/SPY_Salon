@@ -34,7 +34,8 @@ const dispatchNotification = async (reqApp, notifData) => {
       isRead: false,
       link: notifData.link || '',
       bookingId: notifData.bookingId || null,
-      appointmentId: notifData.appointmentId || null
+      appointmentId: notifData.appointmentId || null,
+      leaveRequestId: notifData.leaveRequestId || null
     };
 
     const savedNotif = await Notification.create(payload);

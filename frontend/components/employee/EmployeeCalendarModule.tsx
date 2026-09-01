@@ -141,7 +141,7 @@ export default function EmployeeCalendarModule({
 
   // 2. Day Metrics & Status Helper
   const getDayStatusAndData = (dateStr: string) => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     const isFuture = dateStr > todayStr;
     const isToday = dateStr === todayStr;
 
@@ -168,13 +168,19 @@ export default function EmployeeCalendarModule({
     // Check Attendance Log
     const attLog = attendance.find(a => a.date === dateStr);
     if (attLog) {
-      if (attLog.status === 'Absent') {
+      if (attLog.attendanceType === 'HALF_DAY' || attLog.status === 'Half Day') {
+        return { status: 'Half Day (0.5d)', color: 'bg-orange-500/20 text-orange-300 border-orange-500/40', dot: '🟠' };
+      }
+      if (attLog.attendanceState === 'ON_BREAK') {
+        return { status: 'On Break', color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', dot: '☕' };
+      }
+      if (attLog.attendanceState === 'CLOCKED_IN') {
+        return { status: 'Working Today', color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', dot: '🟢' };
+      }
+      if (attLog.status === 'Absent' || attLog.attendanceType === 'ABSENT') {
         return { status: 'Absent', color: 'bg-red-500/20 text-red-300 border-red-500/40', dot: '🔴' };
       }
-      if (attLog.status === 'Half Day') {
-        return { status: 'Half Day', color: 'bg-orange-500/20 text-orange-300 border-orange-500/40', dot: '🟠' };
-      }
-      return { status: 'Present', color: 'bg-green-500/20 text-green-300 border-green-500/40', dot: '🟢' };
+      return { status: 'Full Day (1.0d)', color: 'bg-green-500/20 text-green-300 border-green-500/40', dot: '🟢' };
     }
 
     if (isToday) {
@@ -185,8 +191,8 @@ export default function EmployeeCalendarModule({
       return { status: 'Scheduled Shift', color: 'bg-dark-800 text-gray-400 border-white/10', dot: '⚫' };
     }
 
-    // Default Past Working Day
-    return { status: 'Present', color: 'bg-green-500/20 text-green-300 border-green-500/40', dot: '🟢' };
+    // Default Past Working Day without log
+    return { status: 'Absent', color: 'bg-red-500/20 text-red-300 border-red-500/40', dot: '🔴' };
   };
 
   // 3. Appointments & Revenue calculation for a given date
@@ -194,7 +200,6 @@ export default function EmployeeCalendarModule({
     const dayApps = appointments.filter(a => a.appointmentDate === dateStr);
     const completedApps = dayApps.filter(a => a.status === 'Completed' || a.paymentStatus === 'Paid');
     
-    // Revenue calculation
     const revenue = completedApps.reduce((sum, a) => {
       if (a.service?.includes('Keratin')) return sum + 4999;
       if (a.service?.includes('Facial')) return sum + Number(a.price || 0);
@@ -204,8 +209,8 @@ export default function EmployeeCalendarModule({
       return sum + 1199;
     }, 0);
 
-    const commission = Math.round(revenue * 0.20); // 20% Stylist Commission
-    const tips = completedApps.length > 0 ? completedApps.length * 50 : 0; // ₹50 tip per completed client
+    const commission = Math.round(revenue * 0.20);
+    const tips = completedApps.length > 0 ? completedApps.length * 50 : 0;
     const totalEarnings = commission + tips;
 
     return {
@@ -224,9 +229,18 @@ export default function EmployeeCalendarModule({
 
   // 4. Monthly Overall Analytics Summary
   const monthlyMetrics = useMemo(() => {
+    let fullCount = 0;
+    let halfCount = 0;
+
+    attendance.forEach(a => {
+      if (a.attendanceType === 'FULL_DAY' || a.status === 'Present') fullCount++;
+      else if (a.attendanceType === 'HALF_DAY' || a.status === 'Half Day') halfCount++;
+    });
+
+    const attendanceEquivalent = Number((fullCount + (halfCount * 0.5)).toFixed(1));
     const totalWorkingDays = 26;
-    const presentDays = 24;
-    const leavesCount = 2;
+    const presentDaysDisplay = attendanceEquivalent > 0 ? attendanceEquivalent : 24;
+    const leavesCount = leaves.filter(l => l.status === 'Approved').length;
     const totalCompletedApps = appointments.filter(a => a.status === 'Completed').length || 48;
     
     const monthlyRevenue = appointments.reduce((sum, a) => {
@@ -241,11 +255,13 @@ export default function EmployeeCalendarModule({
     }, 124500);
 
     const monthlyCommission = Math.round(monthlyRevenue * 0.20);
-    const avgDailyRevenue = Math.round(monthlyRevenue / presentDays);
+    const avgDailyRevenue = Math.round(monthlyRevenue / (presentDaysDisplay || 1));
 
     return {
       workingDays: totalWorkingDays,
-      presentDays,
+      presentDays: presentDaysDisplay,
+      fullDays: fullCount,
+      halfDays: halfCount,
       leavesCount,
       overtimeHours: 12,
       completedApps: totalCompletedApps,
@@ -256,7 +272,7 @@ export default function EmployeeCalendarModule({
       punctualityScore: '98%',
       rating: '4.9 ⭐'
     };
-  }, [appointments]);
+  }, [appointments, attendance, leaves]);
 
   // Selected Day Details object
   const selectedDayInfo = useMemo(() => {

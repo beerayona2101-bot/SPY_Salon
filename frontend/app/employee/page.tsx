@@ -78,8 +78,19 @@ interface AttendanceLog {
   _id: string;
   date: string;
   clockIn: string;
-  clockOut: string;
+  clockOut: string | null;
   status: string;
+  attendanceState?: 'NOT_CLOCKED_IN' | 'CLOCKED_IN' | 'ON_BREAK' | 'CLOCKED_OUT';
+  attendanceType?: 'NOT_FINALIZED' | 'FULL_DAY' | 'HALF_DAY' | 'LEAVE' | 'ABSENT' | 'HOLIDAY' | 'WEEKLY_OFF';
+  breaks?: Array<{
+    _id?: string;
+    start: string;
+    end: string | null;
+    duration?: number;
+  }>;
+  totalBreakDuration?: number;
+  totalShiftDuration?: number;
+  effectiveWorkingDuration?: number;
 }
 
 interface SalarySlip {
@@ -142,7 +153,8 @@ function EmployeeDashboardContent() {
   };
 
   // Shift & Queue Control States
-  const [shiftStatus, setShiftStatus] = useState<'Not Checked In' | 'Checked In' | 'On Break' | 'Checked Out'>('Not Checked In');
+  const [shiftStatus, setShiftStatus] = useState<'NOT_CLOCKED_IN' | 'CLOCKED_IN' | 'ON_BREAK' | 'CLOCKED_OUT' | 'ON_LEAVE'>('NOT_CLOCKED_IN');
+  const [attLoading, setAttLoading] = useState<boolean>(false);
   const [queueFilter, setQueueFilter] = useState<'All' | 'In Queue' | 'Completed'>('All');
 
   // Data States
@@ -387,17 +399,29 @@ function EmployeeDashboardContent() {
       if (leaveRes.data) setLeaves(leaveRes.data);
       if (attRes.data) {
         setAttendance(attRes.data);
-        const todayStr = new Date().toISOString().split('T')[0];
-        const todayRecords = attRes.data.filter((a: any) => a.date === todayStr);
-        if (todayRecords.length > 0) {
-          const mostRecent = todayRecords[0];
-          if (mostRecent.clockOut === 'In Progress' || !mostRecent.clockOut) {
-            setShiftStatus('Checked In');
-          } else {
-            setShiftStatus('Checked Out');
-          }
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        
+        // Check if employee has an Approved leave for today
+        const approvedLeaveToday = (leaveRes.data || []).find((l: any) => 
+          l.status === 'Approved' && l.startDate <= todayStr && l.endDate >= todayStr
+        );
+
+        if (approvedLeaveToday) {
+          setShiftStatus('ON_LEAVE');
         } else {
-          setShiftStatus('Not Checked In');
+          const todayRecords = attRes.data.filter((a: any) => a.date === todayStr);
+          if (todayRecords.length > 0) {
+            const mostRecent = todayRecords[0];
+            if (mostRecent.attendanceState) {
+              setShiftStatus(mostRecent.attendanceState);
+            } else if (mostRecent.clockOut) {
+              setShiftStatus('CLOCKED_OUT');
+            } else {
+              setShiftStatus('CLOCKED_IN');
+            }
+          } else {
+            setShiftStatus('NOT_CLOCKED_IN');
+          }
         }
       }
       if (payRes.data) setPayrolls(payRes.data);
@@ -471,49 +495,96 @@ function EmployeeDashboardContent() {
 
   // Clock-in & Shift Control Actions
   const handleClockIn = async () => {
+    if (attLoading) return;
+    setAttLoading(true);
     try {
       const res = await apiFetch(`${API_BASE_URL}/employee/clock-in`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeName: user?.name || 'Ananya Sharma' })
+        body: JSON.stringify({ employeeName: user?.name })
       });
       const data = await res.json();
       if (data.data) {
         setAttendance(prev => [data.data, ...prev.filter(a => a.date !== data.data.date)]);
+        setShiftStatus(data.data.attendanceState || 'CLOCKED_IN');
+      } else if (data.message) {
+        alert(data.message);
       }
-    } catch (e) {
-      console.log('Clocked in');
+    } catch (e: any) {
+      alert(e.message || 'Error clocking in. Please try again.');
+    } finally {
+      setAttLoading(false);
     }
-    setShiftStatus('Checked In');
   };
 
-  const handleTakeBreak = () => {
-    setShiftStatus(prev => prev === 'On Break' ? 'Checked In' : 'On Break');
+  const handleStartBreak = async () => {
+    if (attLoading) return;
+    setAttLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/employee/start-break`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
+        setShiftStatus('ON_BREAK');
+      } else if (data.message) {
+        alert(data.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error starting break. Please try again.');
+    } finally {
+      setAttLoading(false);
+    }
+  };
+
+  const handleEndBreak = async () => {
+    if (attLoading) return;
+    setAttLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/employee/end-break`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
+        setShiftStatus('CLOCKED_IN');
+      } else if (data.message) {
+        alert(data.message);
+      }
+    } catch (e: any) {
+      alert(e.message || 'Error ending break. Please try again.');
+    } finally {
+      setAttLoading(false);
+    }
   };
 
   const handleCheckOut = async () => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const todayStr = now.toISOString().split('T')[0];
-
-    try {
-      await apiFetch(`${API_BASE_URL}/employee/clock-out`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeName: user?.name || 'Ananya Sharma' })
-      });
-    } catch (e) {
-      console.error('Clock-out API call error:', e);
+    if (attLoading) return;
+    if (shiftStatus === 'ON_BREAK') {
+      alert('Please end your break before clocking out.');
+      return;
     }
-
-    setAttendance(prev => prev.map(a => {
-      if (a.date === todayStr && (a.clockOut === 'In Progress' || !a.clockOut)) {
-        return { ...a, clockOut: timeStr, status: 'Present' };
+    setAttLoading(true);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/employee/clock-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
+        setShiftStatus('CLOCKED_OUT');
+      } else if (data.message) {
+        alert(data.message);
       }
-      return a;
-    }));
-
-    setShiftStatus('Checked Out');
+    } catch (e: any) {
+      alert(e.message || 'Error clocking out. Please try again.');
+    } finally {
+      setAttLoading(false);
+    }
   };
 
   // Leave Request Submission (CRUD)
@@ -858,46 +929,49 @@ function EmployeeDashboardContent() {
               )}
             </button>
 
-            {shiftStatus === 'Not Checked In' || shiftStatus === 'Checked Out' ? (
+            {shiftStatus === 'NOT_CLOCKED_IN' ? (
               <button
                 onClick={handleClockIn}
-                className="px-4 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                disabled={attLoading}
+                className="px-4 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50"
               >
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Check In Shift 🟢</span>
+                <span>{attLoading ? 'Clocking In...' : 'Check In Shift 🟢'}</span>
               </button>
-            ) : shiftStatus === 'Checked In' ? (
+            ) : shiftStatus === 'CLOCKED_IN' ? (
               <>
                 <button
-                  onClick={handleTakeBreak}
-                  className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                  onClick={handleStartBreak}
+                  disabled={attLoading}
+                  className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50"
                 >
                   <Coffee className="w-3.5 h-3.5" />
-                  <span>Take Break ☕</span>
+                  <span>Start Break ☕</span>
                 </button>
                 <button
                   onClick={handleCheckOut}
-                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                  disabled={attLoading}
+                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
                 >
-                  <span>Check Out 🔴</span>
+                  <span>Clock Out 🔴</span>
+                </button>
+              </>
+            ) : shiftStatus === 'ON_BREAK' ? (
+              <>
+                <button
+                  onClick={handleEndBreak}
+                  disabled={attLoading}
+                  className="px-4 py-2 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse disabled:opacity-50"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>End Break ⏱️</span>
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  onClick={handleTakeBreak}
-                  className="px-4 py-2 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Resume Work ⏱️</span>
-                </button>
-                <button
-                  onClick={handleCheckOut}
-                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
-                >
-                  <span>Check Out 🔴</span>
-                </button>
-              </>
+              <span className="px-3.5 py-1.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold flex items-center space-x-1">
+                <Check className="w-3.5 h-3.5" />
+                <span>Shift Completed</span>
+              </span>
             )}
           </div>
         </header>
@@ -930,11 +1004,12 @@ function EmployeeDashboardContent() {
                   <div>
                     <div className="flex items-center space-x-2">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
-                        shiftStatus === 'On Break' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
-                        shiftStatus === 'Checked In' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                        shiftStatus === 'ON_BREAK' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                        shiftStatus === 'CLOCKED_IN' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                        shiftStatus === 'CLOCKED_OUT' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
                         'bg-gray-500/20 text-gray-400 border-gray-500/30'
                       }`}>
-                        {shiftStatus === 'On Break' ? '☕ On Break' : shiftStatus === 'Checked In' ? '🟢 Shift Active' : '⚪ Shift Inactive'}
+                        {shiftStatus === 'ON_BREAK' ? '☕ On Break' : shiftStatus === 'CLOCKED_IN' ? '🟢 Shift Active' : shiftStatus === 'CLOCKED_OUT' ? '🏁 Shift Completed' : '⚪ Shift Inactive'}
                       </span>
                       <span className="text-xs text-gray-400 font-mono">Stylist Shift Workload</span>
                     </div>
@@ -1126,58 +1201,68 @@ function EmployeeDashboardContent() {
                   <span className="text-xs text-rosegold-400 font-bold uppercase tracking-wider">Attendance Clock-in</span>
                   <h3 className="text-xl font-serif font-bold text-white">Log Today's Shift Entrance</h3>
                   <p className="text-xs text-gray-400">
-                    {shiftStatus === 'Checked In' 
-                      ? 'Shift in progress. Log break or check out below.'
-                      : shiftStatus === 'On Break'
-                      ? 'Currently on break. Click Resume Work when returning to desk.'
-                      : shiftStatus === 'Checked Out'
-                      ? 'Shift completed for today. Click Clock In to record a new shift entry.'
+                    {shiftStatus === 'CLOCKED_IN' 
+                      ? 'Shift in progress. Log break or clock out below.'
+                      : shiftStatus === 'ON_BREAK'
+                      ? 'Currently on break. Click End Break when returning to desk.'
+                      : shiftStatus === 'CLOCKED_OUT'
+                      ? "Today's shift completed. Great work!"
+                      : shiftStatus === 'ON_LEAVE'
+                      ? 'You are currently on approved leave today. Clock-in is restricted during leave.'
                       : 'Clock in every morning upon entering the Jubilee Hills Flagship studio.'
                     }
                   </p>
                 </div>
 
                 <div className="flex items-center space-x-3 shrink-0">
-                  {shiftStatus === 'Not Checked In' || shiftStatus === 'Checked Out' ? (
+                  {shiftStatus === 'ON_LEAVE' ? (
+                    <span className="px-5 py-3 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 text-xs font-extrabold flex items-center space-x-2 shadow-lg">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse" />
+                      <span>🟣 On Approved Leave Today (Clock-In Blocked)</span>
+                    </span>
+                  ) : shiftStatus === 'NOT_CLOCKED_IN' ? (
                     <button
                       onClick={handleClockIn}
-                      className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
+                      disabled={attLoading}
+                      className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer disabled:opacity-50"
                     >
                       <CheckSquare className="w-4 h-4" />
-                      <span>Clock In Now</span>
+                      <span>{attLoading ? 'Clocking In...' : 'Clock In Now'}</span>
                     </button>
-                  ) : shiftStatus === 'Checked In' ? (
+                  ) : shiftStatus === 'CLOCKED_IN' ? (
                     <>
                       <button
-                        onClick={handleTakeBreak}
-                        className="px-5 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                        onClick={handleStartBreak}
+                        disabled={attLoading}
+                        className="px-5 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50"
                       >
                         <Coffee className="w-3.5 h-3.5" />
-                        <span>Take Break ☕</span>
+                        <span>Start Break ☕</span>
                       </button>
                       <button
                         onClick={handleCheckOut}
-                        className="px-5 py-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
+                        disabled={attLoading}
+                        className="px-5 py-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
                       >
-                        <span>Check Out 🔴</span>
+                        <span>Clock Out 🔴</span>
+                      </button>
+                    </>
+                  ) : shiftStatus === 'ON_BREAK' ? (
+                    <>
+                      <button
+                        onClick={handleEndBreak}
+                        disabled={attLoading}
+                        className="px-5 py-3 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse disabled:opacity-50"
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>End Break ⏱️</span>
                       </button>
                     </>
                   ) : (
-                    <>
-                      <button
-                        onClick={handleTakeBreak}
-                        className="px-5 py-3 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse"
-                      >
-                        <Clock className="w-3.5 h-3.5" />
-                        <span>Resume Work ⏱️</span>
-                      </button>
-                      <button
-                        onClick={handleCheckOut}
-                        className="px-5 py-3 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all"
-                      >
-                        <span>Check Out 🔴</span>
-                      </button>
-                    </>
+                    <span className="px-5 py-3 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold flex items-center space-x-1.5">
+                      <Check className="w-4 h-4" />
+                      <span>Shift Completed</span>
+                    </span>
                   )}
                 </div>
               </div>
@@ -1189,6 +1274,7 @@ function EmployeeDashboardContent() {
                       <th className="p-4">Date</th>
                       <th className="p-4">Clock In</th>
                       <th className="p-4">Clock Out</th>
+                      <th className="p-4">Breaks & Work Duration</th>
                       <th className="p-4">Status</th>
                     </tr>
                   </thead>
@@ -1197,10 +1283,46 @@ function EmployeeDashboardContent() {
                       <tr key={rec._id} className="hover:bg-white/5 transition-colors">
                         <td className="p-4 font-bold text-white">{rec.date}</td>
                         <td className="p-4 text-green-400 font-semibold">{rec.clockIn}</td>
-                        <td className="p-4 text-gray-400">{rec.clockOut}</td>
+                        <td className="p-4 text-gray-300 font-semibold">{rec.clockOut ? rec.clockOut : '—'}</td>
+                        <td className="p-4 text-left">
+                          {rec.breaks && rec.breaks.length > 0 ? (
+                            <div className="space-y-1 text-[11px]">
+                              {rec.breaks.map((b, idx) => (
+                                <div key={idx} className="flex items-center space-x-1.5 text-amber-300/90 font-mono">
+                                  <Coffee className="w-3 h-3 text-amber-400 shrink-0" />
+                                  <span>Break {idx + 1}: {b.start} → {b.end ? b.end : 'In Progress'}</span>
+                                  {b.duration ? <span className="text-gray-400">({b.duration}m)</span> : null}
+                                </div>
+                              ))}
+                              {rec.totalBreakDuration ? (
+                                <div className="text-[10px] text-gray-400 pt-0.5 border-t border-white/10">
+                                  Total Breaks: {rec.totalBreakDuration} mins | Effective Work: {rec.effectiveWorkingDuration || 0} mins
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500 italic text-[11px]">No breaks taken</span>
+                          )}
+                        </td>
                         <td className="p-4">
-                          <span className="bg-green-500/20 text-green-400 border border-green-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
-                            {rec.status}
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            rec.attendanceState === 'ON_BREAK'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                              : rec.attendanceType === 'FULL_DAY' || rec.status === 'Present'
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                              : rec.attendanceType === 'HALF_DAY' || rec.status === 'Half Day'
+                              ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                          }`}>
+                            {rec.attendanceState === 'ON_BREAK' 
+                              ? 'ON BREAK' 
+                              : rec.attendanceType === 'FULL_DAY'
+                              ? 'FULL DAY (1.0d)'
+                              : rec.attendanceType === 'HALF_DAY'
+                              ? 'HALF DAY (0.5d)'
+                              : rec.clockOut 
+                              ? 'COMPLETED' 
+                              : 'WORKING'}
                           </span>
                         </td>
                       </tr>

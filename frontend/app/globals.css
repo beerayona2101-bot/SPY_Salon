@@ -56,6 +56,88 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   word-break: break-word;
 }
 
+/* ========================================================
+   SPESHWAY / SPY SALON RESPONSIVE MASTER DESIGN SYSTEM
+   ======================================================== */
+
+.app-container {
+  width: 100%;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(16px, 3vw, 48px);
+  padding-right: clamp(16px, 3vw, 48px);
+  box-sizing: border-box;
+}
+
+.laptop-sidebar-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .laptop-sidebar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.laptop-content-area {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.responsive-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  border-radius: 1rem;
+}
+
+.responsive-table-wrapper table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+@media (max-width: 640px) {
+  .responsive-table-wrapper table {
+    min-width: 500px;
+  }
+}
+
+.responsive-modal-container {
+  max-width: min(640px, calc(100vw - 24px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+.safe-area-bottom {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+input, select, textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+
 /* GPU Acceleration & Performance Optimizations */
 .gpu-accelerated {
   transform: translateZ(0);

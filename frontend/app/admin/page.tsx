@@ -320,6 +320,112 @@ function AdminDashboardContent() {
   const [isUpdatingEnquiry, setIsUpdatingEnquiry] = useState(false);
   const enquiryNewCount = enquiries.filter(e => e.status === 'New').length;
 
+  // Leave Action Popup Modal State
+  const [leaveActionModal, setLeaveActionModal] = useState<{
+    isOpen: boolean;
+    leave: any | null;
+    loading: boolean;
+    rejectReason: string;
+    msg: string | null;
+  }>({
+    isOpen: false,
+    leave: null,
+    loading: false,
+    rejectReason: '',
+    msg: null
+  });
+
+  const handleAdminMarkRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => (n._id === id || n.notificationId === id) ? { ...n, read: true, isRead: true } : n));
+    await apiFetch(`${API_BASE_URL}/notifications/read/${id}`, { method: 'PATCH' }).catch(() => {});
+  };
+
+  const handleOpenLeaveModalFromNotif = async (notif: any) => {
+    const notifId = notif._id || notif.notificationId;
+    handleAdminMarkRead(notifId);
+    setAdminNotifOpen(false);
+
+    const leaveId = notif.leaveRequestId || (notif.link?.includes('leaveId=') ? notif.link.split('leaveId=')[1] : null);
+
+    setLeaveActionModal({
+      isOpen: true,
+      leave: null,
+      loading: true,
+      rejectReason: '',
+      msg: null
+    });
+
+    if (leaveId) {
+      try {
+        const res = await apiFetch(`${API_BASE_URL}/admin/leaves/${leaveId}`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setLeaveActionModal(prev => ({ ...prev, leave: json.data, loading: false }));
+          return;
+        }
+      } catch (e) {
+        console.warn('Error fetching leave details by ID:', e);
+      }
+    }
+
+    const matchLeave = leaves.find(l => l._id === leaveId || notif.message.includes(l.employeeName));
+    setLeaveActionModal(prev => ({ ...prev, leave: matchLeave || null, loading: false }));
+  };
+
+  const handleAcceptLeaveModalAction = async () => {
+    if (!leaveActionModal.leave?._id) return;
+    setLeaveActionModal(prev => ({ ...prev, loading: true, msg: null }));
+
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/leaves/${leaveActionModal.leave._id}/approve`, {
+        method: 'PATCH'
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setLeaveActionModal(prev => ({ ...prev, loading: false, msg: json.message || 'Failed to approve leave.' }));
+        return;
+      }
+
+      setLeaveActionModal(prev => ({
+        ...prev,
+        loading: false,
+        leave: json.data,
+        msg: 'Leave request APPROVED successfully! Notification sent to staff member.'
+      }));
+      setLeaves(prev => prev.map(l => l._id === json.data._id ? json.data : l));
+    } catch (err: any) {
+      setLeaveActionModal(prev => ({ ...prev, loading: false, msg: err.message || 'Network error.' }));
+    }
+  };
+
+  const handleRejectLeaveModalAction = async () => {
+    if (!leaveActionModal.leave?._id) return;
+    setLeaveActionModal(prev => ({ ...prev, loading: true, msg: null }));
+
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/leaves/${leaveActionModal.leave._id}/reject`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rejectionReason: leaveActionModal.rejectReason })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        setLeaveActionModal(prev => ({ ...prev, loading: false, msg: json.message || 'Failed to reject leave.' }));
+        return;
+      }
+
+      setLeaveActionModal(prev => ({
+        ...prev,
+        loading: false,
+        leave: json.data,
+        msg: 'Leave request REJECTED successfully. Notification sent to staff member.'
+      }));
+      setLeaves(prev => prev.map(l => l._id === json.data._id ? json.data : l));
+    } catch (err: any) {
+      setLeaveActionModal(prev => ({ ...prev, loading: false, msg: err.message || 'Network error.' }));
+    }
+  };
+
   // Landing Page / Home Page Settings State
   const [landingHeroTitle, setLandingHeroTitle] = useState("Unveil Your Radiant Beauty");
   const [landingHeroSubtitle, setLandingHeroSubtitle] = useState("“Beauty is not created—it is unveiled from within.”");
@@ -1663,10 +1769,14 @@ function AdminDashboardContent() {
                             notifications.map((n) => {
                               const notifId = n._id || n.notificationId;
                               const isUnread = !n.read && !n.isRead;
+                              const isLeaveNotif = n.type === 'leave' || !!n.leaveRequestId || n.title?.toLowerCase().includes('leave');
                               return (
                                 <div
                                   key={notifId}
+                                  onClick={() => isLeaveNotif && handleOpenLeaveModalFromNotif(n)}
                                   className={`p-3 rounded-2xl text-xs space-y-1 transition-colors ${
+                                    isLeaveNotif ? 'cursor-pointer hover:bg-rosegold-500/20' : ''
+                                  } ${
                                     isUnread
                                       ? 'bg-rosegold-500/10 border-l-4 border-l-rosegold-500 text-white font-medium'
                                       : 'bg-dark-800/40 text-gray-400'
@@ -1677,6 +1787,11 @@ function AdminDashboardContent() {
                                       <div className="flex items-center space-x-1.5">
                                         {isUnread && <span className="w-2 h-2 rounded-full bg-rosegold-400 shrink-0" />}
                                         <span className={`font-bold block truncate ${isUnread ? 'text-white' : 'text-gray-300'}`}>{n.title}</span>
+                                        {isLeaveNotif && (
+                                          <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[9px] font-bold border border-purple-500/30">
+                                            Click to Review
+                                          </span>
+                                        )}
                                       </div>
                                       <p className="text-gray-300 text-[11px] leading-relaxed whitespace-pre-line">{n.message}</p>
                                       <span className="text-[9px] text-gray-500 font-mono block">
@@ -1687,7 +1802,7 @@ function AdminDashboardContent() {
                                     <div className="flex items-center space-x-1 shrink-0 pt-0.5">
                                       {isUnread && (
                                         <button
-                                          onClick={() => handleAdminMarkRead(notifId)}
+                                          onClick={(e) => { e.stopPropagation(); handleAdminMarkRead(notifId); }}
                                           className="p-1 rounded-lg bg-dark-800 text-green-400 hover:bg-green-500 hover:text-dark-900 cursor-pointer border border-green-500/30 transition-colors"
                                           title="Mark as Read"
                                         >
@@ -6341,6 +6456,123 @@ function AdminDashboardContent() {
                 {confirmModal.confirmText || 'Confirm Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* LEAVE REQUEST ACTION MODAL FOR ADMIN */}
+      {leaveActionModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="glass-card max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar p-6 sm:p-8 rounded-3xl border border-rosegold-500/40 space-y-6 shadow-2xl relative text-left">
+            <button
+              onClick={() => setLeaveActionModal(prev => ({ ...prev, isOpen: false }))}
+              className="absolute top-5 right-5 text-gray-400 hover:text-white cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="space-y-1 border-b border-white/10 pb-4">
+              <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-widest">LEAVE REQUEST DETAILS</span>
+              <h3 className="text-2xl font-serif font-bold text-white">Review Leave Application</h3>
+            </div>
+
+            {leaveActionModal.msg && (
+              <div className={`p-3.5 rounded-2xl text-xs font-semibold border ${
+                leaveActionModal.msg.includes('APPROVED') || leaveActionModal.msg.includes('successfully')
+                  ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                  : 'bg-red-500/20 text-red-300 border-red-500/30'
+              }`}>
+                {leaveActionModal.msg}
+              </div>
+            )}
+
+            {leaveActionModal.loading && !leaveActionModal.leave ? (
+              <div className="py-8 text-center text-xs text-gray-400">Loading leave request details...</div>
+            ) : leaveActionModal.leave ? (
+              <div className="space-y-5 text-xs">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-dark-850 border border-white/10">
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Staff / Employee Name</span>
+                    <span className="font-bold text-white text-sm">{leaveActionModal.leave.employeeName}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Current Status</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase inline-block mt-0.5 ${
+                      leaveActionModal.leave.status === 'Approved'
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : leaveActionModal.leave.status === 'Rejected'
+                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                    }`}>
+                      {leaveActionModal.leave.status}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Start Date</span>
+                    <span className="font-bold text-white font-mono">{leaveActionModal.leave.startDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">End Date</span>
+                    <span className="font-bold text-white font-mono">{leaveActionModal.leave.endDate}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Total Leave Days</span>
+                    <span className="font-bold text-rosegold-400">
+                      {Math.max(1, Math.round((new Date(leaveActionModal.leave.endDate).getTime() - new Date(leaveActionModal.leave.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1)} Days
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[10px]">Request Date</span>
+                    <span className="font-bold text-gray-300">
+                      {leaveActionModal.leave.createdAt ? new Date(leaveActionModal.leave.createdAt).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-dark-850 border border-white/10 space-y-1">
+                  <span className="text-gray-400 block text-[10px] font-bold uppercase">Reason for Leave</span>
+                  <p className="text-gray-200 leading-relaxed italic">{leaveActionModal.leave.reason}</p>
+                </div>
+
+                {leaveActionModal.leave.status === 'Pending' ? (
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase">Optional Rejection Reason (If rejecting)</label>
+                      <input
+                        type="text"
+                        value={leaveActionModal.rejectReason}
+                        onChange={(e) => setLeaveActionModal(prev => ({ ...prev, rejectReason: e.target.value }))}
+                        placeholder="e.g. High customer booking volume during festival week"
+                        className="w-full px-3.5 py-2 rounded-xl bg-dark-800 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-rosegold-400 text-xs"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={handleAcceptLeaveModalAction}
+                        disabled={leaveActionModal.loading}
+                        className="flex-1 py-3.5 rounded-2xl bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                      >
+                        {leaveActionModal.loading ? 'Processing...' : 'ACCEPT LEAVE'}
+                      </button>
+                      <button
+                        onClick={handleRejectLeaveModalAction}
+                        disabled={leaveActionModal.loading}
+                        className="flex-1 py-3.5 rounded-2xl bg-red-600/30 hover:bg-red-600/40 text-red-300 border border-red-500/40 font-extrabold text-xs shadow-lg cursor-pointer transition-all disabled:opacity-50"
+                      >
+                        {leaveActionModal.loading ? 'Processing...' : 'REJECT LEAVE'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-dark-800 text-gray-400 text-center text-xs italic border border-white/5">
+                    This leave request has been finalized as <span className="font-bold text-white">{leaveActionModal.leave.status}</span>.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-xs text-gray-400">Leave request details unavailable.</div>
+            )}
           </div>
         </div>
       )}
