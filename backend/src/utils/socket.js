@@ -97,7 +97,7 @@ const broadcastEvent = (eventName, data, room = null) => {
     if (room) {
       io.to(room).emit(eventName, data);
     } else {
-      io.to('room:admin').to('room:manager').to('room:receptionist').emit(eventName, data);
+      io.emit(eventName, data);
     }
   } catch (err) {
     console.error('[Socket.IO] broadcastEvent error:', err.message);
