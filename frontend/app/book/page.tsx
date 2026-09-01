@@ -70,6 +70,7 @@ function BookingContent() {
   const serviceIdParam = searchParams?.get('serviceId') || searchParams?.get('id');
   const serviceParam = searchParams?.get('service');
   const categoryParam = searchParams?.get('category') || 'all';
+  const subcategoryParam = searchParams?.get('subcategory') || '';
   const rawPackageParam = searchParams?.get('package');
   const packageParam = rawPackageParam && rawPackageParam.trim() ? rawPackageParam.trim().toLowerCase() : null;
   const staffParam = searchParams?.get('staff') || searchParams?.get('specialist');
