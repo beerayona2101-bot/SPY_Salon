@@ -63,6 +63,7 @@ const DEFAULT_TEMPLATES: QuickTemplate[] = [
     category: 'Offers',
     message: `Hello,\n\nPlease share your salon combo packages and current offers.\n\nThank you.`
   },
+
   {
     id: 'tmpl-8',
     name: 'VIP Services',

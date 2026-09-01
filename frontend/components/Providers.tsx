@@ -7,6 +7,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
+
     <ThemeProvider>
       <AuthProvider>
         <SocketProvider>{children}</SocketProvider>
