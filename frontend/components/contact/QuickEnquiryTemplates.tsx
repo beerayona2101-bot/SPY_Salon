@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Sparkles, Search, Check } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
+import { useTheme } from '@/context/ThemeContext';
 
 export interface QuickTemplate {
   id: string;
@@ -118,6 +119,15 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
   const [templates, setTemplates] = useState<QuickTemplate[]>(DEFAULT_TEMPLATES);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Get active theme from ThemeContext safely
+  let theme: 'dark' | 'light' = 'dark';
+  try {
+    const themeContext = useTheme();
+    theme = themeContext.theme;
+  } catch (e) {
+    theme = 'dark';
+  }
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/enquiry-templates`)
       .then(res => res.json())
@@ -138,13 +148,17 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
     );
   }, [templates, searchQuery]);
 
+  const isLight = theme === 'light';
+
   return (
     <div className="space-y-2.5 text-left">
-      {/* Header with Search Toggle */}
-      <div className="flex items-center justify-between">
+      {/* Header with Theme-Based Font Colors & Search Toggle */}
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center space-x-1.5">
-          <Sparkles className="w-4 h-4 text-rosegold-500 dark:text-rosegold-400 animate-pulse" />
-          <h4 className="text-xs uppercase font-extrabold text-gray-900 dark:text-gray-200 tracking-wider">
+          <Sparkles className={`w-4 h-4 animate-pulse ${isLight ? 'text-rosegold-600' : 'text-rosegold-400'}`} />
+          <h4 className={`text-xs uppercase font-extrabold tracking-wider transition-colors ${
+            isLight ? 'text-rosegold-800' : 'text-rosegold-300'
+          }`}>
             ✨ Quick Message Templates
           </h4>
         </div>
@@ -155,13 +169,19 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
             placeholder="Search template..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="w-32 sm:w-40 pl-7 pr-2 py-1 rounded-full bg-white dark:bg-dark-900 border border-gray-300 dark:border-white/10 text-[10px] text-gray-900 dark:text-white focus:outline-none focus:border-rosegold-500 font-bold"
+            className={`w-32 sm:w-40 pl-7 pr-2 py-1 rounded-full text-[10px] font-bold transition-all focus:outline-none ${
+              isLight
+                ? 'bg-white text-dark-900 border border-rosegold-300/80 placeholder-gray-500 focus:border-rosegold-500 shadow-sm'
+                : 'bg-dark-900 text-white border border-white/15 placeholder-gray-400 focus:border-rosegold-400'
+            }`}
           />
-          <Search className="w-3 h-3 text-gray-500 dark:text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className={`w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 ${
+            isLight ? 'text-gray-500' : 'text-gray-400'
+          }`} />
         </div>
       </div>
 
-      {/* Pill Buttons Row (Horizontally Scrollable on Mobile, Wrap on Desktop) */}
+      {/* Pill Buttons Row (Theme-Aware Font and Background Colors) */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar sm:flex-wrap">
         {filteredTemplates.map(tmpl => {
           const isSelected = selectedId === tmpl.id;
@@ -173,12 +193,14 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
               onClick={() => onSelectTemplate(tmpl)}
               className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center space-x-1.5 shrink-0 cursor-pointer border ${
                 isSelected
-                  ? 'rosegold-gradient-bg !text-dark-900 font-extrabold border-rosegold-500 shadow-md scale-[1.03]'
-                  : 'bg-[#F0E6DC] dark:bg-dark-800 !text-gray-900 dark:!text-gray-100 border-rosegold-500/40 dark:border-white/10 hover:border-rosegold-500 quick-template-pill-unselected'
+                  ? 'rosegold-gradient-bg text-dark-900 font-extrabold border-rosegold-500 shadow-md scale-[1.03]'
+                  : isLight
+                  ? 'bg-[#F5EBE1] text-gray-900 border border-rosegold-400/60 hover:bg-rosegold-100 hover:border-rosegold-500'
+                  : 'bg-dark-800 text-rosegold-200 border border-rosegold-500/40 hover:bg-dark-750 hover:border-rosegold-400 hover:text-white'
               }`}
             >
               <span>{tmpl.icon}</span>
-              <span className="font-extrabold !text-gray-900 dark:!text-gray-100">{tmpl.name}</span>
+              <span className="font-extrabold">{tmpl.name}</span>
               {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
             </button>
           );
@@ -189,4 +211,3 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
 });
 
 export default QuickEnquiryTemplates;
-
