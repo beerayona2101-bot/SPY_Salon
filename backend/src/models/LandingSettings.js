@@ -4,13 +4,13 @@ const LandingSettingsSchema = new mongoose.Schema({
   key: { type: String, default: 'main_landing_settings', unique: true },
   heroTitle: { 
     type: String, 
-    default: 'Unveil Your Radiant Beauty',
+    default: 'Hairs make perfectly',
     trim: true,
     maxlength: [120, 'Hero headline cannot exceed 120 characters']
   },
   heroSubtitle: { 
     type: String, 
-    default: '“Beauty is not created—it is unveiled from within.”',
+    default: 'Style come from the hair style',
     trim: true,
     maxlength: [300, 'Hero subtitle cannot exceed 300 characters']
   },

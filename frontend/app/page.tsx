@@ -94,8 +94,8 @@ export default function Home() {
   const router = useRouter();
 
   const [homeSettings, setHomeSettings] = useState<any>({
-    heroTitle: 'Unveil Your Radiant Beauty',
-    heroSubtitle: '“Beauty is not created—it is unveiled from within.”',
+    heroTitle: 'Hairs make perfectly',
+    heroSubtitle: 'Style come from the hair style',
     announcementActive: true,
     announcement: '✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages! Use Code: LUXURY25',
     hotlinePhone: '+91 94906 44434',
@@ -111,22 +111,28 @@ export default function Home() {
   });
 
   useEffect(() => {
-    const parseSettings = (p: any) => ({
-      heroTitle: p.heroTitle || 'Unveil Your Radiant Beauty',
-      heroSubtitle: p.heroSubtitle || '“Beauty is not created—it is unveiled from within.”',
-      announcementActive: p.announcementActive !== undefined ? p.announcementActive : true,
-      announcement: p.announcement || '✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages!',
-      hotlinePhone: p.hotlinePhone || '+91 94906 44434',
-      supportEmail: p.supportEmail || 'concierge@spysalon.com',
-      openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM',
-      studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033',
-      stats: [
-        { label: p.stat1Label || 'Satisfied Clients', value: p.stat1Value || '25,000+' },
-        { label: p.stat2Label || 'Master Stylists', value: p.stat2Value || '45+' },
-        { label: p.stat3Label || 'Luxury Studio', value: p.stat3Value || 'Jubilee Hills' },
-        { label: p.stat4Label || 'Google Rating', value: p.stat4Value || '4.9 ⭐' }
-      ]
-    });
+    const parseSettings = (p: any) => {
+      let rawTitle = p.heroTitle || 'Hairs make perfectly';
+      if (rawTitle === 'Hairs make perfect' || rawTitle === 'Unveil Your Radiant Beauty') {
+        rawTitle = 'Hairs make perfectly';
+      }
+      return {
+        heroTitle: rawTitle,
+        heroSubtitle: p.heroSubtitle || 'Style come from the hair style',
+        announcementActive: p.announcementActive !== undefined ? p.announcementActive : true,
+        announcement: p.announcement || '✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages!',
+        hotlinePhone: p.hotlinePhone || '+91 94906 44434',
+        supportEmail: p.supportEmail || 'concierge@spysalon.com',
+        openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM',
+        studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033',
+        stats: [
+          { label: p.stat1Label || 'Satisfied Clients', value: p.stat1Value || '25,000+' },
+          { label: p.stat2Label || 'Master Stylists', value: p.stat2Value || '45+' },
+          { label: p.stat3Label || 'Luxury Studio', value: p.stat3Value || 'Jubilee Hills' },
+          { label: p.stat4Label || 'Google Rating', value: p.stat4Value || '4.9 ⭐' }
+        ]
+      };
+    };
 
     const loadSettings = async () => {
       // 1. Immediately apply cached local settings to avoid any flicker
@@ -160,25 +166,7 @@ export default function Home() {
     if (socket) {
       socket.on('landing_settings_updated', (p: any) => {
         if (p) {
-          setHomeSettings({
-            heroTitle: p.heroTitle || 'Unveil Your Radiant Beauty',
-            heroSubtitle: p.heroSubtitle || '“Beauty is not created—it is unveiled from within.”',
-            announcementActive: p.announcementActive !== undefined ? p.announcementActive : true,
-            announcement: p.announcement || '✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages!',
-            hotlinePhone: p.hotlinePhone || '+91 94906 44434',
-            supportEmail: p.supportEmail || 'concierge@spysalon.com',
-            openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM',
-            studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033',
-            stats: [
-              { label: p.stat1Label || 'Satisfied Clients', value: p.stat1Value || '25,000+' },
-              { label: p.stat2Label || 'Master Stylists', value: p.stat2Value || '45+' },
-              { label: p.stat3Label || 'Luxury Studio', value: p.stat3Value || 'Jubilee Hills' },
-              { label: p.stat4Label || 'Google Rating', value: p.stat4Value || '4.9 ⭐' }
-            ]
-          });
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('spy_landing_settings', JSON.stringify(p));
-          }
+          setHomeSettings(parseSettings(p));
         }
       });
     }

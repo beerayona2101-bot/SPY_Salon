@@ -26,11 +26,24 @@ exports.getAdminLandingSettings = async (req, res, next) => {
   try {
     let settings = await LandingSettings.findOne({ key: 'main_landing_settings' });
     if (!settings) {
-      settings = await LandingSettings.create({ key: 'main_landing_settings' });
-    } else if (settings.heroTitle === 'SPY Salon | Luxury Beauty Studio & MedSpa') {
-      settings.heroTitle = 'Unveil Your Radiant Beauty';
-      settings.heroSubtitle = '“Beauty is not created—it is unveiled from within.”';
-      await settings.save();
+      settings = await LandingSettings.create({ 
+        key: 'main_landing_settings',
+        heroTitle: 'Hairs make perfectly',
+        heroSubtitle: 'Style come from the hair style'
+      });
+    } else {
+      let updated = false;
+      if (settings.heroTitle === 'SPY Salon | Luxury Beauty Studio & MedSpa' || settings.heroTitle === 'Unveil Your Radiant Beauty' || settings.heroTitle === 'Hairs make perfect') {
+        settings.heroTitle = 'Hairs make perfectly';
+        updated = true;
+      }
+      if (!settings.heroSubtitle) {
+        settings.heroSubtitle = 'Style come from the hair style';
+        updated = true;
+      }
+      if (updated) {
+        await settings.save();
+      }
     }
     return ApiResponse.success(res, settings, 'Landing settings retrieved');
   } catch (error) {
