@@ -38,7 +38,22 @@ exports.uploadAvatar = async (req, res, next) => {
     const userId = req.user._id;
     const { avatar } = req.body;
 
-    if (!avatar) throw ApiError.badRequest('No avatar image URL provided');
+    if (!avatar) throw ApiError.badRequest('No profile photo image data provided.');
+
+    // Validate Base64 size limit (Max 5MB)
+    if (typeof avatar === 'string' && avatar.startsWith('data:')) {
+      const base64Content = avatar.split(',')[1] || '';
+      const sizeInBytes = Math.round((base64Content.length * 3) / 4);
+      if (sizeInBytes > 5 * 1024 * 1024) {
+        throw ApiError.badRequest('Profile photo must be smaller than 5 MB.');
+      }
+
+      const mimeType = avatar.split(';')[0].split(':')[1] || '';
+      const validMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validMimes.includes(mimeType.toLowerCase())) {
+        throw ApiError.badRequest('Please upload a valid JPG, PNG, or WEBP image.');
+      }
+    }
 
     // Update avatar variants
     const avatarVariants = {
@@ -49,13 +64,17 @@ exports.uploadAvatar = async (req, res, next) => {
     };
 
     const user = await User.findByIdAndUpdate(userId, { avatar, avatarVariants }, { new: true });
-    
-    // If employee, sync avatar to Employee model as well
-    if (user.role === 'employee') {
+    if (!user) throw ApiError.notFound('Account not found');
+
+    // Dual sync to Employee model by both ID and Email
+    if (user.role === 'employee' || user.email) {
       await Employee.findByIdAndUpdate(userId, { avatar });
+      if (user.email) {
+        await Employee.findOneAndUpdate({ email: user.email }, { avatar });
+      }
     }
 
-    return ApiResponse.success(res, { avatar, avatarVariants }, 'Profile avatar updated successfully');
+    return ApiResponse.success(res, { avatar, avatarVariants }, 'Profile photo updated successfully!');
   } catch (error) {
     next(error);
   }
@@ -71,11 +90,16 @@ exports.removeAvatar = async (req, res, next) => {
       avatarVariants: { thumbnail: '', navbar: '', card: '', full: '' } 
     }, { new: true });
 
-    if (user.role === 'employee') {
+    if (!user) throw ApiError.notFound('Account not found');
+
+    if (user.role === 'employee' || user.email) {
       await Employee.findByIdAndUpdate(userId, { avatar: '' });
+      if (user.email) {
+        await Employee.findOneAndUpdate({ email: user.email }, { avatar: '' });
+      }
     }
 
-    return ApiResponse.success(res, null, 'Avatar removed successfully');
+    return ApiResponse.success(res, null, 'Profile photo removed successfully!');
   } catch (error) {
     next(error);
   }

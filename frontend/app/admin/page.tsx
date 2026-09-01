@@ -68,6 +68,7 @@ import ImageUploader from '@/components/ui/ImageUploader';
 import QuickContactActions from '@/components/admin/QuickContactActions';
 import VIPBadge from '@/components/common/VIPBadge';
 import ChangePasswordModal from '@/components/common/ChangePasswordModal';
+import ProfileAvatar from '@/components/common/ProfileAvatar';
 import { validateForm, validateName, validateEmail, validatePhone, validateNumber, validateRequired, validateDate } from '@/lib/validation';
 import { SALON_CATALOGUE } from '@/lib/servicesData';
 
@@ -1603,17 +1604,7 @@ function AdminDashboardContent() {
         <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl border border-rosegold-500/40 overflow-hidden shrink-0 shadow-md bg-dark-800 flex items-center justify-center brand-profile-avatar">
-                {(user as any)?.avatar || (user as any)?.profileImage ? (
-                  <img 
-                    src={(user as any)?.avatar || (user as any)?.profileImage} 
-                    alt="System Administrator" 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  'SA'
-                )}
-              </div>
+              <ProfileAvatar user={user} name={user?.name || "System Administrator"} size="md" onClick={() => setIsSettingsModalOpen(true)} />
               <div className="space-y-0.5 overflow-hidden text-left">
                 <h4 className="text-white font-serif font-bold text-xs truncate">System Administrator</h4>
                 <p className="text-[10px] text-gray-400 truncate">admin@spysalon.com</p>
@@ -3067,19 +3058,7 @@ function AdminDashboardContent() {
                     return (
                       <div key={emp._id || idx} className="glass-card p-6 rounded-3xl space-y-4 border border-rosegold-500/30 flex flex-col justify-between hover:border-rosegold-500/60 transition-all">
                         <div className="flex items-start space-x-4">
-                          <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-rosegold-500/50 shadow-glow-rosegold shrink-0 bg-dark-800 flex items-center justify-center brand-profile-avatar">
-                            {emp.avatar && !emp.avatar.includes('photo-1534528741775') ? (
-                              <img 
-                                src={emp.avatar} 
-                                alt={emp.name} 
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="font-extrabold text-rosegold-400 text-lg">
-                                {emp.name ? emp.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) : 'ST'}
-                              </span>
-                            )}
-                          </div>
+                          <ProfileAvatar src={emp.avatar} name={emp.name} size="xl" className="w-20 h-20 rounded-2xl border-2 border-rosegold-500/50 shadow-glow-rosegold" />
 
                           <div className="flex-1 min-w-0 space-y-1">
                             <div className="flex items-center justify-between">

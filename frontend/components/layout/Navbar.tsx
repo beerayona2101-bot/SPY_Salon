@@ -33,6 +33,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { AnimatedButton } from '@/components/ui/animated-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import VIPBadge from '@/components/common/VIPBadge';
+import ProfileAvatar from '@/components/common/ProfileAvatar';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -568,13 +569,7 @@ export default function Navbar() {
                     className="flex items-center space-x-1.5 sm:space-x-2 p-1 sm:px-3 sm:py-1.5 rounded-full bg-dark-800 border border-rosegold-500/40 text-white font-medium text-xs hover:border-rosegold-400 transition-all shadow-glow-rosegold cursor-pointer"
                     title="User Profile & Account"
                   >
-                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full font-extrabold flex items-center justify-center text-[10px] sm:text-[11px] shadow-sm shrink-0 overflow-hidden brand-profile-avatar">
-                      {user.avatar || user.avatarVariants?.navbar ? (
-                        <img src={user.avatarVariants?.navbar || user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                      ) : (
-                        getInitials(user.name)
-                      )}
-                    </div>
+                    <ProfileAvatar user={user} name={user.name} size="xs" className="w-6 h-6 sm:w-7 sm:h-7" showBorder={false} />
                     <span className="hidden sm:inline font-serif font-bold text-xs truncate max-w-[90px] sm:max-w-[120px]">
                       {user.name ? user.name.split(' ')[0] : 'Profile'}
                     </span>
@@ -677,9 +672,7 @@ export default function Navbar() {
               {/* Modal Header */}
               <div className="flex items-center justify-between pb-3 border-b border-white/10">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                  <div className="w-12 h-12 rounded-2xl font-extrabold text-base flex items-center justify-center shadow-md shrink-0 brand-profile-avatar">
-                    {getInitials(user.name)}
-                  </div>
+                  <ProfileAvatar user={user} name={user.name} size="lg" />
                   <div className="space-y-0.5 overflow-hidden">
                     <div className="flex items-center space-x-1.5">
                       <h4 className="text-white font-serif font-bold text-base truncate">{user.name || 'Valued User'}</h4>

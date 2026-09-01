@@ -44,6 +44,7 @@ import { useSocket } from '@/context/SocketContext';
 import { API_BASE_URL, apiFetch } from '@/lib/api';
 import EmployeeCalendarModule from '@/components/employee/EmployeeCalendarModule';
 import ChangePasswordModal from '@/components/common/ChangePasswordModal';
+import ProfileAvatar from '@/components/common/ProfileAvatar';
 import { validateForm, validateName, validatePhone, validateIFSC, validateUPI, validateRequired, validateDate } from '@/lib/validation';
 
 interface AssignedAppointment {
@@ -737,17 +738,7 @@ function EmployeeDashboardContent() {
         <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl border border-rosegold-500/40 overflow-hidden shrink-0 shadow-md bg-dark-800 flex items-center justify-center brand-profile-avatar">
-                {(user as any)?.avatar || (user as any)?.profileImage ? (
-                  <img 
-                    src={(user as any)?.avatar || (user as any)?.profileImage} 
-                    alt={employeeName} 
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  employeeName ? employeeName.slice(0, 2).toUpperCase() : 'ST'
-                )}
-              </div>
+              <ProfileAvatar user={user} name={employeeName} size="md" onClick={() => setIsSettingsModalOpen(true)} />
               <div className="space-y-0.5 overflow-hidden text-left">
                 <h4 className="text-white font-serif font-bold text-xs truncate">{employeeName}</h4>
                 <p className="text-[10px] text-rosegold-400 truncate">Senior Hair & Skin Specialist</p>

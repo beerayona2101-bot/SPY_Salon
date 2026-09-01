@@ -45,6 +45,7 @@ import VIPBadge from '@/components/common/VIPBadge';
 import AppointmentCard from '@/components/appointments/AppointmentCard';
 import AppointmentStatusBadge from '@/components/appointments/AppointmentStatusBadge';
 import ChangePasswordModal from '@/components/common/ChangePasswordModal';
+import ProfileAvatar from '@/components/common/ProfileAvatar';
 
 const ProfileImageModal = dynamic(() => import('@/components/profile/ProfileImageModal'), {
   ssr: false
@@ -481,17 +482,7 @@ function UserProfileContent() {
           
           {/* Avatar Container with Interactive Camera Trigger */}
           <div className="relative group shrink-0">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl font-extrabold text-3xl flex items-center justify-center shadow-2xl overflow-hidden brand-profile-avatar">
-              {user?.avatar || user?.avatarVariants?.card ? (
-                <img
-                  src={user.avatarVariants?.card || user.avatar}
-                  alt={user.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                user?.name ? user.name.slice(0, 2).toUpperCase() : 'VIP'
-              )}
-            </div>
+            <ProfileAvatar user={user} name={user?.name} size="2xl" className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl" />
 
             <button
               onClick={() => setIsPhotoModalOpen(true)}
