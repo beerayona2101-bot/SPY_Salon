@@ -322,6 +322,11 @@ export default function EmployeeCalendarModule({
 
   const handleLeaveSubmitInternal = (e: React.FormEvent) => {
     e.preventDefault();
+    const todayIST = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    if (leaveForm.startDate < todayIST) {
+      setLeaveMsg(`Leave start date cannot be in the past (${leaveForm.startDate}). Please select today (${todayIST}) or a future date.`);
+      return;
+    }
     if (!leaveForm.reason) {
       setLeaveMsg('Please provide a reason for your leave request.');
       return;
@@ -333,6 +338,8 @@ export default function EmployeeCalendarModule({
       setLeaveMsg(null);
     }, 1500);
   };
+
+  const todayISTStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
   return (
     <div className="space-y-6 text-left">
@@ -822,6 +829,7 @@ export default function EmployeeCalendarModule({
                 <input
                   type="date"
                   required
+                  min={todayISTStr}
                   value={leaveForm.startDate}
                   onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
                   className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white font-bold focus:outline-none focus:border-purple-400"
@@ -833,6 +841,7 @@ export default function EmployeeCalendarModule({
                 <input
                   type="date"
                   required
+                  min={leaveForm.startDate || todayISTStr}
                   value={leaveForm.endDate}
                   onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
                   className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white font-bold focus:outline-none focus:border-purple-400"

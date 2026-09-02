@@ -813,7 +813,7 @@ export default function Home() {
                 {/* Action Link */}
                 <div className="pt-4 mt-4 border-t border-white/10">
                   <Link
-                    href="/book"
+                    href={`/book?specialist=${encodeURIComponent(item.name)}`}
                     className="w-full py-2.5 px-3 rounded-xl bg-dark-800 hover:bg-rosegold-500/20 text-gray-200 hover:text-white border border-rosegold-500/30 text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     <Calendar className="w-3.5 h-3.5 text-rosegold-400" />

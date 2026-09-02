@@ -1176,7 +1176,7 @@ function AdminDashboardContent() {
   };
 
   const handleDeleteTransaction = (id: string) => {
-    showConfirm('Delete transaction entry permanently from MongoDB?', async () => {
+    showConfirm('Are you sure you want to delete this transaction entry? This action cannot be undone.', async () => {
       await apiFetch(`${API_BASE_URL}/admin/transactions/${id}`, { method: 'DELETE' });
       setTransactions(transactions.filter(t => t._id !== id));
       const anaRes = await apiFetch(`${API_BASE_URL}/admin/analytics`).then(r => r.json()).catch(() => ({ data: null }));
@@ -2227,10 +2227,13 @@ function AdminDashboardContent() {
             const completedCount = selectedApps.filter(a => a.status === 'Completed').length;
             const cancelledCount = selectedApps.filter(a => a.status === 'Cancelled').length;
 
-            // Check staff on leave for this date
+            // Check staff on leave for this date (strictly Approved status and valid date bounds)
             const staffOnLeave = leaves ? leaves.filter(l => {
               if (l.status !== 'Approved') return false;
-              return selectedCalDate >= l.startDate && selectedCalDate <= l.endDate;
+              if (!l.startDate || !l.endDate) return false;
+              const sDate = String(l.startDate).split('T')[0];
+              const eDate = String(l.endDate).split('T')[0];
+              return selectedCalDate >= sDate && selectedCalDate <= eDate;
             }) : [];
 
             // Filter appointments by search & status
@@ -2351,7 +2354,13 @@ function AdminDashboardContent() {
                         const isToday = day.dateStr === todayStr;
                         const isPast = day.dateStr < todayStr;
                         const dayApps = getAppointmentsForDate(day.dateStr);
-                        const approvedLeavesOnDay = leaves ? leaves.filter(l => l.status === 'Approved' && day.dateStr >= l.startDate && day.dateStr <= l.endDate) : [];
+                        const approvedLeavesOnDay = leaves ? leaves.filter(l => {
+                          if (l.status !== 'Approved') return false;
+                          if (!l.startDate || !l.endDate) return false;
+                          const sDate = String(l.startDate).split('T')[0];
+                          const eDate = String(l.endDate).split('T')[0];
+                          return day.dateStr >= sDate && day.dateStr <= eDate;
+                        }) : [];
 
                         return (
                           <button
@@ -2576,16 +2585,52 @@ function AdminDashboardContent() {
                                       ? 'bg-green-500/20 text-green-300 border-green-500/40'
                                       : app.status === 'In Progress'
                                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                      : app.status === 'Cancelled'
+                                      : app.status === 'Cancelled' || app.status === 'Staff_Rejected'
                                       ? 'bg-red-500/20 text-red-300 border-red-500/40'
                                       : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                                   }`}
                                 >
-                                  <option value="Confirmed">Confirmed 🟢</option>
-                                  <option value="In Progress">In Progress ⏳</option>
-                                  <option value="Completed">Completed ✅</option>
-                                  <option value="Rescheduled">Rescheduled 🔄</option>
-                                  <option value="Cancelled">Cancelled 🔴</option>
+                                  {(() => {
+                                    const allowed = (() => {
+                                      switch (app.status) {
+                                        case 'Pending':
+                                          return ['Pending', 'Confirmed', 'In Progress', 'Cancelled'];
+                                        case 'Staff_Accepted':
+                                        case 'Confirmed':
+                                          return ['Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'];
+                                        case 'In Progress':
+                                          return ['In Progress', 'Completed', 'Cancelled'];
+                                        case 'Completed':
+                                          return ['Completed'];
+                                        case 'Cancelled':
+                                        case 'Staff_Rejected':
+                                          return ['Cancelled'];
+                                        case 'Rescheduled':
+                                        case 'Reschedule Requested':
+                                          return ['Rescheduled', 'Confirmed', 'Cancelled'];
+                                        default:
+                                          return [app.status, 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+                                      }
+                                    })();
+
+                                    const optLabels: Record<string, string> = {
+                                      'Pending': 'Pending ⏳',
+                                      'Confirmed': 'Confirmed 🟢',
+                                      'In Progress': 'In Progress ⏳',
+                                      'Completed': 'Completed ✅',
+                                      'Rescheduled': 'Rescheduled 🔄',
+                                      'Cancelled': 'Cancelled 🔴',
+                                      'Staff_Accepted': 'Staff Accepted 🟢',
+                                      'Staff_Rejected': 'Staff Rejected 🔴',
+                                      'Reschedule Requested': 'Reschedule Requested 🔄'
+                                    };
+
+                                    return allowed.map(st => (
+                                      <option key={st} value={st}>
+                                        {optLabels[st] || st}
+                                      </option>
+                                    ));
+                                  })()}
                                 </select>
                               </div>
 
@@ -3881,13 +3926,21 @@ function AdminDashboardContent() {
                         <td className="p-4 font-semibold text-white">{a.service}</td>
                         <td className="p-4 text-rosegold-300 font-medium">{a.specialistName}</td>
                         <td className="p-4 font-mono text-[11px] text-rosegold-300">
-                          {a.bookingDateTime 
-                            ? new Date(a.bookingDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                            : (a.bookingDate || '23 Jul 2026')
-                          }<br/>
-                          <span className="text-gray-400">
-                            {a.bookingTimeFormatted || (a.bookingDateTime ? new Date(a.bookingDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM')}
-                          </span>
+                          {(() => {
+                            const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;
+                            const d = raw ? new Date(raw) : new Date();
+                            const isValid = !isNaN(d.getTime());
+                            const finalD = isValid ? d : new Date();
+                            return (
+                              <>
+                                {finalD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                <br />
+                                <span className="text-gray-400">
+                                  {a.bookingTimeFormatted || finalD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                </span>
+                              </>
+                            );
+                          })()}
                         </td>
                         <td className="p-4 font-bold text-white">{a.appointmentDate}<br/><span className="text-rosegold-400">{a.appointmentTime}</span></td>
                         <td className="p-4"><span className="bg-dark-800 px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/10">{a.paymentMethod || 'Cash'} • {a.paymentStatus || 'Paid'}</span></td>

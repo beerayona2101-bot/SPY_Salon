@@ -127,6 +127,8 @@ interface NotificationItem {
   createdAt: string;
 }
 
+const getTodayISTStr = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
 function EmployeeDashboardContent() {
   const { user, isLoading, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -324,8 +326,23 @@ function EmployeeDashboardContent() {
     socket.emit('join_room', 'room:employee');
 
     socket.on('appointment:updated', (data: any) => {
-      if (data?.appointment) {
-        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      const app = data?.appointment || data;
+      if (app?._id) {
+        setAppointments(prev => prev.map(a => a._id === app._id ? { ...a, ...app } : a));
+      }
+    });
+
+    socket.on('appointment:created', (data: any) => {
+      const app = data?.appointment || data;
+      if (app?._id) {
+        setAppointments(prev => [app, ...prev.filter(a => a._id !== app._id)]);
+      }
+    });
+
+    socket.on('appointment:new', (data: any) => {
+      const app = data?.appointment || data;
+      if (app?._id) {
+        setAppointments(prev => [app, ...prev.filter(a => a._id !== app._id)]);
       }
     });
 
@@ -351,6 +368,8 @@ function EmployeeDashboardContent() {
 
     return () => {
       socket.off('appointment:updated');
+      socket.off('appointment:created');
+      socket.off('appointment:new');
       socket.off('leave:updated');
       socket.off('notification:new');
       socket.off('notifications:updated');
@@ -433,13 +452,13 @@ function EmployeeDashboardContent() {
     }
   };
 
-  // Update Service Status (In Progress, Completed, Cancelled)
-  const handleUpdateStatus = async (id: string, newStatus: string) => {
+  // Update Service Status (In Progress, Completed, Cancelled, Staff_Accepted, Staff_Rejected)
+  const handleUpdateStatus = async (id: string, newStatus: string, rejectionReason?: string) => {
     try {
       await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, rejectionReason })
       });
       setAppointments(appointments.map(a => a._id === id ? { ...a, status: newStatus } : a));
     } catch (e) {
@@ -591,6 +610,12 @@ function EmployeeDashboardContent() {
   // Leave Request Submission (CRUD)
   const handleSubmitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const todayIST = getTodayISTStr();
+    if (leaveForm.startDate < todayIST) {
+      alert(`Leave start date cannot be in the past (${leaveForm.startDate}). Please select today (${todayIST}) or a future date.`);
+      return;
+    }
+
     const { isValid, errors } = validateForm(leaveForm, {
       startDate: [validateDate('Start date')],
       endDate: [validateDate('End date')],
@@ -1111,6 +1136,30 @@ function EmployeeDashboardContent() {
                       </div>
 
                       <div className="flex items-center space-x-2">
+                        {app.status === 'Pending' && (
+                          <div className="flex items-center space-x-1.5 mr-1">
+                            <button
+                              onClick={() => handleUpdateStatus(app._id, 'Staff_Accepted')}
+                              className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center space-x-1"
+                              title="Accept this appointment request"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Accept</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const reason = prompt('Reason for rejecting appointment (optional):') || 'Specialist unavailable';
+                                handleUpdateStatus(app._id, 'Staff_Rejected', reason);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs transition-all cursor-pointer flex items-center space-x-1"
+                              title="Reject this appointment request"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        )}
+
                         {app.paymentStatus !== 'Paid' && (
                           <button
                             onClick={() => handleMarkPaymentPaid(app._id)}
@@ -1126,7 +1175,9 @@ function EmployeeDashboardContent() {
                           onChange={(e) => handleUpdateStatus(app._id, e.target.value)}
                           className="bg-dark-800 text-xs font-bold text-white px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none"
                         >
-                          <option value="Pending">Pending</option>
+                          <option value="Pending">Pending ⏳</option>
+                          <option value="Staff_Accepted">Accepted ✅</option>
+                          <option value="Staff_Rejected">Rejected ❌</option>
                           <option value="Confirmed">Confirmed</option>
                           <option value="In Progress">In Progress ✂️</option>
                           <option value="Completed">Completed ✅</option>
@@ -1148,10 +1199,13 @@ function EmployeeDashboardContent() {
                         <span className="text-rosegold-300 font-bold flex items-center space-x-1">
                           <Clock className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
                           <span>
-                            {app.bookingDateTime 
-                              ? new Date(app.bookingDateTime).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                              : (app.bookingDate || '23 Jul 2026')
-                            } • {app.bookingTimeFormatted || (app.bookingDateTime ? new Date(app.bookingDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM')}
+                            {(() => {
+                              const raw = (app as any).createdAt || app.bookingDateTime || app.bookingDate;
+                              const d = raw ? new Date(raw) : new Date();
+                              const isValid = !isNaN(d.getTime());
+                              const finalD = isValid ? d : new Date();
+                              return `${finalD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} • ${app.bookingTimeFormatted || finalD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                            })()}
                           </span>
                         </span>
                       </div>
@@ -1466,6 +1520,7 @@ function EmployeeDashboardContent() {
                     <input
                       type="date"
                       required
+                      min={getTodayISTStr()}
                       value={leaveForm.startDate}
                       onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
                       className={`w-full p-3 rounded-xl border text-xs font-bold ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800 border-white/10 text-white'}`}
@@ -1477,6 +1532,7 @@ function EmployeeDashboardContent() {
                     <input
                       type="date"
                       required
+                      min={leaveForm.startDate || getTodayISTStr()}
                       value={leaveForm.endDate}
                       onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
                       className={`w-full p-3 rounded-xl border text-xs font-bold ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800 border-white/10 text-white'}`}

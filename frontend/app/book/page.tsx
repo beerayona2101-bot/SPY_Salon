@@ -62,6 +62,32 @@ const calculateEndTime = (startTimeStr: string, durationMinutes: number) => {
   }
 };
 
+const getTodayISTStr = (): string => {
+  try {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  } catch (e) {
+    return new Date().toISOString().split('T')[0];
+  }
+};
+
+const isSlotInPast = (dateStr: string, timeSlotStr: string): boolean => {
+  if (!dateStr || !timeSlotStr) return false;
+  try {
+    const [time, modifier] = timeSlotStr.trim().split(/\s+/);
+    let [hours, minutes] = time.split(':').map(Number);
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    const isoStr = `${dateStr.trim()}T${hh}:${mm}:00+05:30`;
+    const dt = new Date(isoStr);
+    return !isNaN(dt.getTime()) && dt.getTime() <= Date.now();
+  } catch (e) {
+    return false;
+  }
+};
+
 function BookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,7 +111,7 @@ function BookingContent() {
   // Booking Form States
   const [selectedBranch, setSelectedBranch] = useState('Jubilee Hills Flagship Studio');
   const [selectedStaff, setSelectedStaff] = useState('Any Available Specialist');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayISTStr());
   const [selectedTime, setSelectedTime] = useState('10:30 AM');
   const [paymentMethod, setPaymentMethod] = useState<'Razorpay' | 'UPI' | 'Cash'>('Razorpay');
   const [upiTransactionId, setUpiTransactionId] = useState('');
@@ -392,6 +418,11 @@ function BookingContent() {
 
     const timeToUse = selectedTime || '10:30 AM';
 
+    if (isSlotInPast(selectedDate, timeToUse)) {
+      setConflictError('Please select a future appointment time. The selected time slot has already passed.');
+      return;
+    }
+
     if (bookedSlots.includes(timeToUse)) {
       setConflictError(`The slot ${timeToUse} on ${selectedDate} is already booked. Please choose an available time slot below.`);
       return;
@@ -429,13 +460,16 @@ function BookingContent() {
           customerEmail: formData.email,
           branch: selectedBranch,
           service: srvName,
+          serviceId: selectedServiceObj?.id || (selectedServiceObj as any)?._id,
+          packageTier: activeTierObj.name,
+          price: subtotalPrice,
           staffPreference: selectedStaff,
           specialistName: selectedStaff,
           appointmentDate: selectedDate,
           appointmentTime: selectedTime,
           paymentMethod: isPrePaid ? 'Razorpay (Pre-Paid)' : payMethod,
           paymentDetails: upiIdVal || txnIdVal ? { upiId: upiIdVal, transactionRef: txnIdVal } : {},
-          notes: `[Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
+          notes: `[Package: ${activeTierObj.name}] [Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
         })
       });
 
@@ -776,10 +810,10 @@ function BookingContent() {
                 <input
                   type="date"
                   value={selectedDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getTodayISTStr()}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = getTodayISTStr();
                     if (val < today) {
                       alert("Appointments cannot be scheduled on past dates. Setting date to today.");
                       setSelectedDate(today);
@@ -796,23 +830,25 @@ function BookingContent() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {timeSlots.map(slot => {
                     const isBooked = bookedSlots.includes(slot);
+                    const isPast = isSlotInPast(selectedDate, slot);
+                    const isUnavailable = isBooked || isPast;
                     const isSelected = selectedTime === slot;
 
                     return (
                       <button
                         type="button"
                         key={slot}
-                        disabled={isBooked}
+                        disabled={isUnavailable}
                         onClick={() => setSelectedTime(slot)}
                         className={`py-2.5 px-3 rounded-xl text-xs font-mono font-bold transition-all text-center ${
-                          isBooked
+                          isUnavailable
                             ? 'bg-dark-800/40 text-gray-600 border border-dark-700 line-through cursor-not-allowed'
                             : isSelected
                             ? 'rosegold-gradient-bg text-dark-900 shadow-md font-extrabold'
                             : 'bg-dark-850 text-gray-300 border border-white/10 hover:border-rosegold-500/40 cursor-pointer'
                         }`}
                       >
-                        {slot} {isBooked && '(Booked)'}
+                        {slot} {isBooked ? '(Booked)' : isPast ? '(Passed)' : ''}
                       </button>
                     );
                   })}
@@ -866,32 +902,41 @@ function BookingContent() {
               )}
 
               <div className="pt-3 border-t border-white/10 space-y-2">
-                <div className="flex justify-between text-gray-300">
-                  <span>Base Package Price</span>
-                  <span>₹{subtotalPrice}</span>
-                </div>
-
-                {membershipDiscountPercent > 0 && (
-                  <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
-                    <span className="flex items-center space-x-1">
-                      <Crown className="w-3.5 h-3.5 fill-current" />
-                      <span>VIP ({membershipInfo?.tier || 'Gold'} {membershipDiscountPercent}%)</span>
-                    </span>
-                    <span>-₹{vipDiscountAmount}</span>
+                {!selectedPackageTier ? (
+                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold text-center space-y-1">
+                    <span>⚠️ Package Selection Required</span>
+                    <p className="text-[11px] font-normal text-amber-200/80">Please select a package tier above to view pricing & total investment.</p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div className="flex justify-between text-gray-300">
+                      <span>Base Package Price ({activeTierObj?.name})</span>
+                      <span>₹{subtotalPrice}</span>
+                    </div>
 
-                {appliedPromo && (
-                  <div className="flex justify-between text-green-400 font-bold">
-                    <span>Discount ({appliedPromo.code})</span>
-                    <span>-₹{promoDiscountAmount}</span>
-                  </div>
-                )}
+                    {membershipDiscountPercent > 0 && (
+                      <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
+                        <span className="flex items-center space-x-1">
+                          <Crown className="w-3.5 h-3.5 fill-current" />
+                          <span>VIP ({membershipInfo?.tier || 'Gold'} {membershipDiscountPercent}%)</span>
+                        </span>
+                        <span>-₹{vipDiscountAmount}</span>
+                      </div>
+                    )}
 
-                <div className="flex justify-between text-gray-400">
-                  <span>Taxes (5% GST)</span>
-                  <span>+₹{taxAmount}</span>
-                </div>
+                    {appliedPromo && (
+                      <div className="flex justify-between text-green-400 font-bold">
+                        <span>Discount ({appliedPromo.code})</span>
+                        <span>-₹{promoDiscountAmount}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between text-gray-400">
+                      <span>Taxes (5% GST)</span>
+                      <span>+₹{taxAmount}</span>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex justify-between pt-2 border-t border-white/10 text-base font-serif font-bold text-white">
                   <span>Grand Total</span>
@@ -1038,7 +1083,7 @@ function BookingContent() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-xs"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}

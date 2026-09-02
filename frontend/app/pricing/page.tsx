@@ -132,7 +132,11 @@ function PricingPageContent() {
       const subcategoryMap = new Map<string, { name: string; slug: string; count: number }>();
 
       if (allServices && allServices.length > 0) {
-        const sectionServices = allServices.filter(s => (s.gender as string) === 'all' || s.gender === g.id);
+        const sectionServices = allServices.filter(s => {
+          const sG = (s.gender || 'all').toLowerCase().trim();
+          const targetG = g.id.toLowerCase().trim();
+          return sG === 'all' || sG === 'unisex' || sG === targetG;
+        });
 
         sectionServices.forEach(srv => {
           const catName = srv.category || 'General Care';
@@ -158,9 +162,13 @@ function PricingPageContent() {
   // 3. Filter services based on active Gender, Subcategory, and Debounced Search query
   const filteredServices: ServiceItem[] = useMemo(() => {
     return allServices.filter((srv) => {
-      // Gender filter
-      if (activeGender !== 'all' && srv.gender !== activeGender) {
-        return false;
+      // Gender filter (supports unisex/all and case-insensitive matching)
+      if (activeGender !== 'all') {
+        const sG = (srv.gender || 'all').toLowerCase().trim();
+        const targetG = activeGender.toLowerCase().trim();
+        if (sG !== 'all' && sG !== 'unisex' && sG !== targetG) {
+          return false;
+        }
       }
 
       // Subcategory filter

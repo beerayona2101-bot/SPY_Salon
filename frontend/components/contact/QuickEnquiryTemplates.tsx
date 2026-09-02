@@ -7,6 +7,8 @@ import { useTheme } from '@/context/ThemeContext';
 
 export interface QuickTemplate {
   id: string;
+  _id?: string;
+  templateId?: string;
   name: string;
   icon: string;
   category: string;
@@ -134,7 +136,11 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
       .then(res => res.json())
       .then(data => {
         if (data.data && Array.isArray(data.data) && data.data.length > 0) {
-          setTemplates(data.data);
+          const mapped = data.data.map((t: any) => ({
+            ...t,
+            id: t._id || t.id || t.templateId
+          }));
+          setTemplates(mapped);
         }
       })
       .catch(() => { });
@@ -182,13 +188,14 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
       {/* Pill Buttons Row (Theme-Aware Font and Background Colors) */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar sm:flex-wrap">
         {filteredTemplates.map(tmpl => {
-          const isSelected = selectedId === tmpl.id;
+          const tmplId = tmpl.id || tmpl._id || tmpl.templateId || '';
+          const isSelected = !!selectedId && selectedId === tmplId;
 
           return (
             <button
               type="button"
-              key={tmpl.id}
-              onClick={() => onSelectTemplate(tmpl)}
+              key={tmplId}
+              onClick={() => onSelectTemplate({ ...tmpl, id: tmplId })}
               className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center space-x-1.5 shrink-0 cursor-pointer border ${isSelected
                 ? 'rosegold-gradient-bg text-dark-900 font-extrabold border-rosegold-500 shadow-md scale-[1.03]'
                 : isLight

@@ -83,9 +83,96 @@ exports.updateAppointmentStatus = async (req, res, next) => {
 
     if (status) appointment.status = status;
     if (paymentStatus) appointment.paymentStatus = paymentStatus;
+
+    if ((status === 'Staff_Accepted' || status === 'Confirmed') && oldStatus !== status) {
+      appointment.acceptedAt = new Date();
+    }
+    if ((status === 'Staff_Rejected' || status === 'Cancelled') && oldStatus !== status) {
+      appointment.rejectedAt = new Date();
+      if (req.body.rejectionReason) appointment.rejectionReason = req.body.rejectionReason;
+    }
+
     await appointment.save();
 
-    // Side-effects on status changes
+    // 1. Staff Acceptance Notification & Real-Time Dispatches
+    if ((status === 'Staff_Accepted' || status === 'Confirmed') && oldStatus !== status) {
+      try {
+        const notificationController = require('./notificationController');
+        const customerUser = await User.findOne({
+          $or: [
+            ...(appointment.customerId ? [{ _id: appointment.customerId }] : []),
+            ...(appointment.customerEmail ? [{ email: appointment.customerEmail.toLowerCase().trim() }] : []),
+            ...(appointment.customerPhone ? [{ phone: appointment.customerPhone }] : [])
+          ]
+        });
+
+        const recipientUserId = customerUser ? customerUser._id.toString() : (appointment.customerId || null);
+        const recipientEmail = appointment.customerEmail ? appointment.customerEmail.toLowerCase().trim() : null;
+
+        await notificationController.dispatchNotification(req.app, {
+          userId: recipientUserId,
+          email: recipientEmail,
+          role: 'user',
+          title: 'Appointment Accepted 🎉',
+          message: `Your appointment with ${employeeName} for ${appointment.service} on ${appointment.appointmentDate} at ${appointment.appointmentTime} has been accepted.`,
+          type: 'appointment',
+          priority: 'high',
+          bookingId: appointment.bookingId,
+          appointmentId: appointment._id.toString(),
+          link: '/appointments'
+        });
+
+        // Targeted Socket.IO emission strictly to the member
+        const io = req.app ? req.app.get('io') : null;
+        if (io) {
+          if (recipientUserId) {
+            io.to(`room:user_${recipientUserId}`).emit('appointment:updated', { appointment });
+            io.to(`room:user_${recipientUserId}`).emit('appointment:accepted', { appointment });
+          }
+          if (recipientEmail) {
+            io.to(`room:user_${recipientEmail}`).emit('appointment:updated', { appointment });
+          }
+          io.to('room:admin').emit('appointment:updated', { appointment });
+          io.to('room:employee').emit('appointment:updated', { appointment });
+        }
+      } catch (notifErr) {
+        console.error('[EmployeeController] Acceptance notification error:', notifErr);
+      }
+    }
+
+    // 2. Staff Rejection Notification
+    if ((status === 'Staff_Rejected' || status === 'Cancelled') && oldStatus !== status) {
+      try {
+        const notificationController = require('./notificationController');
+        const customerUser = await User.findOne({
+          $or: [
+            ...(appointment.customerId ? [{ _id: appointment.customerId }] : []),
+            ...(appointment.customerEmail ? [{ email: appointment.customerEmail.toLowerCase().trim() }] : []),
+            ...(appointment.customerPhone ? [{ phone: appointment.customerPhone }] : [])
+          ]
+        });
+
+        const recipientUserId = customerUser ? customerUser._id.toString() : (appointment.customerId || null);
+        const recipientEmail = appointment.customerEmail ? appointment.customerEmail.toLowerCase().trim() : null;
+
+        await notificationController.dispatchNotification(req.app, {
+          userId: recipientUserId,
+          email: recipientEmail,
+          role: 'user',
+          title: 'Appointment Rejected ❌',
+          message: `Your appointment #${appointment.bookingId} for ${appointment.service} could not be accepted. ${req.body.rejectionReason || 'Please select another time slot.'}`,
+          type: 'appointment',
+          priority: 'high',
+          bookingId: appointment.bookingId,
+          appointmentId: appointment._id.toString(),
+          link: '/appointments'
+        });
+      } catch (rejNotifErr) {
+        console.error('[EmployeeController] Rejection notification error:', rejNotifErr);
+      }
+    }
+
+    // Side-effects on status changes (Completed)
     if (appointment.status === 'Completed' && oldStatus !== 'Completed') {
       // Record transaction if unpaid initially and payment is now completed
       if (appointment.paymentStatus === 'Paid' && oldPayment !== 'Paid') {
@@ -442,6 +529,12 @@ exports.submitLeaveRequest = async (req, res, next) => {
       throw ApiError.badRequest('Start date cannot be after end date.');
     }
 
+    const { getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
+    const todayStr = getKolkataCurrentDateStr();
+    if (startDate < todayStr) {
+      throw ApiError.badRequest(`Leave start date (${startDate}) cannot be in the past. Current date is ${todayStr}.`);
+    }
+
     const request = await Leave.create({
       employee: req.user._id,
       employeeId,
@@ -586,6 +679,9 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       service,
       price: validatedPrice,
       specialistName: specialistName || req.user.name,
+      specialistId: req.user._id ? req.user._id.toString() : null,
+      employeeId: req.user._id ? req.user._id.toString() : null,
+      employee: req.user._id || null,
       branch: 'Jubilee Hills Flagship',
       branchId: req.user.branchId,
       bookingDateTime,
@@ -621,6 +717,8 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
     });
 
     broadcastEvent('appointment:new', newApp);
+    broadcastEvent('appointment:created', newApp);
+    broadcastEvent('appointment:updated', newApp);
     return ApiResponse.created(res, newApp, 'Walk-in appointment recorded successfully!');
   } catch (error) {
     next(error);

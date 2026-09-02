@@ -21,6 +21,7 @@ const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const { broadcastEvent } = require('../utils/socket');
 const { invalidateCache } = require('../middlewares/cacheMiddleware');
+const { isPastDateTimeKolkata } = require('../utils/timezoneHelper');
 
 class AdminService {
   // Summary Analytics Loading (Calculated directly from database)
@@ -578,6 +579,13 @@ class AdminService {
       throw ApiError.badRequest('Customer name and service title are required');
     }
 
+    const appDate = payload.appointmentDate || new Date().toISOString().split('T')[0];
+    const appTime = payload.appointmentTime || '11:00 AM';
+
+    if (isPastDateTimeKolkata(appDate, appTime)) {
+      throw ApiError.badRequest('Please select a future appointment time.');
+    }
+
     const bookingId = `SPY-${Math.floor(100000 + Math.random() * 900000)}`;
     
     // Look up customer user ID
@@ -594,6 +602,19 @@ class AdminService {
       assignedSpecialist = activeEmp ? `${activeEmp.name} (${activeEmp.specialties?.[0] || 'Specialist'})` : 'General Specialist Desk';
     }
 
+    if (assignedSpecialist && assignedSpecialist !== 'Any Available Specialist') {
+      const cleanSpecFirst = assignedSpecialist.split('(')[0].trim().split(/\s+/)[0];
+      const conflictCheck = await Appointment.findOne({
+        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
+        appointmentDate: appDate,
+        appointmentTime: appTime,
+        status: { $nin: ['Cancelled', 'Staff_Rejected'] }
+      });
+      if (conflictCheck) {
+        throw ApiError.badRequest('Sorry, this slot is no longer available. Please select another time.');
+      }
+    }
+
     const newApp = await Appointment.create({
       bookingId,
       customerName: payload.customerName,
@@ -601,8 +622,8 @@ class AdminService {
       customerEmail: payload.customerEmail || '',
       service: payload.service,
       specialistName: assignedSpecialist,
-      appointmentDate: payload.appointmentDate || new Date().toISOString().split('T')[0],
-      appointmentTime: payload.appointmentTime || '11:00 AM',
+      appointmentDate: appDate,
+      appointmentTime: appTime,
       paymentMethod: payload.paymentMethod || 'UPI',
       status: 'Confirmed',
       branch: payload.branch || 'Jubilee Hills Flagship',
@@ -639,16 +660,37 @@ class AdminService {
   }
 
   async updateAppointmentStatus(id, status) {
-    const updated = await Appointment.findByIdAndUpdate(id, { status }, { new: true });
-    if (!updated) throw ApiError.notFound(`Appointment with ID '${id}' not found`);
+    const appointment = await Appointment.findById(id);
+    if (!appointment) throw ApiError.notFound(`Appointment with ID '${id}' not found`);
+
+    const currentStatus = appointment.status;
+    const allowedTransitions = {
+      'Pending': ['Pending', 'Confirmed', 'Staff_Accepted', 'Cancelled', 'Staff_Rejected', 'In Progress'],
+      'Staff_Accepted': ['Staff_Accepted', 'Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'],
+      'Confirmed': ['Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'],
+      'In Progress': ['In Progress', 'Completed', 'Cancelled'],
+      'Completed': ['Completed'],
+      'Cancelled': ['Cancelled'],
+      'Staff_Rejected': ['Staff_Rejected', 'Cancelled'],
+      'Rescheduled': ['Rescheduled', 'Confirmed', 'In Progress', 'Cancelled'],
+      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Confirmed', 'Cancelled']
+    };
+
+    const allowed = allowedTransitions[currentStatus] || [currentStatus, 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+    if (!allowed.includes(status)) {
+      throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${status}'.`);
+    }
+
+    appointment.status = status;
+    await appointment.save();
 
     await this.createActivityLog({
       action: 'Appointment Status Changed',
-      details: `Updated status of #${updated.bookingId} to ${status}.`,
+      details: `Updated status of #${appointment.bookingId} from ${currentStatus} to ${status}.`,
       user: 'Admin',
-      branchId: updated.branchId
+      branchId: appointment.branchId
     });
-    return updated;
+    return appointment;
   }
 
   async respondReschedule(id, action, rejectionReason) {

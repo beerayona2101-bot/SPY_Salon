@@ -67,11 +67,20 @@ function AppointmentsContent() {
       }
     });
 
+    socket.on('appointment:accepted', (data: any) => {
+      if (data?.appointment) {
+        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      } else {
+        fetchAppointments();
+      }
+    });
+
     socket.on('appointment:rescheduled', () => fetchAppointments());
     socket.on('appointment:created', () => fetchAppointments());
 
     return () => {
       socket.off('appointment:updated');
+      socket.off('appointment:accepted');
       socket.off('appointment:rescheduled');
       socket.off('appointment:created');
     };
@@ -113,6 +122,10 @@ function AppointmentsContent() {
       const s = (a.status || 'Confirmed').trim();
       if (s === 'Reschedule Requested') {
         counts.Rescheduled += 1;
+      } else if (s === 'Staff_Accepted') {
+        counts.Confirmed += 1;
+      } else if (s === 'Staff_Rejected') {
+        counts.Cancelled += 1;
       } else if (counts.hasOwnProperty(s)) {
         (counts as any)[s] += 1;
       }
@@ -124,10 +137,13 @@ function AppointmentsContent() {
   // Filtered & Searched Appointments
   const filteredAppointments = useMemo(() => {
     return appointments.filter(a => {
+      const s = a.status || 'Confirmed';
       const matchesStatus = 
         activeStatusFilter === 'All' ||
-        (activeStatusFilter === 'Rescheduled' && (a.status === 'Rescheduled' || a.status === 'Reschedule Requested')) ||
-        a.status?.toLowerCase() === activeStatusFilter.toLowerCase();
+        (activeStatusFilter === 'Rescheduled' && (s === 'Rescheduled' || s === 'Reschedule Requested')) ||
+        (activeStatusFilter === 'Confirmed' && (s === 'Confirmed' || s === 'Staff_Accepted')) ||
+        (activeStatusFilter === 'Cancelled' && (s === 'Cancelled' || s === 'Staff_Rejected')) ||
+        s.toLowerCase() === activeStatusFilter.toLowerCase();
 
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch = !q ||
@@ -156,11 +172,11 @@ function AppointmentsContent() {
     filteredAppointments.forEach(a => {
       const s = a.status || 'Confirmed';
       if (s === 'In Progress') groups['In Progress 🔵'].push(a);
-      else if (s === 'Confirmed') groups['Confirmed 🟢'].push(a);
+      else if (s === 'Confirmed' || s === 'Staff_Accepted') groups['Confirmed 🟢'].push(a);
       else if (s === 'Pending') groups['Pending 🟡'].push(a);
       else if (s === 'Rescheduled' || s === 'Reschedule Requested') groups['Rescheduled 🟠'].push(a);
       else if (s === 'Completed') groups['Completed ✅'].push(a);
-      else if (s === 'Cancelled') groups['Cancelled 🔴'].push(a);
+      else if (s === 'Cancelled' || s === 'Staff_Rejected') groups['Cancelled 🔴'].push(a);
       else groups['No Show ⚫'].push(a);
     });
 

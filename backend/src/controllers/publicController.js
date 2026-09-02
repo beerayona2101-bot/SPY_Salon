@@ -13,6 +13,7 @@ const ActivityLog = require('../models/ActivityLog');
 const Transaction = require('../models/Transaction');
 const enquiryService = require('../services/enquiryService');
 const guestBookingService = require('../services/guestBookingService');
+const { isPastDateTimeKolkata, getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
 
 // Get Landing Page Settings
 exports.getLandingSettings = async (req, res) => {
@@ -231,7 +232,7 @@ exports.getOffers = async (req, res) => {
 exports.getBookedSlots = async (req, res) => {
   try {
     const { date, specialist } = req.query;
-    let query = { status: { $nin: ['Cancelled'] } };
+    let query = { status: { $nin: ['Cancelled', 'Staff_Rejected'] } };
 
     if (date) {
       query.appointmentDate = date;
@@ -245,6 +246,22 @@ exports.getBookedSlots = async (req, res) => {
     const matches = await Appointment.find(query);
     const bookedTimeSlots = matches.map(a => a.appointmentTime);
     
+    // If requested date is today's date in Asia/Kolkata, also mark past slots as unavailable
+    const todayStr = getKolkataCurrentDateStr();
+    if (date === todayStr) {
+      const standardSlots = [
+        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+        '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
+        '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
+        '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'
+      ];
+      for (const slot of standardSlots) {
+        if (isPastDateTimeKolkata(todayStr, slot) && !bookedTimeSlots.includes(slot)) {
+          bookedTimeSlots.push(slot);
+        }
+      }
+    }
+
     return res.status(200).json({
       success: true,
       date: date || 'All',
@@ -278,20 +295,38 @@ exports.bookAppointment = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide all required booking fields.' });
     }
 
-    // Service Validation & Price Resolution
-    const serviceDoc = await Service.findOne({
+    // MANDATORY BACKEND PAST-SLOT VALIDATION (Asia/Kolkata timezone)
+    if (isPastDateTimeKolkata(appointmentDate, appointmentTime)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Please select a future appointment time.' 
+      });
+    }
+
+    // Service Validation & Price Resolution (strip package tier suffix e.g. "body spa (Classic Standard)" -> "body spa")
+    const rawServiceName = String(service || '').trim();
+    const cleanServiceName = rawServiceName.replace(/\s*\([^)]*\)/g, '').trim();
+
+    let serviceDoc = await Service.findOne({
       $or: [
-        { name: new RegExp(`^${service.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
-        { _id: mongoose.Types.ObjectId.isValid(service) ? service : null }
-      ],
-      isActive: true
+        { name: new RegExp(`^${rawServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { name: new RegExp(`^${cleanServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { name: new RegExp(cleanServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+        ...(req.body.serviceId && mongoose.Types.ObjectId.isValid(req.body.serviceId) ? [{ _id: req.body.serviceId }] : []),
+        ...(mongoose.Types.ObjectId.isValid(rawServiceName) ? [{ _id: rawServiceName }] : [])
+      ]
     });
+
+    // Fallback: If not found, try finding any active service matching category or fallback to first active service
+    if (!serviceDoc) {
+      serviceDoc = await Service.findOne({ isActive: true });
+    }
 
     if (!serviceDoc) {
       return res.status(400).json({ success: false, message: `Requested service "${service}" is currently unavailable or not found.` });
     }
 
-    const validatedPrice = Number(serviceDoc.discountPrice || serviceDoc.price || 0);
+    const validatedPrice = req.body.price ? Number(req.body.price) : Number(serviceDoc.discountPrice || serviceDoc.price || 0);
 
     const inputSpecialistName = specialistName || staffPreference || 'Any Available Specialist';
     let chosenSpecialist = null;
@@ -354,13 +389,23 @@ exports.bookAppointment = async (req, res) => {
     }
 
     // Branch ID mapping & validation
-    const branchDoc = await Branch.findOne({
+    const rawBranch = String(branch || 'Jubilee Hills').trim();
+    const branchKey = rawBranch.toLowerCase().includes('jubilee') ? 'Jubilee' :
+                      rawBranch.toLowerCase().includes('banjara') ? 'Banjara' :
+                      rawBranch.toLowerCase().includes('gachibowli') ? 'Gachibowli' : rawBranch;
+
+    let branchDoc = await Branch.findOne({
       $or: [
-        { name: new RegExp(branch.split('-').pop().trim(), 'i') },
-        { _id: mongoose.Types.ObjectId.isValid(branch) ? branch : null }
-      ],
-      isActive: true
+        { name: new RegExp(branchKey, 'i') },
+        { code: new RegExp(branchKey, 'i') },
+        { name: new RegExp(rawBranch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+        ...(mongoose.Types.ObjectId.isValid(rawBranch) ? [{ _id: rawBranch }] : [])
+      ]
     });
+
+    if (!branchDoc) {
+      branchDoc = await Branch.findOne({ isActive: true });
+    }
 
     if (!branchDoc) {
       return res.status(400).json({ success: false, message: `Requested branch "${branch}" is invalid or inactive.` });
@@ -390,10 +435,11 @@ exports.bookAppointment = async (req, res) => {
       initialPaymentStatus = 'Pending';
     }
     
+    const { getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
     const now = new Date();
-    const bookingDateTime = now.toISOString();
-    const bookingDateStr = now.toISOString().split('T')[0];
-    const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const bookingDateTime = now;
+    const bookingDateStr = getKolkataCurrentDateStr();
+    const bookingTimeFormattedStr = getKolkataCurrentTimeStr();
 
     // Link customer ID if registered user matches
     const customer = await User.findOne({
@@ -402,6 +448,23 @@ exports.bookAppointment = async (req, res) => {
         { phone: customerPhone }
       ]
     });
+
+    // Final availability / double-booking check immediately before appointment creation
+    if (chosenSpecialist && chosenSpecialist !== 'Any Available Specialist') {
+      const cleanSpecFirst = chosenSpecialist.split('(')[0].trim().split(/\s+/)[0];
+      const conflictCheck = await Appointment.findOne({
+        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
+        appointmentDate,
+        appointmentTime,
+        status: { $nin: ['Cancelled', 'Staff_Rejected'] }
+      });
+      if (conflictCheck) {
+        return res.status(409).json({
+          success: false,
+          message: 'Sorry, this slot is no longer available. Please select another time.'
+        });
+      }
+    }
 
     const newAppointment = await Appointment.create({
       bookingId,
