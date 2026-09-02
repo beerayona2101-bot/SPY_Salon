@@ -1259,6 +1259,15 @@ function AdminDashboardContent() {
     setAppointments(appointments.map(a => a._id === id ? { ...a, status: newStatus } : a));
   };
 
+  const handleUpdateAppPaymentStatus = async (id: string, newPaymentStatus: string) => {
+    await apiFetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentStatus: newPaymentStatus })
+    });
+    setAppointments(appointments.map(a => a._id === id ? { ...a, paymentStatus: newPaymentStatus } : a));
+  };
+
   const handleRespondReschedule = async (id: string, action: 'Approve' | 'Reject', rejectionReason?: string) => {
     const res = await apiFetch(`${API_BASE_URL}/admin/appointments/${id}/reschedule-respond`, {
       method: 'PUT',
@@ -4147,7 +4156,34 @@ function AdminDashboardContent() {
                           })()}
                         </td>
                         <td className="p-4 font-bold text-white">{a.appointmentDate}<br/><span className="text-rosegold-400">{a.appointmentTime}</span></td>
-                        <td className="p-4"><span className="bg-dark-800 px-2 py-0.5 rounded text-[10px] font-bold text-white border border-white/10">{a.paymentMethod || 'Cash'} • {a.paymentStatus || 'Paid'}</span></td>
+                        <td className="p-4 space-y-1.5 text-left">
+                          <div className="flex items-center space-x-1.5">
+                            <select
+                              value={a.paymentStatus || 'Pending'}
+                              onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
+                              className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                                a.paymentStatus === 'Paid'
+                                  ? 'bg-green-500/20 text-green-400 border-green-500/40 font-mono'
+                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono animate-pulse'
+                              }`}
+                            >
+                              <option value="Pending">🟡 Pending</option>
+                              <option value="Paid">🟢 Paid (Received)</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
+                            <span>Method: {a.paymentMethod || 'Cash'}</span>
+                            {a.paymentStatus !== 'Paid' && (
+                              <button
+                                onClick={() => handleUpdateAppPaymentStatus(a._id, 'Paid')}
+                                className="ml-1.5 px-2 py-0.5 rounded bg-emerald-500 text-dark-900 font-extrabold hover:brightness-110 transition-all cursor-pointer shadow-sm"
+                                title="Mark Cash Payment as Received & Paid"
+                              >
+                                Mark Paid ✓
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-4 space-y-1">
                           <select value={a.status} onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} className="bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block">
                             <option value="Pending">Pending 🟡</option>
