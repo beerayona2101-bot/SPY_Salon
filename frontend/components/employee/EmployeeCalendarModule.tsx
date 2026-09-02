@@ -310,9 +310,12 @@ export default function EmployeeCalendarModule({
     { time: '06:00 PM', label: '06:00 PM - 07:00 PM' }
   ];
 
+  const [reportDownloadMsg, setReportDownloadMsg] = useState<string | null>(null);
+
   // Report Export Actions
   const handleExportReport = (type: 'PDF' | 'Excel') => {
-    alert(`Downloading ${type} Performance & Schedule Report for ${monthNames[month]} ${year}...`);
+    setReportDownloadMsg(`Downloading ${type} Performance & Schedule Report for ${monthNames[month]} ${year}...`);
+    setTimeout(() => setReportDownloadMsg(null), 4000);
   };
 
   const handleOpenDayModal = (dateStr: string) => {
@@ -497,9 +500,9 @@ export default function EmployeeCalendarModule({
                 <div
                   key={idx}
                   onClick={() => handleOpenDayModal(dateStr)}
-                  className={`min-h-[90px] sm:min-h-[110px] p-2 rounded-2xl border transition-all duration-300 flex flex-col justify-between cursor-pointer ${
-                    !isCurrentMonth ? 'opacity-30 bg-dark-900 border-transparent' : 'glass-card hover:border-rosegold-400 hover:scale-[1.02]'
-                  } ${isSelected ? 'ring-2 ring-rosegold-400 shadow-glow-rosegold' : ''} ${statusData.color}`}
+                  className={`min-h-[90px] sm:min-h-[110px] p-2 rounded-2xl border flex flex-col justify-between cursor-pointer ${
+                    !isCurrentMonth ? 'opacity-30 bg-dark-900 border-transparent' : 'glass-card'
+                  } ${isSelected ? 'ring-2 ring-rosegold-400 shadow-md' : ''} ${statusData.color}`}
                 >
                   <div className="flex items-start justify-between">
                     <span className={`text-xs sm:text-sm font-serif font-bold ${isCurrentMonth ? 'text-white' : 'text-gray-500'}`}>
@@ -511,18 +514,24 @@ export default function EmployeeCalendarModule({
                   {isCurrentMonth && (
                     <div className="space-y-1 text-[10px]">
                       {dayMetrics.all.length > 0 && (
-                        <div className="space-y-1">
+                        <div className="space-y-1 mt-1">
                           {dayMetrics.all.slice(0, 2).map((app: any, aIdx: number) => (
                             <div 
                               key={aIdx} 
-                              className="px-1.5 py-0.5 rounded bg-rosegold-500/25 border border-rosegold-500/40 text-[9px] font-bold text-rosegold-200 truncate shadow-sm"
+                              className="text-[10px] font-medium leading-tight truncate flex items-center space-x-1"
                               title={`${app.appointmentTime || '10:30 AM'} - ${app.service} (${app.customerName})`}
                             >
-                              <span className="text-white font-mono">{app.appointmentTime || '10:30 AM'}</span> • {app.service} ({app.customerName})
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-dark-900' : 'bg-rosegold-400 light:bg-rosegold-600'}`} />
+                              <span className={`font-mono font-bold shrink-0 ${isSelected ? 'text-dark-900' : 'text-rosegold-300 light:text-dark-900'}`}>
+                                {app.appointmentTime || '10:30 AM'}
+                              </span>
+                              <span className={`truncate ${isSelected ? 'text-dark-900/80 font-medium' : 'text-gray-300 light:text-gray-700'}`}>
+                                {app.service}
+                              </span>
                             </div>
                           ))}
                           {dayMetrics.all.length > 2 && (
-                            <span className="text-[9px] text-rosegold-400 font-extrabold block">
+                            <span className={`text-[9px] font-bold block pt-0.5 ${isSelected ? 'text-dark-900 font-extrabold' : 'text-rosegold-400 light:text-rosegold-700'}`}>
                               +{dayMetrics.all.length - 2} more
                             </span>
                           )}
@@ -868,6 +877,24 @@ export default function EmployeeCalendarModule({
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {reportDownloadMsg && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center shrink-0 text-sm">
+            ℹ
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{reportDownloadMsg}</p>
+          </div>
+          <button
+            onClick={() => setReportDownloadMsg(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 

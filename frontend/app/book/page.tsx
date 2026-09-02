@@ -108,6 +108,14 @@ function BookingContent() {
   const [showAdditionalServicesModal, setShowAdditionalServicesModal] = useState(false);
   const [modalSearchQuery, setModalSearchQuery] = useState('');
   const [modalCategoryFilter, setModalCategoryFilter] = useState('All');
+
+  // On-screen Toast Notification System
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [selectedPackageTier, setSelectedPackageTier] = useState<string | null>(packageParam);
   const [specialistsList, setSpecialistsList] = useState<any[]>([]);
   const [offersList, setOffersList] = useState<any[]>([]);
@@ -1092,7 +1100,7 @@ function BookingContent() {
                     const val = e.target.value;
                     const today = getTodayISTStr();
                     if (val < today) {
-                      alert("Appointments cannot be scheduled on past dates. Setting date to today.");
+                      showToast("Appointments cannot be scheduled on past dates. Setting date to today.", 'info');
                       setSelectedDate(today);
                     } else {
                       setSelectedDate(val);
@@ -1613,6 +1621,28 @@ function BookingContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );

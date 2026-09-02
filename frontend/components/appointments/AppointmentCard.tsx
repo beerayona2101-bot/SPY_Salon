@@ -59,13 +59,19 @@ export default function AppointmentCard({
   onViewInvoice
 }: AppointmentCardProps) {
   const [isDownloading, setIsDownloading] = React.useState(false);
+  const [toast, setToast] = React.useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleDownloadInvoice = async () => {
     setIsDownloading(true);
     try {
       const res = await apiFetch(`/invoices/${appointment._id}`);
       if (!res.ok) {
-        alert('Failed to download invoice. Ensure booking is completed and payment is registered.');
+        showToast('Failed to download invoice. Ensure booking is completed and payment is registered.', 'error');
         setIsDownloading(false);
         return;
       }
@@ -80,7 +86,7 @@ export default function AppointmentCard({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error(error);
-      alert('Error occurred while fetching your invoice PDF.');
+      showToast('Error occurred while fetching your invoice PDF.', 'error');
     } finally {
       setIsDownloading(false);
     }
@@ -317,6 +323,29 @@ export default function AppointmentCard({
         )}
 
       </div>
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

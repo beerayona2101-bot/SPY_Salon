@@ -534,6 +534,14 @@ function AdminDashboardContent() {
   const [adminNotifOpen, setAdminNotifOpen] = useState(false);
   const adminNotifRef = React.useRef<HTMLDivElement>(null);
 
+  // On-screen Toast Notification System
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const pendingLeavesCount = leaves.filter(l => l.status === 'Pending').length;
 
   // Executive Business Reports Selection States
@@ -1010,7 +1018,7 @@ function AdminDashboardContent() {
           return;
         }
       } else {
-        alert(data.message || 'Failed to register employee profile');
+        showToast(data.message || 'Failed to register employee profile', 'error');
       }
       setModalType(null);
     }
@@ -1226,7 +1234,7 @@ function AdminDashboardContent() {
     const isWalkIn = appForm.appointmentTime === 'Immediate Walk-In';
 
     if (!isWalkIn && appForm.appointmentDate < todayStr) {
-      alert(`Cannot schedule appointments on past dates (${appForm.appointmentDate}). Please select today (${todayStr}) or a future date.`);
+      showToast(`Cannot schedule appointments on past dates (${appForm.appointmentDate}). Please select today (${todayStr}) or a future date.`, 'error');
       return;
     }
 
@@ -1254,12 +1262,12 @@ function AdminDashboardContent() {
       if (data.data) {
         setAppointments(prev => [data.data, ...prev.filter(a => a._id !== data.data._id)]);
         setModalType(null);
-        alert(`Walk-In Appointment #${data.data.bookingId} confirmed successfully!`);
+        showToast(`Walk-In Appointment #${data.data.bookingId} confirmed successfully!`, 'success');
       } else {
-        alert(data.message || 'Failed to confirm walk-in appointment.');
+        showToast(data.message || 'Failed to confirm walk-in appointment.', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Error creating walk-in appointment.');
+      showToast(err.message || 'Error creating walk-in appointment.', 'error');
     }
   };
 
@@ -1320,13 +1328,13 @@ function AdminDashboardContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.message || 'Failed to update status.');
+        showToast(data.message || 'Failed to update status.', 'error');
         return;
       }
       const updated = data.data;
       setAppointments(prev => prev.map(a => a._id === id ? { ...a, ...updated, status: newStatus } : a));
     } catch (err: any) {
-      alert(err.message || 'Error updating appointment status.');
+      showToast(err.message || 'Error updating appointment status.', 'error');
     }
   };
 
@@ -2382,10 +2390,10 @@ function AdminDashboardContent() {
                 </div>
 
                 {/* 2-COLUMN LAYOUT: CALENDAR GRID ON LEFT (7 COLS), SELECTED DAY RIGHT SIDEBAR (5 COLS) */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   
                   {/* LEFT COLUMN: INTERACTIVE MONTH CALENDAR GRID (LG: 7 COLS) */}
-                  <div className="lg:col-span-7 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4">
+                  <div className="lg:col-span-7 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4 h-fit self-start">
                     
                     {/* MONTH CONTROLS */}
                     <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -2467,14 +2475,14 @@ function AdminDashboardContent() {
                             onClick={() => setSelectedCalDate(day.dateStr)}
                             className={`min-h-[76px] sm:min-h-[86px] p-2 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border ${
                               isSelected
-                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-glow-rosegold scale-[1.03] z-10'
+                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-md z-10'
                                 : approvedLeavesOnDay.length > 0
-                                ? 'bg-purple-900/30 border-purple-500/40 text-purple-200 hover:border-purple-400'
+                                ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
                                 : isToday
-                                ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 light:border-green-600 text-white light:text-dark-900 font-bold shadow-md hover:border-rosegold-400'
+                                ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 light:border-green-600 text-white light:text-dark-900 font-bold shadow-md'
                                 : day.isCurrentMonth
-                                ? 'bg-dark-800/80 light:bg-cream/40 border-white/5 light:border-champagne/60 text-gray-200 light:text-dark-900 hover:bg-dark-800 light:hover:bg-amber-500/10 hover:border-rosegold-500/40'
-                                : 'bg-dark-900/40 light:bg-gray-100/60 border-transparent text-gray-600 light:text-gray-400 hover:text-gray-400'
+                                ? 'bg-dark-800/80 light:bg-cream/40 border-white/5 light:border-champagne/60 text-gray-200 light:text-dark-900'
+                                : 'bg-dark-900/40 light:bg-gray-100/60 border-transparent text-gray-600 light:text-gray-400'
                             } ${isPast && !isSelected ? 'opacity-70' : ''}`}
                           >
                             <div className="flex items-center justify-between w-full">
@@ -2493,32 +2501,34 @@ function AdminDashboardContent() {
                               {dayApps.length > 0 && (
                                 <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold shadow-sm ${
                                   isSelected
-                                    ? 'bg-dark-900 text-rosegold-300'
-                                    : 'bg-rosegold-500/20 text-rosegold-400 border border-rosegold-500/40'
+                                    ? 'bg-white !text-black font-extrabold shadow-md'
+                                    : 'bg-rosegold-500/20 text-rosegold-400 light:!text-black border border-rosegold-500/40 font-extrabold'
                                 }`}>
                                   {dayApps.length}
                                 </span>
                               )}
                             </div>
 
-                            {/* APPOINTMENT PREVIEWS WITH TIME, SERVICE & CUSTOMER NAME */}
+                             {/* APPOINTMENT PREVIEWS WITH TIME, SERVICE & CUSTOMER NAME */}
                             {dayApps.length > 0 && (
                               <div className="space-y-1 mt-1">
                                 {dayApps.slice(0, 2).map((app, aIdx) => (
                                   <div
                                     key={aIdx}
-                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold truncate shadow-sm ${
-                                      isSelected
-                                        ? 'bg-dark-900/90 text-rosegold-300 font-extrabold'
-                                        : 'bg-rosegold-500/20 text-rosegold-300 border border-rosegold-500/40'
-                                    }`}
+                                    className="text-[10px] font-medium leading-tight truncate flex items-center space-x-1"
                                     title={`${app.appointmentTime || '10:30 AM'} - ${app.service} (${app.customerName || 'Client'})`}
                                   >
-                                    <span className="font-mono text-white">{app.appointmentTime || '10:30 AM'}</span> • {app.service} ({app.customerName || 'Client'})
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-dark-900' : 'bg-rosegold-400 light:bg-rosegold-600'}`} />
+                                    <span className={`font-mono font-bold shrink-0 ${isSelected ? 'text-dark-900' : 'text-rosegold-300 light:text-dark-900'}`}>
+                                      {app.appointmentTime || '10:30 AM'}
+                                    </span>
+                                    <span className={`truncate ${isSelected ? 'text-dark-900/80 font-medium' : 'text-gray-300 light:text-gray-700'}`}>
+                                      {app.service}
+                                    </span>
                                   </div>
                                 ))}
                                 {dayApps.length > 2 && (
-                                  <span className={`text-[8px] font-extrabold block ${isSelected ? 'text-dark-900' : 'text-rosegold-400'}`}>
+                                  <span className={`text-[9px] font-bold block pt-0.5 ${isSelected ? 'text-dark-900 font-extrabold' : 'text-rosegold-400 light:text-rosegold-700'}`}>
                                     +{dayApps.length - 2} more
                                   </span>
                                 )}
@@ -2531,7 +2541,7 @@ function AdminDashboardContent() {
                   </div>
 
                   {/* RIGHT COLUMN: INTERACTIVE SIDEBAR FOR CLICKED DATE (LG: 5 COLS) */}
-                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 flex flex-col justify-between shadow-2xl">
+                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 h-fit max-h-[820px] overflow-y-auto custom-scrollbar self-start shadow-2xl">
                     
                     <div className="space-y-4">
                       {/* DATE HEADER & DIRECT ADD BUTTON */}
@@ -4428,7 +4438,7 @@ function AdminDashboardContent() {
                         </span>
                         
                         <button 
-                          onClick={() => alert(`Marked today's attendance for ${report.name} as Present 🟢`)}
+                          onClick={() => showToast(`Marked today's attendance for ${report.name} as Present 🟢`, 'success')}
                           className="px-3 py-1.5 rounded-xl bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 font-bold text-[11px] hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
                         >
                           Mark Today's Log ✍️
@@ -5141,24 +5151,24 @@ function AdminDashboardContent() {
                   <button
                     onClick={async () => {
                       if (!landingHeroTitle.trim()) {
-                        alert("Main Hero Headline cannot be left blank.");
+                        showToast("Main Hero Headline cannot be left blank.", 'error');
                         return;
                       }
                       if (!landingHeroSubtitle.trim()) {
-                        alert("Sub-Headline Description cannot be left blank.");
+                        showToast("Sub-Headline Description cannot be left blank.", 'error');
                         return;
                       }
                       if (landingAnnouncementActive && !landingAnnouncement.trim()) {
-                        alert("Announcement Ticker Text cannot be left blank when active.");
+                        showToast("Announcement Ticker Text cannot be left blank when active.", 'error');
                         return;
                       }
                       if (landingSupportEmail.trim() && !landingSupportEmail.includes('@')) {
-                        alert("Please enter a valid support email address (e.g. concierge@spysalon.com).");
+                        showToast("Please enter a valid support email address (e.g. concierge@spysalon.com).", 'error');
                         return;
                       }
                       const cleanPhoneDigits = landingHotlinePhone.replace(/[^0-9]/g, '');
                       if (landingHotlinePhone.trim() && cleanPhoneDigits.length < 10) {
-                        alert("Hotline Phone number must contain at least 10 valid digits.");
+                        showToast("Hotline Phone number must contain at least 10 valid digits.", 'error');
                         return;
                       }
 
@@ -6517,7 +6527,7 @@ function AdminDashboardContent() {
                         const val = e.target.value;
                         const today = new Date().toISOString().split('T')[0];
                         if (val < today) {
-                          alert("Appointments cannot be scheduled on past dates. Setting date to today.");
+                          showToast("Appointments cannot be scheduled on past dates. Setting date to today.", 'info');
                           setAppForm({ ...appForm, appointmentDate: today });
                         } else {
                           setAppForm({ ...appForm, appointmentDate: val });
@@ -6929,6 +6939,28 @@ function AdminDashboardContent() {
         userName="System Administrator"
         userRole="Admin Account"
       />
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );

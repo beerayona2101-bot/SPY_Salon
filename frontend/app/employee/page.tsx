@@ -358,6 +358,14 @@ function EmployeeDashboardContent() {
     };
   }, [socket, user]);
 
+  // On-screen Toast Notification System
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   useEffect(() => {
     if (isLoading) return;
 
@@ -490,13 +498,13 @@ function EmployeeDashboardContent() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.message || 'Failed to update appointment status.');
+        showToast(data.message || 'Failed to update appointment status.', 'error');
         return;
       }
       const updated = data.data;
       setAppointments(appointments.map(a => a._id === id ? { ...a, ...updated, status: newStatus } : a));
     } catch (e: any) {
-      alert(e.message || 'Error updating appointment status.');
+      showToast(e.message || 'Error updating appointment status.', 'error');
     }
   };
 
@@ -551,7 +559,7 @@ function EmployeeDashboardContent() {
   const handleSaveWalkIn = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walkInForm.customerName || !walkInForm.service) {
-      alert('Please fill in customer name and service.');
+      showToast('Please fill in customer name and service.', 'error');
       return;
     }
     try {
@@ -577,12 +585,12 @@ function EmployeeDashboardContent() {
           paymentMethod: 'Cash',
           notes: 'Direct Walk-In Client added by Stylist Desk.'
         });
-        alert(`Walk-In Client ${data.data.customerName} seated successfully! (#${data.data.bookingId})`);
+        showToast(`Walk-In Client ${data.data.customerName} seated successfully! (#${data.data.bookingId})`, 'success');
       } else {
-        alert(data.message || 'Failed to record walk-in appointment.');
+        showToast(data.message || 'Failed to record walk-in appointment.', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Error recording walk-in client. Please try again.');
+      showToast(err.message || 'Error recording walk-in client. Please try again.', 'error');
     }
   };
 
@@ -601,10 +609,10 @@ function EmployeeDashboardContent() {
         setAttendance(prev => [data.data, ...prev.filter(a => a.date !== data.data.date)]);
         setShiftStatus(data.data.attendanceState || 'CLOCKED_IN');
       } else if (data.message) {
-        alert(data.message);
+        showToast(data.message, 'info');
       }
     } catch (e: any) {
-      alert(e.message || 'Error clocking in. Please try again.');
+      showToast(e.message || 'Error clocking in. Please try again.', 'error');
     } finally {
       setAttLoading(false);
     }
@@ -623,10 +631,10 @@ function EmployeeDashboardContent() {
         setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
         setShiftStatus('ON_BREAK');
       } else if (data.message) {
-        alert(data.message);
+        showToast(data.message, 'info');
       }
     } catch (e: any) {
-      alert(e.message || 'Error starting break. Please try again.');
+      showToast(e.message || 'Error starting break. Please try again.', 'error');
     } finally {
       setAttLoading(false);
     }
@@ -645,10 +653,10 @@ function EmployeeDashboardContent() {
         setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
         setShiftStatus('CLOCKED_IN');
       } else if (data.message) {
-        alert(data.message);
+        showToast(data.message, 'info');
       }
     } catch (e: any) {
-      alert(e.message || 'Error ending break. Please try again.');
+      showToast(e.message || 'Error ending break. Please try again.', 'error');
     } finally {
       setAttLoading(false);
     }
@@ -657,7 +665,7 @@ function EmployeeDashboardContent() {
   const handleCheckOut = async () => {
     if (attLoading) return;
     if (shiftStatus === 'ON_BREAK') {
-      alert('Please end your break before clocking out.');
+      showToast('Please end your break before clocking out.', 'error');
       return;
     }
     setAttLoading(true);
@@ -671,10 +679,10 @@ function EmployeeDashboardContent() {
         setAttendance(prev => prev.map(a => a.date === data.data.date ? data.data : a));
         setShiftStatus('CLOCKED_OUT');
       } else if (data.message) {
-        alert(data.message);
+        showToast(data.message, 'info');
       }
     } catch (e: any) {
-      alert(e.message || 'Error clocking out. Please try again.');
+      showToast(e.message || 'Error clocking out. Please try again.', 'error');
     } finally {
       setAttLoading(false);
     }
@@ -685,7 +693,7 @@ function EmployeeDashboardContent() {
     e.preventDefault();
     const todayIST = getTodayISTStr();
     if (leaveForm.startDate < todayIST) {
-      alert(`Leave start date cannot be in the past (${leaveForm.startDate}). Please select today (${todayIST}) or a future date.`);
+      showToast(`Leave start date cannot be in the past (${leaveForm.startDate}). Please select today (${todayIST}) or a future date.`, 'error');
       return;
     }
 
@@ -697,7 +705,7 @@ function EmployeeDashboardContent() {
 
     if (!isValid) {
       const firstErr = Object.values(errors)[0];
-      alert(firstErr || 'Please fill in required leave details.');
+      showToast(firstErr || 'Please fill in required leave details.', 'error');
       return;
     }
 
@@ -1914,6 +1922,28 @@ function EmployeeDashboardContent() {
         userName={employeeName}
         userRole="Stylist Specialist"
       />
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
     </div>
   );

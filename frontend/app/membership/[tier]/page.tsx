@@ -184,6 +184,14 @@ export default function MembershipDetailsPage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // On-screen Toast Notification System
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -236,10 +244,10 @@ export default function MembershipDetailsPage() {
         }
         setPaymentSuccess(true);
       } else {
-        alert(data.message || 'Payment failed. Please try again.');
+        showToast(data.message || 'Payment failed. Please try again.', 'error');
       }
     } catch (err: any) {
-      alert(err.message || 'Membership purchase failed. Please check backend network connection.');
+      showToast(err.message || 'Membership purchase failed. Please check backend network connection.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -322,7 +330,7 @@ export default function MembershipDetailsPage() {
               onClick={() => {
                 const token = typeof window !== 'undefined' ? localStorage.getItem('spy_token') : null;
                 if (!token) {
-                  alert('Please log in first to purchase a membership.');
+                  showToast('Please log in first to purchase a membership.', 'error');
                   router.push(`/login?redirect=/membership/${tierKey}`);
                 } else {
                   setPurchaseModalOpen(true);
@@ -618,6 +626,28 @@ export default function MembershipDetailsPage() {
             )}
 
           </div>
+        </div>
+      )}
+
+      {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
+      {toast && (
+        <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
+            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+          }`}>
+            {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
+          </div>
+          <div className="flex-1 pr-2">
+            <p className="text-xs text-gray-200 font-medium leading-tight">{toast.message}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-gray-400 hover:text-white p-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
       )}
 
