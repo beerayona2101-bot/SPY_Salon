@@ -89,12 +89,20 @@ exports.getNotifications = async (req, res, next) => {
       query = { role: 'public' };
     } else {
       // Customer / User profile notifications strictly for this customer
-      const userConditions = [
-        ...(userId ? [{ userId: String(userId) }] : []),
-        ...(cleanEmail ? [{ email: cleanEmail }] : []),
-        { role: 'user' }
-      ];
-      query = { $or: userConditions };
+      const targetConditions = [];
+      if (userId) targetConditions.push({ userId: String(userId) });
+      if (cleanEmail) targetConditions.push({ email: cleanEmail });
+
+      if (targetConditions.length > 0) {
+        query = {
+          $or: [
+            ...targetConditions,
+            { role: 'all' }
+          ]
+        };
+      } else {
+        query = { role: 'public' };
+      }
     }
     
     const limitNum = Math.min(parseInt(req.query.limit) || 25, 50);
@@ -129,11 +137,18 @@ exports.getUnreadCount = async (req, res, next) => {
     } else if (isGuest) {
       query.role = 'public';
     } else {
-      query.$or = [
-        ...(userId ? [{ userId: String(userId) }] : []),
-        ...(cleanEmail ? [{ email: cleanEmail }] : []),
-        { role: 'user' }
-      ];
+      const targetConditions = [];
+      if (userId) targetConditions.push({ userId: String(userId) });
+      if (cleanEmail) targetConditions.push({ email: cleanEmail });
+
+      if (targetConditions.length > 0) {
+        query.$or = [
+          ...targetConditions,
+          { role: 'all' }
+        ];
+      } else {
+        query.role = 'public';
+      }
     }
     
     const count = await Notification.countDocuments(query);
@@ -167,9 +182,10 @@ exports.markAsRead = async (req, res, next) => {
       updated = await Notification.findOneAndUpdate({ notificationId: id }, { isRead: true }, { new: true });
     }
 
-    if (!updated) throw ApiError.notFound('Notification not found');
+    if (!updated) {
+      throw ApiError.notFound('Notification not found');
+    }
 
-    // Emit live socket update
     const io = req.app.get('io');
     if (io) {
       io.emit('notifications:updated', { id, isRead: true });
@@ -186,15 +202,23 @@ exports.markAllAsRead = async (req, res, next) => {
   try {
     const { role = 'all', userId, email } = req.body || req.query;
 
-    const query = {
-      isRead: false,
-      $or: [
-        ...(userId ? [{ userId: String(userId) }] : []),
-        ...(email ? [{ email: String(email).toLowerCase().trim() }] : []),
-        ...(role && role !== 'all' ? [{ role }] : []),
-        { role: 'all' }
-      ]
-    };
+    const targetConditions = [];
+    if (userId) targetConditions.push({ userId: String(userId) });
+    if (email) targetConditions.push({ email: String(email).toLowerCase().trim() });
+
+    let query = { isRead: false };
+    if (role === 'admin') {
+      query.$or = [{ role: 'admin' }, { role: 'all' }];
+    } else if (role === 'employee') {
+      query.$or = [
+        ...(targetConditions.length > 0 ? targetConditions : []),
+        { role: 'employee' }
+      ];
+    } else if (targetConditions.length > 0) {
+      query.$or = [...targetConditions, { role: 'all' }];
+    } else {
+      query.role = 'public';
+    }
     await Notification.updateMany(query, { isRead: true });
 
     const io = req.app.get('io');
@@ -244,14 +268,23 @@ exports.clearAllNotifications = async (req, res, next) => {
   try {
     const { role = 'all', userId, email } = req.body || req.query;
 
-    const query = {
-      $or: [
-        ...(userId ? [{ userId: String(userId) }] : []),
-        ...(email ? [{ email: String(email).toLowerCase().trim() }] : []),
-        ...(role && role !== 'all' ? [{ role }] : []),
-        { role: 'all' }
-      ]
-    };
+    const targetConditions = [];
+    if (userId) targetConditions.push({ userId: String(userId) });
+    if (email) targetConditions.push({ email: String(email).toLowerCase().trim() });
+
+    let query = {};
+    if (role === 'admin') {
+      query.$or = [{ role: 'admin' }, { role: 'all' }];
+    } else if (role === 'employee') {
+      query.$or = [
+        ...(targetConditions.length > 0 ? targetConditions : []),
+        { role: 'employee' }
+      ];
+    } else if (targetConditions.length > 0) {
+      query.$or = [...targetConditions, { role: 'all' }];
+    } else {
+      query.role = 'public';
+    }
     await Notification.deleteMany(query);
 
     const io = req.app.get('io');

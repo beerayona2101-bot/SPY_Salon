@@ -466,6 +466,9 @@ exports.bookAppointment = async (req, res) => {
       }
     }
 
+    const reqPkg = req.body.packageTier || req.body.packageName || null;
+    const packageTierVal = (reqPkg && reqPkg !== 'No Package' && reqPkg !== 'null' && reqPkg !== 'undefined') ? reqPkg : null;
+
     const newAppointment = await Appointment.create({
       bookingId,
       customerName,
@@ -474,6 +477,10 @@ exports.bookAppointment = async (req, res) => {
       branch,
       branchId,
       service,
+      packageTier: packageTierVal,
+      packageName: packageTierVal,
+      price: validatedPrice,
+      finalAmount: validatedPrice,
       specialistName: chosenSpecialist,
       bookingDateTime,
       bookingDate: bookingDateStr,

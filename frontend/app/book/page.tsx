@@ -351,8 +351,8 @@ function BookingContent() {
     '09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'
   ];
 
-  // Dynamic Pricing & VIP Membership Discount Calculation
-  const subtotalPrice = activeTierObj ? activeTierObj.price : 0;
+  // Dynamic Pricing & VIP Membership Discount Calculation (Fall back to normal service price if No Package is selected)
+  const subtotalPrice = activeTierObj ? activeTierObj.price : (selectedServiceObj ? (selectedServiceObj.price || 0) : 0);
   
   const membershipInfo = currentUserObj?.membership;
   const membershipDiscountPercent = membershipInfo?.status === 'Active' || membershipInfo?.discountPercent
@@ -443,14 +443,14 @@ function BookingContent() {
   };
 
   const finalizeBooking = async (payMethod: string, upiIdVal?: string, txnIdVal?: string) => {
-    if (!selectedPackageTier || !activeTierObj) {
-      setConflictError('Please select a package tier before continuing.');
-      return;
-    }
     setIsSubmitting(true);
     setConflictError(null);
     try {
-      const srvName = `${selectedServiceObj?.name || 'Salon Treatment'} (${activeTierObj.name})`;
+      const activeTierName = activeTierObj ? activeTierObj.name : null;
+      const srvName = activeTierName
+        ? `${selectedServiceObj?.name || 'Salon Treatment'} (${activeTierName})`
+        : (selectedServiceObj?.name || 'Salon Treatment');
+
       const response = await fetch(`${API_BASE_URL}/appointments/public-book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -461,7 +461,7 @@ function BookingContent() {
           branch: selectedBranch,
           service: srvName,
           serviceId: selectedServiceObj?.id || (selectedServiceObj as any)?._id,
-          packageTier: activeTierObj.name,
+          packageTier: activeTierName || null,
           price: subtotalPrice,
           staffPreference: selectedStaff,
           specialistName: selectedStaff,
@@ -469,7 +469,7 @@ function BookingContent() {
           appointmentTime: selectedTime,
           paymentMethod: isPrePaid ? 'Razorpay (Pre-Paid)' : payMethod,
           paymentDetails: upiIdVal || txnIdVal ? { upiId: upiIdVal, transactionRef: txnIdVal } : {},
-          notes: `[Package: ${activeTierObj.name}] [Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
+          notes: `[Package: ${activeTierName || 'No Package'}] [Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
         })
       });
 
@@ -560,6 +560,10 @@ function BookingContent() {
               <span className="font-bold text-white text-right">{bookingSuccess.service}</span>
             </div>
             <div className="flex justify-between pb-2 border-b border-white/10">
+              <span className="text-gray-400">Package Tier</span>
+              <span className="font-bold text-rosegold-400">{bookingSuccess.packageTier || bookingSuccess.packageName || 'No Package'}</span>
+            </div>
+            <div className="flex justify-between pb-2 border-b border-white/10">
               <span className="text-gray-400">Specialist</span>
               <span className="font-bold text-rosegold-300">{bookingSuccess.specialistName}</span>
             </div>
@@ -567,9 +571,13 @@ function BookingContent() {
               <span className="text-gray-400">Date & Time</span>
               <span className="font-bold text-white">{bookingSuccess.appointmentDate} at {bookingSuccess.appointmentTime}</span>
             </div>
+            <div className="flex justify-between pb-2 border-b border-white/10">
+              <span className="text-gray-400">Status</span>
+              <span className="font-bold text-emerald-400">{bookingSuccess.status || 'Pending'}</span>
+            </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Grand Total</span>
-              <span className="font-bold text-rosegold-400 font-serif text-sm">₹{grandTotal}</span>
+              <span className="font-bold text-rosegold-400 font-serif text-sm">₹{bookingSuccess.finalAmount || bookingSuccess.price || grandTotal}</span>
             </div>
           </div>
 
@@ -712,16 +720,16 @@ function BookingContent() {
             </div>
           </div>
 
-          {/* 2. DYNAMIC PACKAGE TIERS (IF MULTIPLE PACKAGES) */}
+          {/* 2. DYNAMIC PACKAGE TIERS (OPTIONAL PACKAGE SELECTION) */}
           <div id="package-tier-selection" className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="font-serif font-bold text-base text-white flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-rosegold-400" />
-                <span>Select Package Tier</span>
+                <span>Select Package Tier <span className="text-gray-400 font-normal text-xs">(Optional)</span></span>
               </h3>
               {!selectedPackageTier ? (
-                <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider animate-pulse">
-                  Selection Required
+                <span className="text-[10px] text-gray-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
+                  No Package (Normal Service)
                 </span>
               ) : (
                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
@@ -730,7 +738,34 @@ function BookingContent() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* OPTIONAL NO PACKAGE SELECTION CARD */}
+              <button
+                type="button"
+                onClick={() => setSelectedPackageTier(null)}
+                className={`p-4 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer ${
+                  !selectedPackageTier
+                    ? 'rosegold-glass-card border-rosegold-400 shadow-glow-rosegold scale-[1.02]'
+                    : 'bg-dark-850 border-white/10 hover:border-rosegold-500/30'
+                }`}
+              >
+                <div>
+                  <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
+                    STANDARD SERVICE
+                  </span>
+                  <h4 className="font-serif font-bold text-sm text-white mt-0.5">No Package</h4>
+                  <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-normal">
+                    Individual standalone treatment at standard service price.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 flex items-baseline justify-between">
+                  <span className="font-serif font-bold text-rosegold-300 text-lg">₹{selectedServiceObj.price}</span>
+                  <span className="text-[10px] text-gray-400 font-mono">{selectedServiceObj.duration}</span>
+                </div>
+              </button>
+
+              {/* DYNAMIC PACKAGE TIERS */}
               {packageTiers.map(tier => (
                 <button
                   type="button"

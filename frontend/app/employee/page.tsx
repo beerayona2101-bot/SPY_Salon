@@ -53,6 +53,8 @@ interface AssignedAppointment {
   customerName: string;
   customerPhone: string;
   service: string;
+  packageTier?: string;
+  packageName?: string;
   specialistName: string;
   branch: string;
   appointmentDate: string;
@@ -266,28 +268,6 @@ function EmployeeDashboardContent() {
       await apiFetch(`${API_BASE_URL}/notifications/${id}`, { method: 'DELETE' });
     } catch (e) {
       fetchNotifications();
-    }
-  };
-
-  const handleSaveWalkIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await apiFetch(`${API_BASE_URL}/employee/appointments/walkin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...walkInForm,
-          specialistName: user?.name ? `${user.name} (Stylist)` : 'Salon Specialist'
-        })
-      });
-      const data = await res.json();
-      if (data.data) {
-        setAppointments([data.data, ...appointments]);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setWalkInModalOpen(false);
     }
   };
 
@@ -510,6 +490,45 @@ function EmployeeDashboardContent() {
     } catch (e) {
       setBankSaved(true);
       setTimeout(() => setBankSaved(false), 2500);
+    }
+  };
+
+  // Walk-In Client Submission Handler
+  const handleSaveWalkIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walkInForm.customerName || !walkInForm.service) {
+      alert('Please fill in customer name and service.');
+      return;
+    }
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/employee/walk-in`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: walkInForm.customerName,
+          customerPhone: walkInForm.customerPhone,
+          service: walkInForm.service,
+          paymentMethod: walkInForm.paymentMethod,
+          notes: walkInForm.notes
+        })
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAppointments(prev => [data.data, ...prev.filter(a => a._id !== data.data._id)]);
+        setWalkInModalOpen(false);
+        setWalkInForm({
+          customerName: '',
+          customerPhone: '+91 98765 43210',
+          service: 'Signature Keratin Hair Spa & Mask',
+          paymentMethod: 'Cash',
+          notes: 'Direct Walk-In Client added by Stylist Desk.'
+        });
+        alert(`Walk-In Client ${data.data.customerName} seated successfully! (#${data.data.bookingId})`);
+      } else {
+        alert(data.message || 'Failed to record walk-in appointment.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error recording walk-in client. Please try again.');
     }
   };
 
@@ -1132,7 +1151,12 @@ function EmployeeDashboardContent() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-3 gap-2">
                       <div>
                         <span className="text-xs text-rosegold-400 font-bold font-mono">Booking ID: {app.bookingId}</span>
-                        <h3 className="text-lg font-serif font-bold text-white">{app.service}</h3>
+                        <h3 className="text-lg font-serif font-bold text-white">
+                          {app.service}
+                          <span className="text-xs text-rosegold-400 font-normal font-sans ml-2">
+                            ({app.packageTier || app.packageName || 'No Package'})
+                          </span>
+                        </h3>
                       </div>
 
                       <div className="flex items-center space-x-2">

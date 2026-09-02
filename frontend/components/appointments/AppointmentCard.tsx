@@ -109,11 +109,18 @@ export default function AppointmentCard({
           <span className="font-mono font-bold text-rosegold-400 text-xs bg-rosegold-500/10 border border-rosegold-500/20 px-2.5 py-0.5 rounded-md">
             #{appointment.bookingId || appointment._id?.slice(-6)}
           </span>
-          {appointment.packageTitle && (
-            <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
-              🎟️ {appointment.packageTitle}
-            </span>
-          )}
+          {(() => {
+            const pkgTitle = (appointment as any).packageTier || (appointment as any).packageName || appointment.packageTitle;
+            return (pkgTitle && pkgTitle !== 'No Package' && pkgTitle !== 'null') ? (
+              <span className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+                🎟️ {pkgTitle}
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-gray-300 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                No Package
+              </span>
+            );
+          })()}
         </div>
 
         <div className="flex items-center space-x-2">

@@ -129,6 +129,8 @@ interface AppointmentItem {
   customerName: string;
   customerPhone: string;
   service: string;
+  packageTier?: string;
+  packageName?: string;
   specialistName: string;
   branch: string;
   appointmentDate: string;
@@ -1206,29 +1208,40 @@ function AdminDashboardContent() {
 
   const handleSaveAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (appForm.appointmentDate < todayStr) {
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const isWalkIn = appForm.appointmentTime === 'Immediate Walk-In';
+
+    if (!isWalkIn && appForm.appointmentDate < todayStr) {
       alert(`Cannot schedule appointments on past dates (${appForm.appointmentDate}). Please select today (${todayStr}) or a future date.`);
       return;
     }
 
-    const res = await apiFetch(`${API_BASE_URL}/admin/appointments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        customerName: appForm.customerName,
-        customerPhone: appForm.customerPhone,
-        service: appForm.service,
-        specialistName: appForm.specialistName,
-        appointmentDate: appForm.appointmentDate,
-        appointmentTime: appForm.appointmentTime,
-        paymentMethod: appForm.paymentMethod,
-        branch: 'Jubilee Hills Flagship'
-      })
-    });
-    const data = await res.json();
-    if (data.data) setAppointments([data.data, ...appointments]);
-    setModalType(null);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: appForm.customerName,
+          customerPhone: appForm.customerPhone,
+          service: appForm.service,
+          specialistName: appForm.specialistName,
+          appointmentDate: isWalkIn ? todayStr : appForm.appointmentDate,
+          appointmentTime: appForm.appointmentTime,
+          paymentMethod: appForm.paymentMethod,
+          branch: 'Jubilee Hills Flagship'
+        })
+      });
+      const data = await res.json();
+      if (data.data) {
+        setAppointments(prev => [data.data, ...prev.filter(a => a._id !== data.data._id)]);
+        setModalType(null);
+        alert(`Walk-In Appointment #${data.data.bookingId} confirmed successfully!`);
+      } else {
+        alert(data.message || 'Failed to confirm walk-in appointment.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error creating walk-in appointment.');
+    }
   };
 
   const handleUpdateAppStatus = async (id: string, newStatus: string) => {
@@ -3923,7 +3936,13 @@ function AdminDashboardContent() {
                       <tr key={a._id} className="hover:bg-white/5 transition-colors">
                         <td className="p-4 font-mono font-bold text-rosegold-400">{a.bookingId}</td>
                         <td className="p-4 font-bold text-white">{a.customerName}<br/><span className="text-gray-400 font-normal">{a.customerPhone}</span></td>
-                        <td className="p-4 font-semibold text-white">{a.service}</td>
+                        <td className="p-4 font-semibold text-white">
+                          {a.service}
+                          <br />
+                          <span className="text-[11px] text-rosegold-400 font-normal">
+                            Pkg: {a.packageTier || a.packageName || 'No Package'}
+                          </span>
+                        </td>
                         <td className="p-4 text-rosegold-300 font-medium">{a.specialistName}</td>
                         <td className="p-4 font-mono text-[11px] text-rosegold-300">
                           {(() => {

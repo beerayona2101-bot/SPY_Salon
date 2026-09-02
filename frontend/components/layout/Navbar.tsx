@@ -196,17 +196,23 @@ export default function Navbar() {
       const userEmail = user?.email ? user.email.toLowerCase().trim() : '';
       const userId = (user as any)?._id || user?.id || '';
 
-      // Match notification if targeted to user role, all role, or specific matching email/userId
-      const isMatching = 
-        newNotif.role === 'user' || 
-        newNotif.role === 'all' ||
-        !newNotif.email ||
-        (newNotif.email && userEmail && newNotif.email.toLowerCase().trim() === userEmail) ||
-        (newNotif.userId && String(newNotif.userId) === String(userId));
+      const notifEmail = newNotif.email ? String(newNotif.email).toLowerCase().trim() : '';
+      const notifUserId = newNotif.userId ? String(newNotif.userId) : '';
 
-      if (isMatching) {
-        setNotifications(prev => [newNotif, ...prev.filter(n => n.notificationId !== newNotif.notificationId)]);
+      // If notification is explicitly targeted to an email or userId, strictly verify it matches current user
+      if (notifEmail || notifUserId) {
+        const matchesEmail = !!(notifEmail && userEmail && notifEmail === userEmail);
+        const matchesUser = !!(notifUserId && userId && notifUserId === String(userId));
+        if (!matchesEmail && !matchesUser) {
+          return; // Do NOT render notifications belonging to other accounts!
+        }
+      } else {
+        // If not explicitly targeted to a specific user/email, verify role matching
+        const isRoleMatch = newNotif.role === 'all' || newNotif.role === 'public' || newNotif.role === currentRole;
+        if (!isRoleMatch) return;
       }
+
+      setNotifications(prev => [newNotif, ...prev.filter(n => n.notificationId !== newNotif.notificationId)]);
     });
 
     socket.on('notifications:updated', () => {

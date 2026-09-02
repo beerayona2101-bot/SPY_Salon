@@ -579,10 +579,11 @@ class AdminService {
       throw ApiError.badRequest('Customer name and service title are required');
     }
 
-    const appDate = payload.appointmentDate || new Date().toISOString().split('T')[0];
-    const appTime = payload.appointmentTime || '11:00 AM';
+    const { getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+    const appDate = payload.appointmentDate || getKolkataCurrentDateStr();
+    const appTime = payload.appointmentTime || 'Immediate Walk-In';
 
-    if (isPastDateTimeKolkata(appDate, appTime)) {
+    if (appTime !== 'Immediate Walk-In' && isPastDateTimeKolkata(appDate, appTime)) {
       throw ApiError.badRequest('Please select a future appointment time.');
     }
 
@@ -602,7 +603,7 @@ class AdminService {
       assignedSpecialist = activeEmp ? `${activeEmp.name} (${activeEmp.specialties?.[0] || 'Specialist'})` : 'General Specialist Desk';
     }
 
-    if (assignedSpecialist && assignedSpecialist !== 'Any Available Specialist') {
+    if (assignedSpecialist && assignedSpecialist !== 'Any Available Specialist' && appTime !== 'Immediate Walk-In') {
       const cleanSpecFirst = assignedSpecialist.split('(')[0].trim().split(/\s+/)[0];
       const conflictCheck = await Appointment.findOne({
         specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
@@ -615,28 +616,43 @@ class AdminService {
       }
     }
 
+    const rawServiceName = String(payload.service || '').trim();
+    const cleanServiceName = rawServiceName.replace(/\s*\([^)]*\)/g, '').trim();
+
+    let serviceDoc = await Service.findOne({
+      $or: [
+        { name: new RegExp(`^${rawServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { name: new RegExp(`^${cleanServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        { name: new RegExp(cleanServiceName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+      ]
+    });
+
+    if (!serviceDoc) {
+      serviceDoc = await Service.findOne({ isActive: true });
+    }
+
+    const txnAmount = Number(payload.price || (serviceDoc ? (serviceDoc.discountPrice || serviceDoc.price) : 0));
+
+    const now = new Date();
     const newApp = await Appointment.create({
       bookingId,
       customerName: payload.customerName,
       customerPhone: payload.customerPhone || '+91 98765 43210',
       customerEmail: payload.customerEmail || '',
       service: payload.service,
+      price: txnAmount,
       specialistName: assignedSpecialist,
       appointmentDate: appDate,
       appointmentTime: appTime,
+      bookingDateTime: now,
+      bookingDate: getKolkataCurrentDateStr(),
+      bookingTimeFormatted: getKolkataCurrentTimeStr(),
       paymentMethod: payload.paymentMethod || 'UPI',
       status: 'Confirmed',
       branch: payload.branch || 'Jubilee Hills Flagship',
       branchId: payload.branchId || null,
       customerId: customer ? customer._id.toString() : null
     });
-
-    // Resolve price from Service model
-    const serviceDoc = await Service.findOne({ name: new RegExp((payload.service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
-    if (!serviceDoc && !payload.price) {
-      throw ApiError.badRequest(`Requested service '${payload.service}' is not available in database.`);
-    }
-    const txnAmount = Number(payload.price || (serviceDoc ? (serviceDoc.discountPrice || serviceDoc.price) : 0));
     await Transaction.create({
       txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
       type: 'Credited',
