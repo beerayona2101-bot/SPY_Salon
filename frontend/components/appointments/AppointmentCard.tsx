@@ -150,6 +150,16 @@ export default function AppointmentCard({
             {appointment.service}
           </h3>
 
+          {Array.isArray((appointment as any).services) && (appointment as any).services.length > 1 && (
+            <div className="flex flex-wrap gap-1.5 py-0.5">
+              {(appointment as any).services.map((s: any, i: number) => (
+                <span key={i} className="text-[10px] font-medium bg-dark-800 text-rosegold-300 px-2 py-0.5 rounded border border-white/10">
+                  ✂️ {s.name} (₹{s.price})
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-3 text-xs text-gray-300">
             <span className="flex items-center space-x-1">
               <Calendar className="w-3.5 h-3.5 text-rosegold-400" />
@@ -157,7 +167,7 @@ export default function AppointmentCard({
             </span>
             <span className="flex items-center space-x-1 font-mono text-rosegold-300">
               <Clock className="w-3.5 h-3.5" />
-              <span>{appointment.appointmentTime} ({appointment.duration || `${appointment.durationMinutes || 60} min`})</span>
+              <span>{appointment.appointmentTime} ({(appointment as any).totalDuration ? `${(appointment as any).totalDuration} min` : (appointment.duration || `${appointment.durationMinutes || 30} min`)})</span>
             </span>
           </div>
 

@@ -57,6 +57,7 @@ import {
   Moon,
   Settings,
   Sliders,
+  Tag,
   Globe,
   BarChart3
 } from 'lucide-react';
@@ -730,7 +731,7 @@ function AdminDashboardContent() {
 
   const [custForm, setCustForm] = useState({ name: '', email: '', phone: '', membership: 'VIP Gold' });
   
-  const [servicesSubTab, setServicesSubTab] = useState<'memberships' | 'main-services' | 'full-catalogue'>('memberships');
+  const [servicesSubTab, setServicesSubTab] = useState<'memberships' | 'main-services' | 'full-catalogue' | 'individual-services'>('memberships');
   const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
   const [catalogueGenderFilter, setCatalogueGenderFilter] = useState<'all' | 'men' | 'women' | 'kids'>('all');
   const [catalogueCatFilter, setCatalogueCatFilter] = useState<string>('All');
@@ -1217,6 +1218,9 @@ function AdminDashboardContent() {
     }
 
     try {
+      const targetDate = isWalkIn ? todayStr : appForm.appointmentDate;
+      const targetTime = appForm.appointmentTime || '02:00 PM';
+
       const res = await apiFetch(`${API_BASE_URL}/admin/appointments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1225,8 +1229,10 @@ function AdminDashboardContent() {
           customerPhone: appForm.customerPhone,
           service: appForm.service,
           specialistName: appForm.specialistName,
-          appointmentDate: isWalkIn ? todayStr : appForm.appointmentDate,
-          appointmentTime: appForm.appointmentTime,
+          appointmentDate: targetDate,
+          date: targetDate,
+          appointmentTime: targetTime,
+          time: targetTime,
           paymentMethod: appForm.paymentMethod,
           branch: 'Jubilee Hills Flagship'
         })
@@ -3400,6 +3406,19 @@ function AdminDashboardContent() {
                   <Scissors className="w-4 h-4 text-rosegold-400" />
                   <span>3. Full Menu Pricing Catalogue ({services.length})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServicesSubTab('individual-services')}
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
+                    servicesSubTab === 'individual-services'
+                      ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
+                      : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
+                  }`}
+                >
+                  <Tag className="w-4 h-4 text-emerald-400" />
+                  <span>4. Individual Services ({services.filter(s => (s as any).serviceType === 'INDIVIDUAL' || (s as any).subCategory === 'Individual Services').length})</span>
+                </button>
               </div>
 
               {/* SECTION 1: MEMBERSHIP PACKAGES & PRICING */}
@@ -3645,6 +3664,7 @@ function AdminDashboardContent() {
                   {/* Catalogue Grid Items rendered EXCLUSIVELY from MongoDB services */}
                   {(() => {
                     const catalogueLiveItems = services.filter(srv => {
+                      if ((srv as any).serviceType === 'INDIVIDUAL' || (srv as any).subCategory === 'Individual Services') return false;
                       const g = (srv as any).gender || 'all';
                       if (catalogueGenderFilter !== 'all' && g !== 'all' && g !== catalogueGenderFilter) return false;
                       if (catalogueCatFilter !== 'All' && !(srv.category || '').toLowerCase().includes(catalogueCatFilter.toLowerCase())) return false;
@@ -3744,6 +3764,171 @@ function AdminDashboardContent() {
                                 )}
                               </div>
                               <span className="text-[10px] font-bold text-green-400 bg-green-500/15 px-2.5 py-0.5 rounded-full border border-green-500/30">Active Menu</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* SECTION 4: INDIVIDUAL STANDALONE SALON SERVICES */}
+              {servicesSubTab === 'individual-services' && (
+                <div className="space-y-4 animate-fadeIn">
+                  
+                  {/* Header & Filter Bar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-dark-850 border border-rosegold-500/30">
+                    <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto">
+                      <span className="text-xs text-gray-400 font-bold uppercase mr-1">Section:</span>
+                      {[
+                        { id: 'all', label: '🌟 All Sections' },
+                        { id: 'men', label: '👨 Men' },
+                        { id: 'women', label: '👩 Women' },
+                        { id: 'kids', label: '🧒 Kids' }
+                      ].map(g => (
+                        <button
+                          type="button"
+                          key={g.id}
+                          onClick={() => setCatalogueGenderFilter(g.id as any)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            catalogueGenderFilter === g.id
+                              ? 'rosegold-gradient-bg text-dark-900 font-extrabold'
+                              : 'bg-dark-800 text-gray-300 hover:text-white'
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => {
+                          setSrvForm({
+                            name: '',
+                            category: 'Hair Care',
+                            gender: catalogueGenderFilter !== 'all' ? catalogueGenderFilter : 'all',
+                            subCategory: 'Individual Services',
+                            price: 300,
+                            discountPrice: 250,
+                            durationMinutes: 30,
+                            rating: 4.9,
+                            description: 'Individual standalone salon service treatment.',
+                            image: '',
+                            isPopular: false,
+                            benefits: 'Individual standalone service',
+                            step1Title: 'Service Prep', step1Desc: 'Service preparation',
+                            step2Title: 'Execution', step2Desc: 'Precision service execution',
+                            step3Title: 'Finish', step3Desc: 'Clean finish and styling',
+                            step4Title: 'Post Care', step4Desc: 'Post care guidance'
+                          });
+                          setSelectedItem(null);
+                          setModalType('addSrv');
+                        }}
+                        className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md flex items-center space-x-1 cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>+ Add Individual Service</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Individual Services Cards Grid */}
+                  {(() => {
+                    const individualItems = services.filter(srv => {
+                      const isIndiv = (srv as any).serviceType === 'INDIVIDUAL' || (srv as any).subCategory === 'Individual Services';
+                      if (!isIndiv) return false;
+                      const g = (srv as any).gender || 'all';
+                      if (catalogueGenderFilter !== 'all' && g !== 'all' && g !== catalogueGenderFilter) return false;
+                      return true;
+                    });
+
+                    if (individualItems.length === 0) {
+                      return (
+                        <div className="p-10 text-center glass-card rounded-3xl border border-white/10 space-y-3">
+                          <Scissors className="w-10 h-10 text-rosegold-400 mx-auto opacity-60" />
+                          <h4 className="text-white font-serif font-bold text-lg">No Individual Services Configured</h4>
+                          <p className="text-xs text-gray-400 max-w-md mx-auto">
+                            Click "+ Add Individual Service" above to add standalone salon works (Hair Cut, Beard Trim, Head Massage, Face Cleanup, etc.).
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                        {individualItems.map((item) => (
+                          <div key={item._id} className="glass-card p-5 rounded-3xl border border-white/10 flex flex-col justify-between hover:border-rosegold-500/50 transition-all space-y-3">
+                            <div className="space-y-2.5 text-left">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
+                                  <span className="bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
+                                    {((item as any).gender || 'ALL').toUpperCase()}
+                                  </span>
+                                  <span className="bg-purple-900/40 text-purple-200 border border-purple-500/30 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                    {item.category || 'Standalone Work'}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center space-x-1 shrink-0">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedItem(item);
+                                      setSrvForm({
+                                        name: item.name,
+                                        category: item.category || 'Hair Care',
+                                        gender: (item as any).gender || 'all',
+                                        subCategory: (item as any).subCategory || 'Individual Services',
+                                        price: item.price,
+                                        discountPrice: item.discountPrice || item.price,
+                                        durationMinutes: item.durationMinutes || 30,
+                                        rating: item.rating || 4.9,
+                                        description: item.description || 'Standalone service work.',
+                                        image: item.image || '',
+                                        isPopular: Boolean(item.isPopular),
+                                        benefits: 'Individual standalone service',
+                                        step1Title: 'Service Prep', step1Desc: 'Service preparation',
+                                        step2Title: 'Execution', step2Desc: 'Precision service execution',
+                                        step3Title: 'Finish', step3Desc: 'Clean finish and styling',
+                                        step4Title: 'Post Care', step4Desc: 'Post care guidance'
+                                      });
+                                      setModalType('editSrv');
+                                    }}
+                                    className="p-1.5 rounded-lg bg-dark-800 text-gray-300 hover:text-white border border-white/10 cursor-pointer shrink-0"
+                                    title="Edit Item Details"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteService(item._id)}
+                                    className="p-1.5 rounded-lg bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white cursor-pointer shrink-0"
+                                    title="Delete Service"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <h3 className="text-white font-serif font-bold text-base leading-snug">{item.name}</h3>
+                              <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{item.description || 'Standalone service work.'}</p>
+                              
+                              <div className="flex items-center space-x-2 text-xs text-gray-300 font-mono">
+                                <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+                                <span>Duration: <strong>{item.durationMinutes || 30} Minutes</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                              <div>
+                                <span className="text-rosegold-400 font-bold text-xl font-serif">₹{item.price}</span>
+                                {item.discountPrice && item.discountPrice < item.price && (
+                                  <span className="text-gray-500 text-xs line-through ml-2">₹{item.discountPrice}</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] font-bold text-green-400 bg-green-500/15 px-2.5 py-0.5 rounded-full border border-green-500/30">
+                                {item.isActive !== false ? 'Active Service' : 'Inactive'}
+                              </span>
                             </div>
                           </div>
                         ))}

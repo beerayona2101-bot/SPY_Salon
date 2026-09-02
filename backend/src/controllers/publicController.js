@@ -105,7 +105,11 @@ const verifySpecialistAvailability = async (specialist, date, timeSlot) => {
 // Get Services (Reflects Admin Updates Live)
 exports.getServices = async (req, res) => {
   try {
-    const services = await Service.find({ isActive: { $ne: false } }).sort({ category: 1, name: 1 });
+    const filter = { isActive: { $ne: false } };
+    if (req.query.serviceType) {
+      filter.serviceType = req.query.serviceType;
+    }
+    const services = await Service.find(filter).sort({ category: 1, name: 1 });
     return res.status(200).json({
       success: true,
       count: services.length,
@@ -478,7 +482,74 @@ exports.bookAppointment = async (req, res) => {
 
     const reqPkg = req.body.packageTier || req.body.packageName || null;
     const packageTierVal = (reqPkg && reqPkg !== 'No Package' && reqPkg !== 'null' && reqPkg !== 'undefined') ? reqPkg : null;
-    const finalServiceName = packageTierVal ? `${serviceDoc.name} (${packageTierVal})` : serviceDoc.name;
+
+    // Multi-service array & additionalServices processing with MongoDB authoritative price validation
+    let servicesToSave = [];
+    let additionalServicesToSave = [];
+    let totalDurationMins = 30;
+    let finalServiceName = '';
+    let serverCalculatedPrice = 0;
+
+    if (Array.isArray(req.body.services) && req.body.services.length > 0) {
+      for (const s of req.body.services) {
+        const sId = s.serviceId || s._id || s.id;
+        let dbSrv = null;
+        if (sId && mongoose.Types.ObjectId.isValid(sId)) {
+          dbSrv = await Service.findOne({ _id: sId, isActive: { $ne: false } });
+        }
+        if (!dbSrv && s.name) {
+          dbSrv = await Service.findOne({ name: new RegExp(`^${String(s.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), isActive: { $ne: false } });
+        }
+
+        const dbPrice = dbSrv ? (dbSrv.discountPrice || dbSrv.price || 0) : Number(s.price || 0);
+        const dbDuration = dbSrv ? (dbSrv.durationMinutes || 30) : Number(s.durationMinutes || 30);
+
+        servicesToSave.push({
+          serviceId: dbSrv ? dbSrv._id.toString() : (sId || null),
+          name: dbSrv ? dbSrv.name : String(s.name || 'Salon Service').trim(),
+          price: dbPrice,
+          durationMinutes: dbDuration
+        });
+        serverCalculatedPrice += dbPrice;
+      }
+      totalDurationMins = servicesToSave.reduce((sum, s) => sum + (s.durationMinutes || 30), 0);
+      const namesList = servicesToSave.map(s => s.name).join(', ');
+      finalServiceName = packageTierVal ? `${namesList} (${packageTierVal})` : namesList;
+    } else {
+      servicesToSave = [{
+        serviceId: serviceDoc ? serviceDoc._id.toString() : null,
+        name: serviceDoc ? serviceDoc.name : rawServiceName,
+        price: validatedPrice,
+        durationMinutes: serviceDoc ? (serviceDoc.durationMinutes || 30) : 30
+      }];
+      serverCalculatedPrice = validatedPrice;
+      totalDurationMins = serviceDoc ? (serviceDoc.durationMinutes || 30) : 30;
+      finalServiceName = packageTierVal ? `${serviceDoc.name} (${packageTierVal})` : serviceDoc.name;
+    }
+
+    // Process explicit additionalServices array if provided, or slice from servicesToSave
+    if (Array.isArray(req.body.additionalServices) && req.body.additionalServices.length > 0) {
+      for (const addS of req.body.additionalServices) {
+        const sId = addS.serviceId || addS._id || addS.id;
+        let dbSrv = null;
+        if (sId && mongoose.Types.ObjectId.isValid(sId)) {
+          dbSrv = await Service.findOne({ _id: sId, isActive: { $ne: false } });
+        }
+        if (!dbSrv && addS.name) {
+          dbSrv = await Service.findOne({ name: new RegExp(`^${String(addS.name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'), isActive: { $ne: false } });
+        }
+        additionalServicesToSave.push({
+          serviceId: dbSrv ? dbSrv._id.toString() : (sId || null),
+          name: dbSrv ? dbSrv.name : String(addS.name || 'Additional Service').trim(),
+          price: dbSrv ? (dbSrv.discountPrice || dbSrv.price || 0) : Number(addS.price || 0),
+          durationMinutes: dbSrv ? (dbSrv.durationMinutes || 30) : Number(addS.durationMinutes || 30)
+        });
+      }
+    } else if (servicesToSave.length > 1) {
+      additionalServicesToSave = servicesToSave.slice(1);
+    }
+
+    const finalBillingAmount = req.body.price ? Number(req.body.price) : serverCalculatedPrice;
 
     const newAppointment = await Appointment.create({
       bookingId,
@@ -488,10 +559,13 @@ exports.bookAppointment = async (req, res) => {
       branch,
       branchId,
       service: finalServiceName,
+      services: servicesToSave,
+      additionalServices: additionalServicesToSave,
+      totalDuration: totalDurationMins,
       packageTier: packageTierVal,
       packageName: packageTierVal,
-      price: validatedPrice,
-      finalAmount: validatedPrice,
+      price: finalBillingAmount,
+      finalAmount: finalBillingAmount,
       specialistName: chosenSpecialist,
       bookingDateTime,
       bookingDate: bookingDateStr,

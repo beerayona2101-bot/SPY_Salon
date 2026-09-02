@@ -7,6 +7,19 @@ const appointmentSchema = new mongoose.Schema({
   customerEmail: { type: String },
   branch: { type: String, required: true },
   service: { type: String, required: true },
+  services: [{
+    serviceId: { type: String },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    durationMinutes: { type: Number, default: 30 }
+  }],
+  additionalServices: [{
+    serviceId: { type: String },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    durationMinutes: { type: Number, default: 30 }
+  }],
+  totalDuration: { type: Number, default: 30 },
   packageTier: { type: String, default: null },
   packageName: { type: String, default: null },
   price: { type: Number, default: 0 },

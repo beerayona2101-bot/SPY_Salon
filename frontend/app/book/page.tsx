@@ -104,6 +104,10 @@ function BookingContent() {
   // Dynamic Service & Specialist States
   const [loadingService, setLoadingService] = useState(true);
   const [selectedServiceObj, setSelectedServiceObj] = useState<any | null>(null);
+  const [additionalServicesList, setAdditionalServicesList] = useState<any[]>([]);
+  const [showAdditionalServicesModal, setShowAdditionalServicesModal] = useState(false);
+  const [modalSearchQuery, setModalSearchQuery] = useState('');
+  const [modalCategoryFilter, setModalCategoryFilter] = useState('All');
   const [selectedPackageTier, setSelectedPackageTier] = useState<string | null>(packageParam);
   const [specialistsList, setSpecialistsList] = useState<any[]>([]);
   const [offersList, setOffersList] = useState<any[]>([]);
@@ -134,9 +138,105 @@ function BookingContent() {
 
   const [allServicesList, setAllServicesList] = useState<any[]>([]);
 
+  // Strict Individual Services Filter & Deduplication helper
+  const getDeduplicatedIndividualServices = useMemo(() => {
+    const seen = new Set<string>();
+    return allServicesList.filter(s => {
+      if (s.isActive === false) return false;
+      const type = String(s.serviceType || '').toUpperCase();
+      const subCat = String(s.subCategory || '').toLowerCase();
+      const desc = String(s.description || s.desc || '').toLowerCase();
+      const name = String(s.name || s.title || '').toLowerCase().trim();
+      const price = Number(s.price || s.discountPrice || 0);
+
+      // Exclude heavy main catalogue packages (e.g. hair spa ₹2999, body spa ₹1999)
+      if (type === 'MAIN' || (type === 'CATALOGUE' && (price >= 1500 || desc.includes('botanical') || desc.includes('luxury spa') || desc.includes('full body')))) {
+        return false;
+      }
+
+      // Must be individual service or standalone add-on work
+      const isIndiv = type === 'INDIVIDUAL' ||
+        subCat.includes('individual') ||
+        desc.includes('individual') ||
+        desc.includes('standalone') ||
+        name.includes('cut') ||
+        name.includes('beard') ||
+        name.includes('shav') ||
+        name.includes('trim') ||
+        name.includes('massage') ||
+        name.includes('cleanup') ||
+        name.includes('threading') ||
+        name.includes('waxing') ||
+        price < 1000;
+
+      if (!isIndiv) return false;
+
+      // Exclude currently selected main service
+      if (selectedServiceObj && selectedServiceObj.id !== 'no_package') {
+        const mainId = String(selectedServiceObj._id || selectedServiceObj.id || '').toLowerCase().trim();
+        const mainName = String(selectedServiceObj.name || '').toLowerCase().trim();
+        const currentId = String(s._id || s.id || '').toLowerCase().trim();
+        if ((mainId && currentId && mainId === currentId) || (mainName && name && mainName === name)) {
+          return false;
+        }
+      }
+
+      // Deduplicate by normalized name
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+  }, [allServicesList, selectedServiceObj]);
+
+  // Toggle optional additional service in modal
+  const toggleAdditionalService = (srv: any) => {
+    if (!srv) return;
+    const srvId = String(srv._id || srv.id || '').toLowerCase().trim();
+    const srvName = String(srv.name || srv.title || '').toLowerCase().trim();
+
+    if (selectedServiceObj) {
+      const mainId = String(selectedServiceObj._id || selectedServiceObj.id || '').toLowerCase().trim();
+      const mainName = String(selectedServiceObj.name || '').toLowerCase().trim();
+
+      if ((mainId && srvId && mainId === srvId) || (mainName && srvName && mainName === srvName)) {
+        // Never allow main service to be added to additionalServicesList
+        return;
+      }
+    }
+
+    setAdditionalServicesList(prev => {
+      const exists = prev.some(item => {
+        const itemId = String(item._id || item.id || '').toLowerCase().trim();
+        const itemName = String(item.name || item.title || '').toLowerCase().trim();
+        return (srvId && itemId && srvId === itemId) || (srvName && itemName && srvName === itemName);
+      });
+
+      if (exists) {
+        return prev.filter(item => {
+          const itemId = String(item._id || item.id || '').toLowerCase().trim();
+          const itemName = String(item.name || item.title || '').toLowerCase().trim();
+          return !((srvId && itemId && srvId === itemId) || (srvName && itemName && srvName === itemName));
+        });
+      } else {
+        const formatted = {
+          _id: srv._id || srv.id,
+          id: srv._id || srv.id,
+          name: srv.name || srv.title,
+          category: srv.category || 'Beauty',
+          price: Number(srv.price || srv.discountPrice || 0),
+          durationMinutes: Number(srv.durationMinutes || parseInt(srv.duration) || 30),
+          duration: srv.duration || `${srv.durationMinutes || 30} min`,
+          description: srv.description || srv.desc || ''
+        };
+        return [...prev, formatted];
+      }
+    });
+  };
+
   // 1. Fetch Target Service dynamically based on URL query
   useEffect(() => {
     setLoadingService(true);
+    setAdditionalServicesList([]);
     const rawParam = serviceIdParam || serviceParam || '';
     const decodedParam = decodeURIComponent(rawParam).toLowerCase().trim();
     const slugParam = decodedParam.replace(/[^a-z0-9]+/g, '-');
@@ -171,7 +271,8 @@ function BookingContent() {
         }
 
         if (match) {
-          setSelectedServiceObj({
+          const formattedMatch = {
+            _id: match._id || match.id,
             id: match._id || match.id,
             name: match.name || match.title,
             category: match.category || 'Beauty',
@@ -185,7 +286,8 @@ function BookingContent() {
             description: match.description || match.desc || 'Luxury salon treatment provided by certified specialists.',
             image: match.image || '',
             isPopular: match.isPopular || match.popular || false
-          });
+          };
+          setSelectedServiceObj(formattedMatch);
         } else {
           setSelectedServiceObj(null);
         }
@@ -351,9 +453,31 @@ function BookingContent() {
     '09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'
   ];
 
-  // Dynamic Pricing & VIP Membership Discount Calculation (Fall back to normal service price if No Package is selected)
-  const subtotalPrice = activeTierObj ? activeTierObj.price : (selectedServiceObj ? (selectedServiceObj.price || 0) : 0);
-  
+  const isNoPackage = !selectedPackageTier;
+
+  // Dynamic Pricing & Multi-Service Aggregation (Main Treatment + Optional Additional Services)
+  const allSelectedServicesList = useMemo(() => {
+    if (isNoPackage) {
+      return additionalServicesList;
+    }
+    return [selectedServiceObj, ...additionalServicesList].filter(Boolean);
+  }, [selectedServiceObj, additionalServicesList, isNoPackage]);
+
+  const additionalSubtotal = useMemo(() => {
+    return additionalServicesList.reduce((sum, s) => sum + Number(s.price || s.discountPrice || 0), 0);
+  }, [additionalServicesList]);
+
+  const additionalDuration = useMemo(() => {
+    return additionalServicesList.reduce((sum, s) => sum + Number(s.durationMinutes || parseInt(s.duration) || 30), 0);
+  }, [additionalServicesList]);
+
+  const mainPrice = (!isNoPackage && selectedServiceObj) ? Number(selectedServiceObj.price || 0) : 0;
+  const mainDuration = (!isNoPackage && selectedServiceObj) ? Number(selectedServiceObj.durationMinutes || parseInt(selectedServiceObj.duration) || 60) : 0;
+
+  const servicesSubtotal = mainPrice + additionalSubtotal;
+  const totalDurationMinutes = (activeTierObj ? activeTierObj.durationMinutes : mainDuration) + additionalDuration;
+  const subtotalPrice = activeTierObj ? (activeTierObj.price + additionalSubtotal) : servicesSubtotal;
+
   const membershipInfo = currentUserObj?.membership;
   const membershipDiscountPercent = membershipInfo?.status === 'Active' || membershipInfo?.discountPercent
     ? (membershipInfo.discountPercent || (membershipInfo.tier === 'Gold' ? 20 : membershipInfo.tier === 'Premium' ? 10 : 5))
@@ -367,9 +491,8 @@ function BookingContent() {
   const grandTotal = Math.max(subtotalPrice - totalDiscountAmount + taxAmount, 0);
 
   const estimatedEndTime = useMemo(() => {
-    const minutes = activeTierObj ? activeTierObj.durationMinutes : (selectedServiceObj?.durationMinutes || 60);
-    return calculateEndTime(selectedTime, minutes);
-  }, [selectedTime, activeTierObj, selectedServiceObj]);
+    return calculateEndTime(selectedTime, totalDurationMinutes);
+  }, [selectedTime, totalDurationMinutes]);
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,13 +515,8 @@ function BookingContent() {
     e.preventDefault();
     setConflictError(null);
 
-    // EXPLICIT PACKAGE SELECTION VALIDATION RULE
-    if (!selectedPackageTier || !activeTierObj) {
-      setConflictError('Please select a package tier before continuing.');
-      const pkgElement = document.getElementById('package-tier-selection');
-      if (pkgElement) {
-        pkgElement.scrollIntoView({ behavior: 'smooth' });
-      }
+    if (!selectedServiceObj) {
+      setConflictError('Please select a salon treatment to proceed with your appointment booking.');
       return;
     }
 
@@ -447,9 +565,10 @@ function BookingContent() {
     setConflictError(null);
     try {
       const activeTierName = activeTierObj ? activeTierObj.name : null;
+      const joinedNames = allSelectedServicesList.map(s => s.name).join(', ');
       const srvName = activeTierName
-        ? `${selectedServiceObj?.name || 'Salon Treatment'} (${activeTierName})`
-        : (selectedServiceObj?.name || 'Salon Treatment');
+        ? `${joinedNames || 'Salon Treatment'} (${activeTierName})`
+        : (joinedNames || 'Salon Treatment');
 
       const response = await fetch(`${API_BASE_URL}/appointments/public-book`, {
         method: 'POST',
@@ -461,7 +580,18 @@ function BookingContent() {
           customerEmail: formData.email,
           branch: selectedBranch,
           service: srvName,
-          serviceId: selectedServiceObj?.id || (selectedServiceObj as any)?._id,
+          services: selectedServiceObj ? [{
+            serviceId: selectedServiceObj._id || selectedServiceObj.id,
+            name: selectedServiceObj.name,
+            price: selectedServiceObj.price || 0,
+            durationMinutes: selectedServiceObj.durationMinutes || parseInt(selectedServiceObj.duration) || 60
+          }] : [],
+          additionalServices: additionalServicesList.map(s => ({
+            serviceId: s._id || s.id,
+            name: s.name,
+            price: s.price || 0,
+            durationMinutes: s.durationMinutes || parseInt(s.duration) || 30
+          })),
           packageTier: activeTierName || null,
           price: subtotalPrice,
           staffPreference: selectedStaff,
@@ -470,7 +600,7 @@ function BookingContent() {
           appointmentTime: selectedTime,
           paymentMethod: isPrePaid ? 'Razorpay (Pre-Paid)' : payMethod,
           paymentDetails: upiIdVal || txnIdVal ? { upiId: upiIdVal, transactionRef: txnIdVal } : {},
-          notes: `[Package: ${activeTierName || 'No Package'}] [Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
+          notes: `[Services: ${joinedNames}] [Package: ${activeTierName || 'No Package'}] [Total Duration: ${totalDurationMinutes} min] [Grand Total: ₹${grandTotal}] ${formData.notes || ''}`
         })
       });
 
@@ -619,27 +749,52 @@ function BookingContent() {
               <select
                 value={selectedServiceObj?.id || ''}
                 onChange={(e) => {
-                  const match = allServicesList.find((s: any) => String(s._id || s.id) === e.target.value);
-                  if (match) {
+                  const val = e.target.value;
+                  setSelectedPackageTier(null);
+                  if (val === 'no_package') {
+                    setAdditionalServicesList([]);
                     setSelectedServiceObj({
-                      id: match._id || match.id,
-                      name: match.name || match.title,
-                      category: match.category || 'Beauty',
-                      subCategory: match.subCategory || 'Hair Care',
-                      gender: match.gender || 'all',
-                      price: match.price || 0,
-                      discountPrice: match.discountPrice || match.price,
-                      durationMinutes: match.durationMinutes || parseInt(match.duration) || 60,
-                      duration: match.duration || `${match.durationMinutes || 60} min`,
-                      rating: match.rating || 4.9,
-                      description: match.description || match.desc || 'Luxury salon treatment provided by certified specialists.',
-                      image: match.image || '',
-                      isPopular: match.isPopular || match.popular || false
+                      _id: 'no_package',
+                      id: 'no_package',
+                      name: 'No Package (Custom Services)',
+                      category: 'Individual Services',
+                      subCategory: 'Custom Selection',
+                      gender: 'all',
+                      price: 0,
+                      discountPrice: 0,
+                      durationMinutes: 0,
+                      duration: '0 min',
+                      rating: 5.0,
+                      description: 'Select custom individual salon services from the list below.',
+                      image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&auto=format&fit=crop&q=80',
+                      isPopular: false
                     });
+                  } else {
+                    const match = allServicesList.find((s: any) => String(s._id || s.id) === val);
+                    if (match) {
+                      setAdditionalServicesList([]);
+                      setSelectedServiceObj({
+                        _id: match._id || match.id,
+                        id: match._id || match.id,
+                        name: match.name || match.title,
+                        category: match.category || 'Beauty',
+                        subCategory: match.subCategory || 'Hair Care',
+                        gender: match.gender || 'all',
+                        price: match.price || 0,
+                        discountPrice: match.discountPrice || match.price,
+                        durationMinutes: match.durationMinutes || parseInt(match.duration) || 60,
+                        duration: match.duration || `${match.durationMinutes || 60} min`,
+                        rating: match.rating || 4.9,
+                        description: match.description || match.desc || 'Luxury salon treatment provided by certified specialists.',
+                        image: match.image || '',
+                        isPopular: match.isPopular || match.popular || false
+                      });
+                    }
                   }
                 }}
-                className="bg-dark-800 text-rosegold-400 font-bold text-xs px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none"
+                className="bg-dark-800 text-rosegold-400 font-bold text-xs px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none cursor-pointer"
               >
+                <option value="no_package">No Package (Individual Services Only)</option>
                 {allServicesList.map((srv: any) => (
                   <option key={srv._id || srv.id} value={srv._id || srv.id}>
                     {srv.name} (₹{srv.price})
@@ -672,54 +827,56 @@ function BookingContent() {
         {/* LEFT COLUMN: SERVICE DETAILS, PACKAGES & TIME SELECTION (7 COLS) */}
         <div className="lg:col-span-7 space-y-6">
 
-          {/* 1. SELECTED SERVICE HERO CARD */}
-          <div className="glass-card p-6 rounded-3xl border border-rosegold-500/30 shadow-2xl space-y-5 relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-              <div className="w-full sm:w-28 h-28 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative">
-                <LazyImage
-                  src={selectedServiceObj.image}
-                  alt={selectedServiceObj.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <div className="space-y-2 flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-rosegold-500/15 border border-rosegold-500/30 text-rosegold-300 text-[10px] font-extrabold uppercase tracking-wider">
-                    {selectedServiceObj.category}
-                  </span>
-                  {selectedServiceObj.subCategory && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-dark-800 text-gray-300 text-[10px] font-semibold">
-                      {selectedServiceObj.subCategory}
-                    </span>
-                  )}
-                  {selectedServiceObj.isPopular && (
-                    <span className="px-2.5 py-0.5 rounded-full rosegold-gradient-bg text-dark-900 text-[10px] font-extrabold uppercase">
-                      POPULAR
-                    </span>
-                  )}
+          {/* 1. SELECTED SERVICE HERO CARD (APPROVED UI BASELINE) */}
+          {selectedServiceObj && (
+            <div className="glass-card p-6 rounded-3xl border border-rosegold-500/30 shadow-2xl space-y-5 relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+                <div className="w-full sm:w-28 h-28 rounded-2xl overflow-hidden shrink-0 border border-white/10 relative">
+                  <LazyImage
+                    src={selectedServiceObj.image || 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&auto=format&fit=crop&q=80'}
+                    alt={selectedServiceObj.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-wide">
-                  {selectedServiceObj.name}
-                </h1>
+                <div className="space-y-2 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-rosegold-500/15 border border-rosegold-500/30 text-rosegold-300 text-[10px] font-extrabold uppercase tracking-wider">
+                      {selectedServiceObj.category}
+                    </span>
+                    {selectedServiceObj.subCategory && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-dark-800 text-gray-300 text-[10px] font-semibold">
+                        {selectedServiceObj.subCategory}
+                      </span>
+                    )}
+                    {selectedServiceObj.isPopular && (
+                      <span className="px-2.5 py-0.5 rounded-full rosegold-gradient-bg text-dark-900 text-[10px] font-extrabold uppercase">
+                        POPULAR
+                      </span>
+                    )}
+                  </div>
 
-                <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed">
-                  {selectedServiceObj.description}
-                </p>
+                  <h1 className="text-2xl sm:text-3xl font-serif font-bold text-white tracking-wide">
+                    {selectedServiceObj.name}
+                  </h1>
 
-                <div className="flex items-center space-x-4 pt-1 text-xs">
-                  <span className="font-serif font-bold text-rosegold-400 text-lg">
-                    ₹{selectedServiceObj.price}
-                  </span>
-                  <span className="text-gray-400 flex items-center space-x-1">
-                    <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                    <span>{selectedServiceObj.duration}</span>
-                  </span>
+                  <p className="text-xs text-gray-300 line-clamp-2 leading-relaxed">
+                    {selectedServiceObj.description}
+                  </p>
+
+                  <div className="flex items-center space-x-4 pt-1 text-xs">
+                    <span className="font-serif font-bold text-rosegold-400 text-lg">
+                      ₹{selectedServiceObj.price}
+                    </span>
+                    <span className="text-gray-400 flex items-center space-x-1">
+                      <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+                      <span>{selectedServiceObj.duration}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* 2. DYNAMIC PACKAGE TIERS (OPTIONAL PACKAGE SELECTION) */}
           <div id="package-tier-selection" className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
@@ -729,9 +886,17 @@ function BookingContent() {
                 <span>Select Package Tier <span className="text-gray-400 font-normal text-xs">(Optional)</span></span>
               </h3>
               {!selectedPackageTier ? (
-                <span className="text-[10px] text-gray-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
-                  No Package (Normal Service)
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPackageTier(null);
+                    setShowAdditionalServicesModal(true);
+                  }}
+                  className="text-[10px] text-gray-300 bg-white/5 border border-white/10 hover:border-rosegold-400 hover:text-rosegold-300 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider transition-colors cursor-pointer flex items-center space-x-1"
+                >
+                  <span>No Package (Normal Service)</span>
+                  <Tag className="w-3 h-3 text-rosegold-400" />
+                </button>
               ) : (
                 <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-full font-extrabold uppercase tracking-wider">
                   Tier Selected: {activeTierObj?.name}
@@ -743,7 +908,10 @@ function BookingContent() {
               {/* OPTIONAL NO PACKAGE SELECTION CARD */}
               <button
                 type="button"
-                onClick={() => setSelectedPackageTier(null)}
+                onClick={() => {
+                  setSelectedPackageTier(null);
+                  setShowAdditionalServicesModal(true);
+                }}
                 className={`p-4 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between space-y-3 cursor-pointer ${
                   !selectedPackageTier
                     ? 'rosegold-glass-card border-rosegold-400 shadow-glow-rosegold scale-[1.02]'
@@ -751,17 +919,31 @@ function BookingContent() {
                 }`}
               >
                 <div>
-                  <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider block">
-                    STANDARD SERVICE
-                  </span>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-[9px] font-mono font-bold text-gray-400 uppercase tracking-wider truncate">
+                      STANDARD SERVICE
+                    </span>
+                    <span className="text-[10px] text-rosegold-400 font-bold flex items-center space-x-1 bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/20 whitespace-nowrap shrink-0">
+                      <span>Add Works</span>
+                      <Scissors className="w-3 h-3 text-rosegold-400" />
+                    </span>
+                  </div>
                   <h4 className="font-serif font-bold text-sm text-white mt-0.5">No Package</h4>
                   <p className="text-[11px] text-gray-400 line-clamp-2 mt-1 leading-normal">
-                    Individual standalone treatment at standard service price.
+                    Standard service booking without package tier upgrade. Click to select individual salon works.
                   </p>
+                  {additionalServicesList.length > 0 && (
+                    <span className="inline-block mt-2 text-[10px] font-bold text-rosegold-300 bg-rosegold-500/10 px-2 py-0.5 rounded border border-rosegold-500/20">
+                      +{additionalServicesList.length} Extra Added
+                    </span>
+                  )}
                 </div>
 
                 <div className="pt-2 border-t border-white/10 flex items-baseline justify-between">
-                  <span className="font-serif font-bold text-rosegold-300 text-lg">₹{selectedServiceObj.price}</span>
+                  <div className="flex items-baseline space-x-1">
+                    <span className="font-serif font-bold text-rosegold-300 text-lg">₹0</span>
+                    <span className="text-[10px] text-gray-400 font-mono">(No Package Fee)</span>
+                  </div>
                   <span className="text-[10px] text-gray-400 font-mono">{selectedServiceObj.duration}</span>
                 </div>
               </button>
@@ -793,6 +975,65 @@ function BookingContent() {
                 </button>
               ))}
             </div>
+
+            {/* INLINE INDIVIDUAL SERVICES SELECTION GRID WHEN NO PACKAGE IS ACTIVE */}
+            {!selectedPackageTier && (
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-serif font-bold text-xs text-white uppercase tracking-wider flex items-center space-x-1.5">
+                    <Scissors className="w-3.5 h-3.5 text-rosegold-400" />
+                    <span>Select Individual Services & Add-ons</span>
+                  </h4>
+                  <span className="text-[10px] text-rosegold-300 font-mono font-bold bg-rosegold-500/10 px-2.5 py-0.5 rounded-full border border-rosegold-500/20">
+                    {additionalServicesList.length} Selected
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                  {getDeduplicatedIndividualServices
+                    .map((srv: any) => {
+                      const srvId = String(srv._id || srv.id || srv.name);
+                      const srvName = String(srv.name || srv.title || '').toLowerCase().trim();
+                      const isSelected = additionalServicesList.some(item => {
+                        const itemId = String(item._id || item.id || item.name || '').toLowerCase().trim();
+                        const itemName = String(item.name || item.title || '').toLowerCase().trim();
+                        return itemId === String(srvId).toLowerCase().trim() || (srvName && itemName && srvName === itemName);
+                      });
+                      const priceVal = srv.price || srv.discountPrice || 0;
+                      const durationVal = srv.durationMinutes || parseInt(srv.duration) || 30;
+
+                      return (
+                        <div
+                          key={srvId}
+                          onClick={() => toggleAdditionalService(srv)}
+                          className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between space-x-2.5 ${
+                            isSelected
+                              ? 'rosegold-glass-card border-rosegold-400 bg-rosegold-500/15 shadow-glow-rosegold'
+                              : 'bg-dark-850 border-white/10 hover:border-rosegold-500/30'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected ? 'bg-rosegold-500 border-rosegold-400 text-dark-900 font-extrabold' : 'border-white/30 bg-dark-900'
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="font-serif font-bold text-xs text-white truncate">{srv.name || srv.title}</h5>
+                              <p className="text-[10px] text-gray-400 font-mono">₹{priceVal} • {durationVal} min</p>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase transition-colors shrink-0 ${
+                            isSelected ? 'bg-rosegold-400 text-dark-900' : 'bg-white/5 text-gray-400 border border-white/10'
+                          }`}>
+                            {isSelected ? 'Added' : '+ Add'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 3. SPECIALIST SELECTOR (FILTERED BY CATEGORY) */}
@@ -906,11 +1147,55 @@ function BookingContent() {
             </h3>
 
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Selected Treatment</span>
-                <span className="font-bold text-white text-right max-w-[200px] truncate">{selectedServiceObj.name}</span>
+              {/* Selected Services Itemized List */}
+              <div className="space-y-1.5 pb-2">
+                <div className="flex justify-between items-center text-gray-400">
+                  <span>Selected Treatment(s)</span>
+                  <span className="font-bold text-rosegold-400">{allSelectedServicesList.length} Item(s)</span>
+                </div>
+                {allSelectedServicesList.length > 0 ? (
+                  allSelectedServicesList.map((srv, idx) => {
+                    const isMainItem = !isNoPackage && idx === 0;
+                    const isAdditional = isNoPackage || idx > 0;
+                    return (
+                      <div key={srv.id || srv._id || idx} className="flex justify-between items-center text-xs bg-dark-850 p-2.5 rounded-xl border border-white/10">
+                        <span className="text-white font-medium flex items-center space-x-2 truncate max-w-[170px]">
+                          <Scissors className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
+                          <span className="truncate">{srv.name} {isMainItem ? '(Main)' : ''}</span>
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-rosegold-300 font-serif">₹{srv.price}</span>
+                          {isAdditional && (
+                            <button
+                              type="button"
+                              onClick={() => toggleAdditionalService(srv)}
+                              className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-md transition-colors cursor-pointer"
+                              title="Remove this service"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 rounded-xl bg-dark-850/60 border border-white/10 text-center text-gray-400 text-xs font-mono">
+                    No Individual Service Selected (Select from below)
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowAdditionalServicesModal(true)}
+                  className="w-full py-1.5 px-3 rounded-xl bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 hover:bg-rosegold-500/20 text-[11px] font-bold transition-all flex items-center justify-center space-x-1 cursor-pointer"
+                >
+                  <Tag className="w-3 h-3" />
+                  <span>+ Manage Additional Services</span>
+                </button>
               </div>
-              <div className="flex justify-between">
+
+              <div className="flex justify-between border-t border-white/10 pt-2">
                 <span className="text-gray-400">Package Tier</span>
                 {activeTierObj ? (
                   <span className="font-bold text-rosegold-300">{activeTierObj.name}</span>
@@ -929,6 +1214,14 @@ function BookingContent() {
                 <span className="font-bold text-white">{selectedDate} ({selectedTime})</span>
               </div>
 
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total Combined Duration</span>
+                <span className="font-bold text-rosegold-400 font-mono flex items-center space-x-1">
+                  <Clock className="w-3.5 h-3.5 text-rosegold-400" />
+                  <span>{totalDurationMinutes} min</span>
+                </span>
+              </div>
+
               {estimatedEndTime && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Estimated Completion</span>
@@ -937,10 +1230,25 @@ function BookingContent() {
               )}
 
               <div className="pt-3 border-t border-white/10 space-y-2">
-                <div className="flex justify-between text-gray-300">
-                  <span>{activeTierObj ? `Base Package Price (${activeTierObj.name})` : `Standard Service Price (${selectedServiceObj.name})`}</span>
-                  <span>₹{subtotalPrice}</span>
-                </div>
+                {activeTierObj ? (
+                  <>
+                    <div className="flex justify-between text-gray-300">
+                      <span>Package Amount ({activeTierObj.name})</span>
+                      <span>₹{activeTierObj.price}</span>
+                    </div>
+                    {additionalServicesList.length > 0 && (
+                      <div className="flex justify-between text-rosegold-300">
+                        <span>Additional Services ({additionalServicesList.length} Items)</span>
+                        <span>+₹{additionalSubtotal}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex justify-between text-gray-300">
+                    <span>Services Subtotal ({allSelectedServicesList.length} Items)</span>
+                    <span>₹{subtotalPrice}</span>
+                  </div>
+                )}
 
                 {membershipDiscountPercent > 0 && (
                   <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
@@ -1091,8 +1399,6 @@ function BookingContent() {
               <span>
                 {isSubmitting
                   ? 'Confirming Reservation...'
-                  : !selectedPackageTier
-                  ? 'Please Select Package Tier Above ↑'
                   : `Confirm & Pay ₹${grandTotal} →`}
               </span>
             </AnimatedButton>
@@ -1146,6 +1452,163 @@ function BookingContent() {
               >
                 {razorpayPaying ? 'Authorizing Payment...' : `Pay ₹${grandTotal} Now`}
               </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showAdditionalServicesModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="glass-card p-6 rounded-3xl border border-rosegold-500/40 max-w-2xl w-full max-h-[85vh] flex flex-col space-y-4 shadow-2xl relative overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div>
+                  <h3 className="font-serif font-bold text-xl text-white flex items-center space-x-2">
+                    <Scissors className="w-5 h-5 text-rosegold-400" />
+                    <span>Select Additional Services</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Choose optional individual salon services to add to your treatment. This is optional.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAdditionalServicesModal(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Search & Category Filter */}
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={modalSearchQuery}
+                  onChange={(e) => setModalSearchQuery(e.target.value)}
+                  placeholder="Search additional services (Hair Cut, Beard, Facial...)"
+                  className="w-full p-2.5 rounded-xl bg-dark-850 border border-white/15 text-xs text-white placeholder-gray-500 focus:border-rosegold-400 focus:outline-none"
+                />
+
+                <div className="flex items-center space-x-2 overflow-x-auto pb-1 custom-scrollbar text-[11px]">
+                  {['All', 'Hair Care', 'Skin Care', 'Beard & Grooming', 'Spa & Wellness', 'Makeup'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setModalCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-full whitespace-nowrap border transition-all cursor-pointer ${
+                        modalCategoryFilter === cat
+                          ? 'rosegold-gradient-bg text-dark-900 font-extrabold border-rosegold-400'
+                          : 'bg-dark-850 text-gray-400 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scrollable Services Checkbox Grid */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 p-1 max-h-[350px]">
+                {getDeduplicatedIndividualServices
+                  .filter(s => {
+                    if (modalCategoryFilter !== 'All') {
+                      const catName = String(s.category || '').toLowerCase();
+                      const filterName = modalCategoryFilter.toLowerCase();
+                      if (!catName.includes(filterName) && !filterName.includes(catName)) return false;
+                    }
+                    if (modalSearchQuery.trim()) {
+                      const q = modalSearchQuery.toLowerCase();
+                      const nameMatch = String(s.name || s.title || '').toLowerCase().includes(q);
+                      const descMatch = String(s.description || s.desc || '').toLowerCase().includes(q);
+                      return nameMatch || descMatch;
+                    }
+                    return true;
+                  })
+                  .map((srv: any) => {
+                    const srvId = String(srv._id || srv.id || srv.name);
+                    const srvName = String(srv.name || srv.title || '').toLowerCase().trim();
+                    const isSelected = additionalServicesList.some(item => {
+                      const itemId = String(item._id || item.id || item.name || '').toLowerCase().trim();
+                      const itemName = String(item.name || item.title || '').toLowerCase().trim();
+                      return itemId === String(srvId).toLowerCase().trim() || (srvName && itemName && srvName === itemName);
+                    });
+                    const priceVal = srv.price || srv.discountPrice || 0;
+                    const durationVal = srv.durationMinutes || parseInt(srv.duration) || 30;
+
+                    return (
+                      <div
+                        key={srvId}
+                        onClick={() => toggleAdditionalService(srv)}
+                        className={`p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer flex items-center justify-between space-x-3 ${
+                          isSelected
+                            ? 'rosegold-glass-card border-rosegold-400 bg-rosegold-500/10'
+                            : 'bg-dark-850 border-white/10 hover:border-rosegold-500/30'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected ? 'bg-rosegold-500 border-rosegold-400 text-dark-900 font-extrabold' : 'border-white/30 bg-dark-900'
+                          }`}>
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-serif font-bold text-xs text-white truncate">{srv.name || srv.title}</h4>
+                            <p className="text-[10px] text-gray-400 truncate">{srv.description || srv.desc || 'Salon service'}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0 flex items-center space-x-3">
+                          <span className="text-[10px] text-gray-400 font-mono flex items-center space-x-1">
+                            <Clock className="w-3 h-3 text-rosegold-400" />
+                            <span>{durationVal} min</span>
+                          </span>
+                          <span className="font-serif font-bold text-rosegold-300 text-xs">₹{priceVal}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs text-gray-300 font-mono flex items-center space-x-2">
+                  <span className="font-bold text-rosegold-300">{additionalServicesList.length} Selected</span>
+                  <span>•</span>
+                  <span>+₹{additionalSubtotal}</span>
+                  <span>•</span>
+                  <span>+{additionalDuration} min</span>
+                </div>
+
+                <div className="flex items-center space-x-2 w-full sm:w-auto">
+                  {additionalServicesList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAdditionalServicesList([])}
+                      className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:text-white text-xs font-semibold cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowAdditionalServicesModal(false)}
+                    className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-serif font-bold text-xs shadow-md hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    Add Selected Services →
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </motion.div>
         )}

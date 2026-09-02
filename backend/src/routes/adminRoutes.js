@@ -45,7 +45,7 @@ router.delete('/memberships/:id', adminController.deleteMembership);
 
 // Appointment Routes (CRUD & Reschedule Workflow)
 router.get('/appointments', adminController.getAdminAppointments);
-router.post('/appointments', validateRequest({ required: ['customerName', 'customerPhone', 'service', 'date', 'time'] }), adminController.createAdminAppointment);
+router.post('/appointments', validateRequest({ required: ['customerName', 'customerPhone', 'service'] }), adminController.createAdminAppointment);
 router.put('/appointments/:id/reschedule-respond', adminController.respondReschedule);
 router.put('/appointments/:id', adminController.updateAppointmentStatus);
 router.delete('/appointments/:id', adminController.deleteAppointment);

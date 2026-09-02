@@ -6,6 +6,7 @@ const serviceSchema = new mongoose.Schema({
   category: { type: String, required: true, default: 'Hair' }, // e.g., Hair, Skin, Spa, Nails, Bridal, Grooming
   gender: { type: String, default: 'all' }, // all, men, women, kids
   subCategory: { type: String },
+  serviceType: { type: String, enum: ['MAIN', 'CATALOGUE', 'INDIVIDUAL'], default: 'CATALOGUE' },
   description: { type: String },
   durationMinutes: { type: Number, required: true, default: 60 },
   price: { type: Number, required: true },

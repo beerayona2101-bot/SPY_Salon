@@ -456,6 +456,7 @@ class AdminService {
       category: payload.category || 'Hair Care',
       gender: payload.gender || 'all',
       subCategory: payload.subCategory || payload.category || 'Hair Care',
+      serviceType: payload.serviceType || (payload.subCategory === 'Individual Services' ? 'INDIVIDUAL' : 'CATALOGUE'),
       price: Number(payload.price),
       discountPrice: Number(payload.discountPrice || payload.price),
       durationMinutes: Number(payload.durationMinutes || 60),
@@ -580,8 +581,8 @@ class AdminService {
     }
 
     const { getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
-    const appDate = payload.appointmentDate || getKolkataCurrentDateStr();
-    const appTime = payload.appointmentTime || 'Immediate Walk-In';
+    const appDate = payload.appointmentDate || payload.date || getKolkataCurrentDateStr();
+    const appTime = payload.appointmentTime || payload.time || 'Immediate Walk-In';
 
     if (appTime !== 'Immediate Walk-In' && isPastDateTimeKolkata(appDate, appTime)) {
       throw ApiError.badRequest('Please select a future appointment time.');
@@ -634,13 +635,36 @@ class AdminService {
     const txnAmount = Number(payload.price || (serviceDoc ? (serviceDoc.discountPrice || serviceDoc.price) : 0));
 
     const now = new Date();
+    let adminServicesToSave = [];
+    let adminTotalDuration = 30;
+    if (Array.isArray(payload.services) && payload.services.length > 0) {
+      adminServicesToSave = payload.services.map(s => ({
+        serviceId: s.serviceId || s._id || s.id || null,
+        name: String(s.name || s.title || 'Salon Service').trim(),
+        price: Number(s.price || 0),
+        durationMinutes: Number(s.durationMinutes || s.duration || 30)
+      }));
+      adminTotalDuration = adminServicesToSave.reduce((sum, s) => sum + (s.durationMinutes || 30), 0);
+    } else {
+      adminServicesToSave = [{
+        serviceId: serviceDoc ? serviceDoc._id.toString() : null,
+        name: serviceDoc ? serviceDoc.name : rawServiceName,
+        price: txnAmount,
+        durationMinutes: serviceDoc ? (serviceDoc.durationMinutes || 30) : 30
+      }];
+      adminTotalDuration = serviceDoc ? (serviceDoc.durationMinutes || 30) : 30;
+    }
+
     const newApp = await Appointment.create({
       bookingId,
       customerName: payload.customerName,
       customerPhone: payload.customerPhone || '+91 98765 43210',
       customerEmail: payload.customerEmail || '',
       service: payload.service,
+      services: adminServicesToSave,
+      totalDuration: adminTotalDuration,
       price: txnAmount,
+      finalAmount: txnAmount,
       specialistName: assignedSpecialist,
       appointmentDate: appDate,
       appointmentTime: appTime,
