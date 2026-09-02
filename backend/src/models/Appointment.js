@@ -34,8 +34,23 @@ const appointmentSchema = new mongoose.Schema({
   notes: { type: String },
   status: { 
     type: String, 
-    enum: ['Pending', 'Confirmed', 'Staff_Accepted', 'Staff_Rejected', 'In Progress', 'Completed', 'Cancelled', 'Reschedule Requested', 'Rescheduled'], 
+    enum: ['Pending', 'Confirmed', 'Staff_Accepted', 'Staff_Rejected', 'In Progress', 'Completed', 'Cancelled', 'Reschedule Requested', 'Rescheduled', 'No Show'], 
     default: 'Pending' 
+  },
+  statusHistory: [{
+    fromStatus: { type: String },
+    toStatus: { type: String },
+    updatedBy: { type: String, default: 'System' },
+    updatedRole: { type: String, default: 'system' },
+    timestamp: { type: Date, default: Date.now },
+    note: { type: String }
+  }],
+  rescheduleRequested: { type: Boolean, default: false },
+  rescheduleData: {
+    requestedDate: String,
+    requestedTime: String,
+    reason: String,
+    requestedAt: String
   },
   acceptedAt: { type: Date, default: null },
   rejectedAt: { type: Date, default: null },

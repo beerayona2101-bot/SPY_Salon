@@ -665,9 +665,22 @@ function AdminDashboardContent() {
     });
 
     socket.on('appointment:updated', (data: any) => {
-      if (data?.appointment) {
-        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      const appDoc = data?.appointment || data;
+      if (appDoc && appDoc._id) {
+        setAppointments(prev => prev.map(a => a._id === appDoc._id ? { ...a, ...appDoc } : a));
       }
+      fetchAdminData();
+    });
+
+    socket.on('appointment:status_changed', (data: any) => {
+      fetchAdminData();
+    });
+
+    socket.on('appointment:rescheduled', (data: any) => {
+      fetchAdminData();
+    });
+
+    socket.on('appointment:cancelled', (data: any) => {
       fetchAdminData();
     });
 
@@ -1250,13 +1263,71 @@ function AdminDashboardContent() {
     }
   };
 
+  const STATUS_OPTIONS_CONFIG: Record<string, { value: string; label: string }[]> = {
+    'Pending': [
+      { value: 'Pending', label: 'Pending 🟡' },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Confirmed': [
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
+      { value: 'Cancelled', label: 'Cancelled ❌' },
+      { value: 'No Show', label: 'No Show ⚪' }
+    ],
+    'Reschedule Requested': [
+      { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
+      { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Rescheduled': [
+      { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'In Progress': [
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Completed', label: 'Completed ✅' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Completed': [
+      { value: 'Completed', label: 'Completed ✅' }
+    ],
+    'Cancelled': [
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'No Show': [
+      { value: 'No Show', label: 'No Show ⚪' }
+    ]
+  };
+
+  const getValidStatusOptions = (currentStatus: string) => {
+    const norm = (currentStatus || 'Pending').trim();
+    return STATUS_OPTIONS_CONFIG[norm] || [
+      { value: norm, label: norm },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ];
+  };
+
   const handleUpdateAppStatus = async (id: string, newStatus: string) => {
-    await apiFetch(`${API_BASE_URL}/admin/appointments/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: newStatus })
-    });
-    setAppointments(appointments.map(a => a._id === id ? { ...a, status: newStatus } : a));
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/appointments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || 'Failed to update status.');
+        return;
+      }
+      const updated = data.data;
+      setAppointments(prev => prev.map(a => a._id === id ? { ...a, ...updated, status: newStatus } : a));
+    } catch (err: any) {
+      alert(err.message || 'Error updating appointment status.');
+    }
   };
 
   const handleUpdateAppPaymentStatus = async (id: string, newPaymentStatus: string) => {
@@ -4108,15 +4179,15 @@ function AdminDashboardContent() {
                 <table className="w-full text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
-                      <th className="p-4">Booking ID</th>
-                      <th className="p-4">Customer</th>
-                      <th className="p-4">Service Requested</th>
-                      <th className="p-4">Specialist</th>
-                      <th className="p-4">Booking Date & Time</th>
-                      <th className="p-4">Scheduled Visit</th>
-                      <th className="p-4">Payment</th>
-                      <th className="p-4">Status</th>
-                      <th className="p-4 text-right">Actions</th>
+                      <th className="p-4 text-left whitespace-nowrap">Booking ID</th>
+                      <th className="p-4 text-left whitespace-nowrap">Customer</th>
+                      <th className="p-4 text-left whitespace-nowrap">Service Requested</th>
+                      <th className="p-4 text-left whitespace-nowrap">Specialist</th>
+                      <th className="p-4 text-left whitespace-nowrap">Booking Date & Time</th>
+                      <th className="p-4 text-left whitespace-nowrap">Scheduled Visit</th>
+                      <th className="p-4 text-left whitespace-nowrap">Payment</th>
+                      <th className="p-4 text-left whitespace-nowrap">Status</th>
+                      <th className="p-4 text-right whitespace-nowrap">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -4128,17 +4199,17 @@ function AdminDashboardContent() {
                       })
                       .map((a) => (
                       <tr key={a._id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 font-mono font-bold text-rosegold-400">{a.bookingId}</td>
-                        <td className="p-4 font-bold text-white">{a.customerName}<br/><span className="text-gray-400 font-normal">{a.customerPhone}</span></td>
-                        <td className="p-4 font-semibold text-white">
-                          {a.service}
+                        <td className="p-4 align-middle whitespace-nowrap font-mono font-bold text-rosegold-400">{a.bookingId}</td>
+                        <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.customerName}<br/><span className="text-gray-400 font-normal">{a.customerPhone}</span></td>
+                        <td className="p-4 align-middle whitespace-nowrap font-semibold text-white">
+                          {a.service ? a.service.replace(/\s*\([^)]*\)/gi, '').trim() : ''}
                           <br />
                           <span className="text-[11px] text-rosegold-400 font-normal">
                             Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No'}
                           </span>
                         </td>
-                        <td className="p-4 text-rosegold-300 font-medium">{a.specialistName}</td>
-                        <td className="p-4 font-mono text-[11px] text-rosegold-300">
+                        <td className="p-4 align-middle whitespace-nowrap text-rosegold-300 font-medium">{a.specialistName}</td>
+                        <td className="p-4 align-middle whitespace-nowrap font-mono text-[11px] text-rosegold-300">
                           {(() => {
                             const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;
                             const d = raw ? new Date(raw) : new Date();
@@ -4155,28 +4226,30 @@ function AdminDashboardContent() {
                             );
                           })()}
                         </td>
-                        <td className="p-4 font-bold text-white">{a.appointmentDate}<br/><span className="text-rosegold-400">{a.appointmentTime}</span></td>
-                        <td className="p-4 space-y-1.5 text-left">
-                          <div className="flex items-center space-x-1.5">
+                        <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.appointmentDate}<br/><span className="text-rosegold-400">{a.appointmentTime}</span></td>
+                        <td className="p-4 align-middle whitespace-nowrap">
+                          <div className="space-y-1 text-left w-[110px]">
                             <select
                               value={a.paymentStatus || 'Pending'}
                               onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
-                              className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                              className={`w-full text-[10px] font-extrabold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
                                 a.paymentStatus === 'Paid'
                                   ? 'bg-green-500/20 text-green-400 border-green-500/40 font-mono'
-                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono animate-pulse'
+                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
                               }`}
                             >
                               <option value="Pending">🟡 Pending</option>
-                              <option value="Paid">🟢 Paid (Received)</option>
+                              <option value="Paid">🟢 Paid</option>
                             </select>
-                          </div>
-                          <div className="flex items-center justify-between text-[10px] text-gray-400 font-mono">
-                            <span>Method: {a.paymentMethod || 'Cash'}</span>
+
+                            <span className="text-[10px] text-gray-400 font-mono block truncate">
+                              Method: <strong className="text-gray-300">{a.paymentMethod || 'Cash'}</strong>
+                            </span>
+
                             {a.paymentStatus !== 'Paid' && (
                               <button
                                 onClick={() => handleUpdateAppPaymentStatus(a._id, 'Paid')}
-                                className="ml-1.5 px-2 py-0.5 rounded bg-emerald-500 text-dark-900 font-extrabold hover:brightness-110 transition-all cursor-pointer shadow-sm"
+                                className="w-full mt-1 px-2 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-extrabold text-[10px] shadow-sm transition-all cursor-pointer whitespace-nowrap text-center block"
                                 title="Mark Cash Payment as Received & Paid"
                               >
                                 Mark Paid ✓
@@ -4184,16 +4257,16 @@ function AdminDashboardContent() {
                             )}
                           </div>
                         </td>
-                        <td className="p-4 space-y-1">
-                          <select value={a.status} onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} className="bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block">
-                            <option value="Pending">Pending 🟡</option>
-                            <option value="Confirmed">Confirmed 🟢</option>
-                            <option value="Reschedule Requested">Reschedule Requested ⚠️</option>
-                            <option value="Rescheduled">Rescheduled 📅</option>
-                            <option value="In Progress">In Progress ✂️</option>
-                            <option value="Completed">Completed ✅</option>
-                            <option value="Cancelled">Cancelled ❌</option>
-                            <option value="No Show">No Show ⚪</option>
+                        <td className="p-4 align-middle whitespace-nowrap space-y-1">
+                          <select 
+                            value={a.status} 
+                            onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} 
+                            disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
+                            className="w-[130px] bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
+                          >
+                            {getValidStatusOptions(a.status).map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                           </select>
 
                           {a.status === 'Reschedule Requested' && (
@@ -4236,7 +4309,7 @@ function AdminDashboardContent() {
                             <span className="text-[10px] text-amber-300 italic block">Note: {(a as any).adminNote}</span>
                           )}
                         </td>
-                        <td className="p-4 text-right flex items-center justify-end space-x-1.5">
+                        <td className="p-4 align-middle whitespace-nowrap text-right flex items-center justify-end space-x-1.5">
                           {a.status === 'Completed' && (
                             <button
                               onClick={() => handleDownloadInvoice(a._id, a.bookingId)}

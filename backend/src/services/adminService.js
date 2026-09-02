@@ -699,41 +699,92 @@ class AdminService {
     return newApp;
   }
 
-  async updateAppointmentStatus(id, status) {
+  async updateAppointmentStatus(id, targetStatus, paymentStatus, updaterInfo = {}) {
     const appointment = await Appointment.findById(id);
     if (!appointment) throw ApiError.notFound(`Appointment with ID '${id}' not found`);
 
-    const currentStatus = appointment.status;
-    const allowedTransitions = {
-      'Pending': ['Pending', 'Confirmed', 'Staff_Accepted', 'Cancelled', 'Staff_Rejected', 'In Progress'],
-      'Staff_Accepted': ['Staff_Accepted', 'Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'],
-      'Confirmed': ['Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'],
+    const currentStatus = appointment.status || 'Pending';
+
+    // Fast return if no change in status or paymentStatus
+    if (currentStatus === targetStatus && (!paymentStatus || paymentStatus === appointment.paymentStatus)) {
+      return appointment;
+    }
+
+    const ALLOWED_TRANSITIONS = {
+      'Pending': ['Pending', 'Confirmed', 'Cancelled'],
+      'Confirmed': ['Confirmed', 'In Progress', 'Reschedule Requested', 'Cancelled', 'No Show'],
+      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Cancelled'],
+      'Rescheduled': ['Rescheduled', 'Confirmed', 'Cancelled'],
       'In Progress': ['In Progress', 'Completed', 'Cancelled'],
       'Completed': ['Completed'],
       'Cancelled': ['Cancelled'],
-      'Staff_Rejected': ['Staff_Rejected', 'Cancelled'],
-      'Rescheduled': ['Rescheduled', 'Confirmed', 'In Progress', 'Cancelled'],
-      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Confirmed', 'Cancelled']
+      'No Show': ['No Show'],
+      'Staff_Accepted': ['Confirmed', 'In Progress', 'Reschedule Requested', 'Cancelled', 'No Show']
     };
 
-    const allowed = allowedTransitions[currentStatus] || [currentStatus, 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
-    if (!allowed.includes(status)) {
-      throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${status}'.`);
+    const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];
+    if (!allowed.includes(targetStatus)) {
+      throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${targetStatus}'. Allowed options: ${allowed.join(', ')}`);
     }
 
-    appointment.status = status;
-    await appointment.save();
+    // Explicit Rule Enforcement
+    if (targetStatus === 'In Progress' && currentStatus !== 'Confirmed' && currentStatus !== 'In Progress' && currentStatus !== 'Staff_Accepted') {
+      throw ApiError.badRequest(`Appointment must be Confirmed before entering In Progress.`);
+    }
+
+    if (targetStatus === 'Completed' && currentStatus !== 'In Progress' && currentStatus !== 'Completed') {
+      throw ApiError.badRequest(`Appointment must be In Progress before it can be marked Completed.`);
+    }
+
+    // Atomic conditional state update in MongoDB
+    const updateDoc = {
+      status: targetStatus,
+      $push: {
+        statusHistory: {
+          fromStatus: currentStatus,
+          toStatus: targetStatus,
+          updatedBy: updaterInfo.name || 'Admin Management',
+          updatedRole: updaterInfo.role || 'admin',
+          timestamp: new Date(),
+          note: updaterInfo.note || `Status changed from ${currentStatus} to ${targetStatus}`
+        }
+      }
+    };
+
+    if (paymentStatus) {
+      updateDoc.paymentStatus = paymentStatus;
+    }
+
+    const updated = await Appointment.findOneAndUpdate(
+      { _id: id, status: currentStatus },
+      updateDoc,
+      { new: true }
+    );
+
+    if (!updated) {
+      const fresh = await Appointment.findById(id);
+      throw ApiError.conflict(`Concurrent update conflict: Appointment status was already changed by another session (Current: ${fresh?.status || 'Unknown'}).`);
+    }
 
     await this.createActivityLog({
       action: 'Appointment Status Changed',
-      details: `Updated status of #${appointment.bookingId} from ${currentStatus} to ${status}.`,
-      user: 'Admin',
-      branchId: appointment.branchId
+      details: `Updated status of #${updated.bookingId} from ${currentStatus} to ${targetStatus}.`,
+      user: updaterInfo.name || 'Admin',
+      branchId: updated.branchId
     });
-    return appointment;
+
+    broadcastEvent('appointment:updated', { appointment: updated });
+    broadcastEvent('appointment:status_changed', {
+      appointmentId: updated._id.toString(),
+      bookingId: updated.bookingId,
+      oldStatus: currentStatus,
+      newStatus: targetStatus
+    });
+
+    return updated;
   }
 
-  async respondReschedule(id, action, rejectionReason) {
+  async respondReschedule(id, action, rejectionReason, updaterInfo = {}) {
     const appointment = await Appointment.findById(id);
     if (!appointment) throw ApiError.notFound(`Appointment not found`);
 
@@ -743,10 +794,33 @@ class AdminService {
       const newDate = appointment.rescheduleData?.requestedDate || appointment.appointmentDate;
       const newTime = appointment.rescheduleData?.requestedTime || appointment.appointmentTime;
 
+      // Re-check slot availability for newDate and newTime before confirming reschedule
+      if (appointment.specialistName && appointment.specialistName !== 'Any Available Specialist') {
+        const cleanSpecFirst = appointment.specialistName.split('(')[0].trim().split(/\s+/)[0];
+        const conflictCheck = await Appointment.findOne({
+          _id: { $ne: appointment._id },
+          specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
+          appointmentDate: newDate,
+          appointmentTime: newTime,
+          status: { $nin: ['Cancelled', 'No Show', 'Staff_Rejected'] }
+        });
+        if (conflictCheck) {
+          throw ApiError.badRequest(`Requested slot (${newDate} at ${newTime}) is already occupied for ${appointment.specialistName}.`);
+        }
+      }
+
       appointment.appointmentDate = newDate;
       appointment.appointmentTime = newTime;
-      appointment.status = 'Rescheduled';
+      appointment.status = 'Confirmed';
       appointment.rescheduleRequested = false;
+      appointment.statusHistory.push({
+        fromStatus: 'Reschedule Requested',
+        toStatus: 'Rescheduled -> Confirmed',
+        updatedBy: updaterInfo.name || 'Admin',
+        updatedRole: updaterInfo.role || 'admin',
+        timestamp: new Date(),
+        note: `Reschedule approved from ${oldDate} ${oldTime} to ${newDate} ${newTime}`
+      });
       await appointment.save();
 
       // Trigger user in-app Notification
@@ -761,12 +835,28 @@ class AdminService {
       await this.createActivityLog({
         action: 'Reschedule Approved',
         details: `Approved reschedule for #${appointment.bookingId}. Old: ${oldDate} ${oldTime} ➔ New: ${newDate} ${newTime}.`,
-        user: 'Admin',
+        user: updaterInfo.name || 'Admin',
         branchId: appointment.branchId
+      });
+
+      broadcastEvent('appointment:updated', { appointment });
+      broadcastEvent('appointment:status_changed', {
+        appointmentId: appointment._id.toString(),
+        bookingId: appointment.bookingId,
+        oldStatus: 'Reschedule Requested',
+        newStatus: 'Confirmed'
       });
     } else {
       appointment.status = 'Confirmed';
       appointment.rescheduleRequested = false;
+      appointment.statusHistory.push({
+        fromStatus: 'Reschedule Requested',
+        toStatus: 'Confirmed',
+        updatedBy: updaterInfo.name || 'Admin',
+        updatedRole: updaterInfo.role || 'admin',
+        timestamp: new Date(),
+        note: `Reschedule rejected. Kept original slot: ${appointment.appointmentDate} ${appointment.appointmentTime}`
+      });
       await appointment.save();
 
       await Notification.create({
@@ -780,9 +870,11 @@ class AdminService {
       await this.createActivityLog({
         action: 'Reschedule Rejected',
         details: `Rejected reschedule for #${appointment.bookingId}. Reason: ${rejectionReason || 'Slot unavailable'}.`,
-        user: 'Admin',
+        user: updaterInfo.name || 'Admin',
         branchId: appointment.branchId
       });
+
+      broadcastEvent('appointment:updated', { appointment });
     }
 
     return appointment;

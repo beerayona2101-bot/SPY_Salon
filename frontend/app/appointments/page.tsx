@@ -60,28 +60,35 @@ function AppointmentsContent() {
     if (!socket) return;
 
     socket.on('appointment:updated', (data: any) => {
-      if (data?.appointment) {
-        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      const appDoc = data?.appointment || data;
+      if (appDoc && appDoc._id) {
+        setAppointments(prev => prev.map(a => a._id === appDoc._id ? { ...a, ...appDoc } : a));
       } else {
         fetchAppointments();
       }
     });
 
+    socket.on('appointment:status_changed', () => fetchAppointments());
+
     socket.on('appointment:accepted', (data: any) => {
-      if (data?.appointment) {
-        setAppointments(prev => prev.map(a => a._id === data.appointment._id ? { ...a, ...data.appointment } : a));
+      const appDoc = data?.appointment || data;
+      if (appDoc && appDoc._id) {
+        setAppointments(prev => prev.map(a => a._id === appDoc._id ? { ...a, ...appDoc } : a));
       } else {
         fetchAppointments();
       }
     });
 
     socket.on('appointment:rescheduled', () => fetchAppointments());
+    socket.on('appointment:cancelled', () => fetchAppointments());
     socket.on('appointment:created', () => fetchAppointments());
 
     return () => {
       socket.off('appointment:updated');
+      socket.off('appointment:status_changed');
       socket.off('appointment:accepted');
       socket.off('appointment:rescheduled');
+      socket.off('appointment:cancelled');
       socket.off('appointment:created');
     };
   }, [socket]);

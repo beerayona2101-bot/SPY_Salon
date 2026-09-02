@@ -374,7 +374,18 @@ exports.updateAppointmentStatus = async (req, res, next) => {
       throw ApiError.forbidden('Unauthorized access to this appointment.');
     }
 
-    const updated = await adminService.updateAppointmentStatus(req.params.id, req.body.status || 'Confirmed');
+    const { status, paymentStatus } = req.body;
+    const updaterInfo = {
+      name: req.user.name || 'Admin Executive Desk',
+      role: req.user.role || 'admin'
+    };
+
+    const updated = await adminService.updateAppointmentStatus(
+      req.params.id, 
+      status || app.status, 
+      paymentStatus || app.paymentStatus,
+      updaterInfo
+    );
     return ApiResponse.success(res, updated, 'Appointment status updated');
   } catch (error) {
     next(error);

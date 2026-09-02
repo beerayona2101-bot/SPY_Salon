@@ -432,17 +432,71 @@ function EmployeeDashboardContent() {
     }
   };
 
+  const STATUS_OPTIONS_CONFIG: Record<string, { value: string; label: string }[]> = {
+    'Pending': [
+      { value: 'Pending', label: 'Pending 🟡' },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Confirmed': [
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
+      { value: 'Cancelled', label: 'Cancelled ❌' },
+      { value: 'No Show', label: 'No Show ⚪' }
+    ],
+    'Reschedule Requested': [
+      { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
+      { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Rescheduled': [
+      { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'In Progress': [
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Completed', label: 'Completed ✅' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Completed': [
+      { value: 'Completed', label: 'Completed ✅' }
+    ],
+    'Cancelled': [
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'No Show': [
+      { value: 'No Show', label: 'No Show ⚪' }
+    ]
+  };
+
+  const getValidStatusOptions = (currentStatus: string) => {
+    const norm = (currentStatus || 'Pending').trim();
+    return STATUS_OPTIONS_CONFIG[norm] || [
+      { value: norm, label: norm },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ];
+  };
+
   // Update Service Status (In Progress, Completed, Cancelled, Staff_Accepted, Staff_Rejected)
   const handleUpdateStatus = async (id: string, newStatus: string, rejectionReason?: string) => {
     try {
-      await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
+      const res = await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, rejectionReason })
       });
-      setAppointments(appointments.map(a => a._id === id ? { ...a, status: newStatus } : a));
-    } catch (e) {
-      setAppointments(appointments.map(a => a._id === id ? { ...a, status: newStatus } : a));
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.message || 'Failed to update appointment status.');
+        return;
+      }
+      const updated = data.data;
+      setAppointments(appointments.map(a => a._id === id ? { ...a, ...updated, status: newStatus } : a));
+    } catch (e: any) {
+      alert(e.message || 'Error updating appointment status.');
     }
   };
 
@@ -1197,15 +1251,12 @@ function EmployeeDashboardContent() {
                         <select
                           value={app.status}
                           onChange={(e) => handleUpdateStatus(app._id, e.target.value)}
-                          className="bg-dark-800 text-xs font-bold text-white px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none"
+                          disabled={['Completed', 'Cancelled', 'No Show'].includes(app.status)}
+                          className="w-[130px] bg-dark-800 text-xs font-bold text-white px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
                         >
-                          <option value="Pending">Pending ⏳</option>
-                          <option value="Staff_Accepted">Accepted ✅</option>
-                          <option value="Staff_Rejected">Rejected ❌</option>
-                          <option value="Confirmed">Confirmed</option>
-                          <option value="In Progress">In Progress ✂️</option>
-                          <option value="Completed">Completed ✅</option>
-                          <option value="Cancelled">Cancelled</option>
+                          {getValidStatusOptions(app.status).map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>

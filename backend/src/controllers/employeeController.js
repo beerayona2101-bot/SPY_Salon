@@ -65,160 +65,34 @@ exports.updateAppointmentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status, paymentStatus } = req.body;
-    const employeeName = req.user.name;
+    const employeeName = req.user.name || 'Specialist';
 
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { bookingId: id };
     const appointment = await Appointment.findOne(query);
     if (!appointment) throw ApiError.notFound('Appointment record not found');
 
-    // Ownership check: must be assigned to this specialist
+    // Ownership check: must be assigned to this specialist or admin
     const specFirstName = employeeName.split(' ')[0].toLowerCase();
-    const appSpecName = appointment.specialistName.toLowerCase();
-    if (!appSpecName.includes(specFirstName) && req.user.role !== 'admin') {
+    const appSpecName = (appointment.specialistName || '').toLowerCase();
+    if (!appSpecName.includes(specFirstName) && req.user.role !== 'admin' && !appSpecName.includes('any available specialist')) {
       throw ApiError.forbidden('You are not authorized to update this appointment.');
     }
 
-    const oldStatus = appointment.status;
-    const oldPayment = appointment.paymentStatus;
+    const adminService = require('../services/adminService');
+    const updated = await adminService.updateAppointmentStatus(
+      appointment._id.toString(),
+      status || appointment.status,
+      paymentStatus || appointment.paymentStatus,
+      { name: req.user.name || 'Specialist', role: req.user.role || 'employee' }
+    );
 
-    if (status) appointment.status = status;
-    if (paymentStatus) appointment.paymentStatus = paymentStatus;
-
-    if ((status === 'Staff_Accepted' || status === 'Confirmed') && oldStatus !== status) {
-      appointment.acceptedAt = new Date();
-    }
-    if ((status === 'Staff_Rejected' || status === 'Cancelled') && oldStatus !== status) {
-      appointment.rejectedAt = new Date();
-      if (req.body.rejectionReason) appointment.rejectionReason = req.body.rejectionReason;
-    }
-
-    await appointment.save();
-
-    // 1. Staff Acceptance Notification & Real-Time Dispatches
-    if ((status === 'Staff_Accepted' || status === 'Confirmed') && oldStatus !== status) {
-      try {
-        const notificationController = require('./notificationController');
-        const customerUser = await User.findOne({
-          $or: [
-            ...(appointment.customerId ? [{ _id: appointment.customerId }] : []),
-            ...(appointment.customerEmail ? [{ email: appointment.customerEmail.toLowerCase().trim() }] : []),
-            ...(appointment.customerPhone ? [{ phone: appointment.customerPhone }] : [])
-          ]
-        });
-
-        const recipientUserId = customerUser ? customerUser._id.toString() : (appointment.customerId || null);
-        const recipientEmail = appointment.customerEmail ? appointment.customerEmail.toLowerCase().trim() : null;
-
-        await notificationController.dispatchNotification(req.app, {
-          userId: recipientUserId,
-          email: recipientEmail,
-          role: 'user',
-          title: 'Appointment Accepted 🎉',
-          message: `Your appointment with ${employeeName} for ${appointment.service} on ${appointment.appointmentDate} at ${appointment.appointmentTime} has been accepted.`,
-          type: 'appointment',
-          priority: 'high',
-          bookingId: appointment.bookingId,
-          appointmentId: appointment._id.toString(),
-          link: '/appointments'
-        });
-
-        // Targeted Socket.IO emission strictly to the member
-        const io = req.app ? req.app.get('io') : null;
-        if (io) {
-          if (recipientUserId) {
-            io.to(`room:user_${recipientUserId}`).emit('appointment:updated', { appointment });
-            io.to(`room:user_${recipientUserId}`).emit('appointment:accepted', { appointment });
-          }
-          if (recipientEmail) {
-            io.to(`room:user_${recipientEmail}`).emit('appointment:updated', { appointment });
-          }
-          io.to('room:admin').emit('appointment:updated', { appointment });
-          io.to('room:employee').emit('appointment:updated', { appointment });
-        }
-      } catch (notifErr) {
-        console.error('[EmployeeController] Acceptance notification error:', notifErr);
-      }
-    }
-
-    // 2. Staff Rejection Notification
-    if ((status === 'Staff_Rejected' || status === 'Cancelled') && oldStatus !== status) {
-      try {
-        const notificationController = require('./notificationController');
-        const customerUser = await User.findOne({
-          $or: [
-            ...(appointment.customerId ? [{ _id: appointment.customerId }] : []),
-            ...(appointment.customerEmail ? [{ email: appointment.customerEmail.toLowerCase().trim() }] : []),
-            ...(appointment.customerPhone ? [{ phone: appointment.customerPhone }] : [])
-          ]
-        });
-
-        const recipientUserId = customerUser ? customerUser._id.toString() : (appointment.customerId || null);
-        const recipientEmail = appointment.customerEmail ? appointment.customerEmail.toLowerCase().trim() : null;
-
-        await notificationController.dispatchNotification(req.app, {
-          userId: recipientUserId,
-          email: recipientEmail,
-          role: 'user',
-          title: 'Appointment Rejected ❌',
-          message: `Your appointment #${appointment.bookingId} for ${appointment.service} could not be accepted. ${req.body.rejectionReason || 'Please select another time slot.'}`,
-          type: 'appointment',
-          priority: 'high',
-          bookingId: appointment.bookingId,
-          appointmentId: appointment._id.toString(),
-          link: '/appointments'
-        });
-      } catch (rejNotifErr) {
-        console.error('[EmployeeController] Rejection notification error:', rejNotifErr);
-      }
-    }
-
-    // Side-effects on status changes (Completed)
-    if (appointment.status === 'Completed' && oldStatus !== 'Completed') {
-      // Record transaction if unpaid initially and payment is now completed
-      if (appointment.paymentStatus === 'Paid' && oldPayment !== 'Paid') {
-        const existingTxn = await Transaction.findOne({
-          $or: [
-            { description: new RegExp(appointment.bookingId, 'i') },
-            { appointmentId: appointment._id.toString() }
-          ],
-          type: 'Credited'
-        });
-
-        if (!existingTxn) {
-          const serviceDoc = await Service.findOne({ name: new RegExp((appointment.service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
-          const txnAmount = Number(appointment.price || (serviceDoc ? (serviceDoc.discountPrice || serviceDoc.price) : 0));
-
-          if (txnAmount > 0) {
-            const txnId = `TXN-${Math.floor(100000 + Math.random() * 900000)}`;
-            await Transaction.create({
-              txnId,
-              type: 'Credited',
-              category: 'Appointment Booking',
-              description: `Completed Booking Payment #${appointment.bookingId} (${appointment.customerName})`,
-              amount: txnAmount,
-              paymentMethod: appointment.paymentMethod || 'Cash',
-              status: 'Completed',
-              branchId: appointment.branchId,
-              appointmentId: appointment._id.toString()
-            });
-          }
-        }
-      }
-
-      await ActivityLog.create({
-        action: 'Appointment Completed',
-        details: `Specialist ${employeeName} marked Booking #${appointment.bookingId} as Completed.`,
-        user: employeeName,
-        branchId: appointment.branchId
-      });
-    }
-
-    broadcastEvent('appointment:updated', { appointment });
-    return ApiResponse.success(res, appointment, 'Appointment status updated successfully');
+    return ApiResponse.success(res, updated, 'Appointment status updated successfully');
   } catch (error) {
     next(error);
   }
 };
+
+
 
 // Asia/Kolkata Timezone Helpers for Attendance
 const getKolkataDateStr = (dateObj = new Date()) => {

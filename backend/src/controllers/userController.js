@@ -59,6 +59,12 @@ exports.requestReschedule = async (req, res, next) => {
       throw ApiError.forbidden('You are not authorized to reschedule this appointment.');
     }
 
+    // Eligibility check
+    const currentStatus = appointment.status || 'Pending';
+    if (['Completed', 'Cancelled', 'No Show'].includes(currentStatus)) {
+      throw ApiError.badRequest(`Cannot request reschedule for appointment with status '${currentStatus}'.`);
+    }
+
     appointment.rescheduleRequested = true;
     appointment.rescheduleData = {
       requestedDate: newDate || appointment.appointmentDate,
@@ -67,6 +73,14 @@ exports.requestReschedule = async (req, res, next) => {
       requestedAt: new Date().toISOString()
     };
     appointment.status = 'Reschedule Requested';
+    appointment.statusHistory.push({
+      fromStatus: currentStatus,
+      toStatus: 'Reschedule Requested',
+      updatedBy: req.user.name || appointment.customerName,
+      updatedRole: req.user.role || 'customer',
+      timestamp: new Date(),
+      note: `Customer requested reschedule to ${newDate} at ${newTime}`
+    });
     await appointment.save();
 
     // Create Admin In-app Alert Notification
@@ -87,6 +101,7 @@ exports.requestReschedule = async (req, res, next) => {
     });
 
     broadcastEvent('appointment:rescheduled', appointment);
+    broadcastEvent('appointment:updated', { appointment });
     return ApiResponse.success(res, appointment, 'Reschedule request submitted successfully!');
   } catch (error) {
     next(error);
@@ -108,8 +123,21 @@ exports.cancelAppointment = async (req, res, next) => {
       throw ApiError.forbidden('You are not authorized to cancel this appointment.');
     }
 
+    const currentStatus = appointment.status || 'Pending';
+    if (['Completed', 'Cancelled', 'No Show'].includes(currentStatus)) {
+      throw ApiError.badRequest(`Cannot cancel appointment that is already ${currentStatus}.`);
+    }
+
     appointment.status = 'Cancelled';
     appointment.cancellationReason = reason || 'Cancelled by customer';
+    appointment.statusHistory.push({
+      fromStatus: currentStatus,
+      toStatus: 'Cancelled',
+      updatedBy: req.user.name || appointment.customerName,
+      updatedRole: req.user.role || 'customer',
+      timestamp: new Date(),
+      note: reason || 'Cancelled by customer'
+    });
     await appointment.save();
 
     // Notify admins
