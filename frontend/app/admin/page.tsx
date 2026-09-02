@@ -256,7 +256,7 @@ function AdminDashboardContent() {
       setEnquiries(prev => prev.map(e => e.status === 'New' ? { ...e, status: 'Contacted' } : e));
     }
 
-    router.push(`/admin?tab=${newTab}`);
+    router.replace(`/admin?tab=${newTab}`, { scroll: false });
   };
 
   // Schedule Calendar States

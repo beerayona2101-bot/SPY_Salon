@@ -95,7 +95,7 @@ function UserProfileContent() {
 
   const handleTabChange = (newTab: string) => {
     setActiveTab(newTab);
-    router.push(`/profile?tab=${newTab}`, { scroll: false });
+    router.replace(`/profile?tab=${newTab}`, { scroll: false });
   };
 
   const [appointments, setAppointments] = useState<AppointmentRecord[]>([]);

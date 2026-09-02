@@ -152,7 +152,7 @@ function EmployeeDashboardContent() {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
-    router.push(`/employee?tab=${newTab}`);
+    router.replace(`/employee?tab=${newTab}`, { scroll: false });
   };
 
   // Shift & Queue Control States
