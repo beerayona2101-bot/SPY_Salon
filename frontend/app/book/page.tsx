@@ -455,6 +455,7 @@ function BookingContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          customerId: (currentUserObj as any)?._id || currentUserObj?.id || null,
           customerName: formData.name,
           customerPhone: formData.phone,
           customerEmail: formData.email,
@@ -909,13 +910,12 @@ function BookingContent() {
                 <span className="text-gray-400">Selected Treatment</span>
                 <span className="font-bold text-white text-right max-w-[200px] truncate">{selectedServiceObj.name}</span>
               </div>
-
               <div className="flex justify-between">
                 <span className="text-gray-400">Package Tier</span>
                 {activeTierObj ? (
                   <span className="font-bold text-rosegold-300">{activeTierObj.name}</span>
                 ) : (
-                  <span className="font-bold text-amber-400 font-sans text-xs animate-pulse">None Selected (Required)</span>
+                  <span className="font-bold text-gray-300 font-sans text-xs">No Package (Standard Service)</span>
                 )}
               </div>
 
@@ -937,41 +937,32 @@ function BookingContent() {
               )}
 
               <div className="pt-3 border-t border-white/10 space-y-2">
-                {!selectedPackageTier ? (
-                  <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold text-center space-y-1">
-                    <span>⚠️ Package Selection Required</span>
-                    <p className="text-[11px] font-normal text-amber-200/80">Please select a package tier above to view pricing & total investment.</p>
+                <div className="flex justify-between text-gray-300">
+                  <span>{activeTierObj ? `Base Package Price (${activeTierObj.name})` : `Standard Service Price (${selectedServiceObj.name})`}</span>
+                  <span>₹{subtotalPrice}</span>
+                </div>
+
+                {membershipDiscountPercent > 0 && (
+                  <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
+                    <span className="flex items-center space-x-1">
+                      <Crown className="w-3.5 h-3.5 fill-current" />
+                      <span>VIP ({membershipInfo?.tier || 'Gold'} {membershipDiscountPercent}%)</span>
+                    </span>
+                    <span>-₹{vipDiscountAmount}</span>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between text-gray-300">
-                      <span>Base Package Price ({activeTierObj?.name})</span>
-                      <span>₹{subtotalPrice}</span>
-                    </div>
-
-                    {membershipDiscountPercent > 0 && (
-                      <div className="flex justify-between items-center text-green-400 font-bold bg-green-500/10 p-2 rounded-xl border border-green-500/30">
-                        <span className="flex items-center space-x-1">
-                          <Crown className="w-3.5 h-3.5 fill-current" />
-                          <span>VIP ({membershipInfo?.tier || 'Gold'} {membershipDiscountPercent}%)</span>
-                        </span>
-                        <span>-₹{vipDiscountAmount}</span>
-                      </div>
-                    )}
-
-                    {appliedPromo && (
-                      <div className="flex justify-between text-green-400 font-bold">
-                        <span>Discount ({appliedPromo.code})</span>
-                        <span>-₹{promoDiscountAmount}</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between text-gray-400">
-                      <span>Taxes (5% GST)</span>
-                      <span>+₹{taxAmount}</span>
-                    </div>
-                  </>
                 )}
+
+                {appliedPromo && (
+                  <div className="flex justify-between text-green-400 font-bold">
+                    <span>Discount ({appliedPromo.code})</span>
+                    <span>-₹{promoDiscountAmount}</span>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-gray-400">
+                  <span>Taxes (5% GST)</span>
+                  <span>+₹{taxAmount}</span>
+                </div>
 
                 <div className="flex justify-between pt-2 border-t border-white/10 text-base font-serif font-bold text-white">
                   <span>Grand Total</span>

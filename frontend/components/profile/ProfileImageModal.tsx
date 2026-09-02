@@ -133,12 +133,12 @@ export default function ProfileImageModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="w-full max-w-lg glass-card border border-rosegold-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-glow-rosegold relative overflow-hidden"
+          className="w-full max-w-lg glass-card border border-rosegold-500/40 rounded-3xl p-6 sm:p-8 space-y-5 shadow-glow-rosegold relative my-auto max-h-[92vh] overflow-y-auto"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 pb-4">

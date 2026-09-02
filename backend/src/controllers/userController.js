@@ -1,4 +1,4 @@
-﻿/**
+/**
  * User Controller for SPY Salon Enterprise REST API & Realtime Sync
  */
 const mongoose = require('mongoose');
@@ -13,18 +13,30 @@ const { broadcastEvent } = require('../utils/socket');
 
 exports.getUserAppointments = async (req, res, next) => {
   try {
-    const userId = req.user._id.toString();
-    const email = req.user.email;
-    const phone = req.user.phone;
+    const userId = req.user ? req.user._id.toString() : (req.query.userId || req.query.id);
+    const email = req.user?.email || req.query.email;
+    const phone = req.user?.phone || req.query.phone;
 
-    // Retrieve appointments belonging to this customer
+    const userConditions = [];
+    if (userId) {
+      userConditions.push({ customerId: String(userId) });
+    }
+    if (email) {
+      const cleanEmail = String(email).toLowerCase().trim();
+      userConditions.push({ customerEmail: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    }
+    if (phone) {
+      const cleanPhone = String(phone).trim();
+      userConditions.push({ customerPhone: cleanPhone });
+    }
+
+    if (userConditions.length === 0) {
+      return ApiResponse.success(res, [], 'User appointments retrieved');
+    }
+
     const appointments = await Appointment.find({
-      $or: [
-        { customerId: userId },
-        { customerEmail: email },
-        { customerPhone: phone }
-      ]
-    }).sort({ appointmentDate: -1, appointmentTime: -1 });
+      $or: userConditions
+    }).sort({ createdAt: -1 });
 
     return ApiResponse.success(res, appointments, 'User appointments retrieved');
   } catch (error) {

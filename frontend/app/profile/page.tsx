@@ -39,7 +39,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, apiFetch } from '@/lib/api';
 import dynamic from 'next/dynamic';
 import VIPBadge from '@/components/common/VIPBadge';
 import AppointmentCard from '@/components/appointments/AppointmentCard';
@@ -225,6 +225,33 @@ function UserProfileContent() {
   useEffect(() => {
     if (!socket) return;
 
+    const userEmail = user?.email ? user.email.toLowerCase().trim() : '';
+    const userId = (user as any)?._id || user?.id || '';
+
+    if (userId) socket.emit('join_room', `room:user_${userId}`);
+    if (userEmail) socket.emit('join_room', `room:user_${userEmail}`);
+
+    const handleAppEvent = (data: any) => {
+      const app = data?.appointment || data;
+      if (!app) return;
+      const appEmail = app.customerEmail ? String(app.customerEmail).toLowerCase().trim() : '';
+      const appPhone = app.customerPhone ? String(app.customerPhone).trim() : '';
+      const appCustId = app.customerId ? String(app.customerId) : '';
+
+      const isMatch = (appCustId && userId && appCustId === String(userId)) ||
+                      (appEmail && userEmail && appEmail === userEmail) ||
+                      (appPhone && user?.phone && appPhone === String(user.phone).trim());
+
+      if (isMatch) {
+        setAppointments(prev => [app, ...prev.filter(a => a._id !== app._id && a.bookingId !== app.bookingId)]);
+      }
+    };
+
+    socket.on('appointment:new', handleAppEvent);
+    socket.on('appointment:created', handleAppEvent);
+    socket.on('appointment:updated', handleAppEvent);
+    socket.on('appointment:accepted', handleAppEvent);
+
     socket.on('user:profile_updated', (data: any) => {
       if (data && (data.email === user?.email || data.phone === user?.phone)) {
         updateProfileUser(data);
@@ -238,6 +265,10 @@ function UserProfileContent() {
     });
 
     return () => {
+      socket.off('appointment:new', handleAppEvent);
+      socket.off('appointment:created', handleAppEvent);
+      socket.off('appointment:updated', handleAppEvent);
+      socket.off('appointment:accepted', handleAppEvent);
       socket.off('user:profile_updated');
       socket.off('package:updated');
     };
@@ -248,12 +279,13 @@ function UserProfileContent() {
     try {
       const email = user?.email || '';
       const phone = user?.phone || '';
+      const userId = (user as any)?._id || user?.id || '';
 
       const [appRes, memRes, pkgRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/user/appointments?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}`)
+        apiFetch(`${API_BASE_URL}/user/appointments?email=${encodeURIComponent(email)}&phone=${encodeURIComponent(phone)}${userId ? `&userId=${userId}` : ''}`)
           .then(r => r.json()).catch(() => ({ data: [] })),
-        fetch(`${API_BASE_URL}/user/membership`).then(r => r.json()).catch(() => ({ hasActiveMembership: false })),
-        fetch(`${API_BASE_URL}/user/profile/packages?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => ({ data: [] }))
+        apiFetch(`${API_BASE_URL}/user/membership`).then(r => r.json()).catch(() => ({ hasActiveMembership: false })),
+        apiFetch(`${API_BASE_URL}/user/profile/packages?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => ({ data: [] }))
       ]);
 
       if (appRes.data) setAppointments(appRes.data);

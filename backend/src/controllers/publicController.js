@@ -442,12 +442,22 @@ exports.bookAppointment = async (req, res) => {
     const bookingTimeFormattedStr = getKolkataCurrentTimeStr();
 
     // Link customer ID if registered user matches
-    const customer = await User.findOne({
-      $or: [
-        { email: customerEmail },
-        { phone: customerPhone }
-      ]
-    });
+    const cleanCustEmail = customerEmail ? String(customerEmail).toLowerCase().trim() : null;
+    const cleanCustPhone = customerPhone ? String(customerPhone).trim() : null;
+    const reqCustId = req.body.customerId ? String(req.body.customerId) : null;
+
+    let customer = null;
+    if (reqCustId && mongoose.Types.ObjectId.isValid(reqCustId)) {
+      customer = await User.findById(reqCustId);
+    }
+    if (!customer) {
+      customer = await User.findOne({
+        $or: [
+          ...(cleanCustEmail ? [{ email: new RegExp(`^${cleanCustEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }] : []),
+          ...(cleanCustPhone ? [{ phone: cleanCustPhone }] : [])
+        ]
+      });
+    }
 
     // Final availability / double-booking check immediately before appointment creation
     if (chosenSpecialist && chosenSpecialist !== 'Any Available Specialist') {
@@ -468,6 +478,7 @@ exports.bookAppointment = async (req, res) => {
 
     const reqPkg = req.body.packageTier || req.body.packageName || null;
     const packageTierVal = (reqPkg && reqPkg !== 'No Package' && reqPkg !== 'null' && reqPkg !== 'undefined') ? reqPkg : null;
+    const finalServiceName = packageTierVal ? `${serviceDoc.name} (${packageTierVal})` : serviceDoc.name;
 
     const newAppointment = await Appointment.create({
       bookingId,
@@ -476,7 +487,7 @@ exports.bookAppointment = async (req, res) => {
       customerEmail: customerEmail || '',
       branch,
       branchId,
-      service,
+      service: finalServiceName,
       packageTier: packageTierVal,
       packageName: packageTierVal,
       price: validatedPrice,

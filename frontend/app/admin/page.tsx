@@ -2917,17 +2917,17 @@ function AdminDashboardContent() {
               {/* MEMBERSHIP TABLE */}
               <div className="glass-card rounded-3xl border border-rosegold-500/30 overflow-hidden shadow-2xl">
                 <div className="overflow-x-auto custom-scrollbar">
-                  <table className="w-full text-left border-collapse text-xs">
+                  <table className="w-full text-left border-collapse text-xs min-w-[920px]">
                     <thead>
-                      <tr className="border-b border-white/10 text-rosegold-400 font-serif text-xs uppercase tracking-wider bg-dark-900/60">
-                        <th className="p-4">Customer Details</th>
-                        <th className="p-4">VIP Tier & Badge</th>
-                        <th className="p-4">Membership ID</th>
-                        <th className="p-4">Discount</th>
-                        <th className="p-4">Cycle & Price</th>
-                        <th className="p-4">Validity / Expiry</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Actions</th>
+                      <tr className="border-b border-white/10 text-rosegold-400 font-serif text-xs uppercase tracking-wider bg-dark-900/60 whitespace-nowrap">
+                        <th className="p-4 min-w-[200px]">Customer Details</th>
+                        <th className="p-4 min-w-[140px]">VIP Tier & Badge</th>
+                        <th className="p-4 min-w-[140px]">Membership ID</th>
+                        <th className="p-4 min-w-[110px]">Discount</th>
+                        <th className="p-4 min-w-[120px]">Cycle & Price</th>
+                        <th className="p-4 min-w-[130px]">Validity / Expiry</th>
+                        <th className="p-4 min-w-[130px]">Status</th>
+                        <th className="p-4 text-right min-w-[140px]">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 text-gray-300">
@@ -2958,37 +2958,37 @@ function AdminDashboardContent() {
 
                         return filteredList.map((m: any, idx: number) => (
                           <tr key={m._id || idx} className="hover:bg-white/5 transition-colors">
-                            <td className="p-4 space-y-0.5">
-                              <strong className="text-white font-bold block">{m.customerName}</strong>
-                              <span className="text-gray-400 text-[11px] block">{m.customerEmail}</span>
-                              <span className="text-gray-400 text-[10px] block font-mono">{m.customerPhone}</span>
+                            <td className="p-4 space-y-0.5 max-w-[220px]">
+                              <strong className="text-white font-bold block truncate" title={m.customerName}>{m.customerName}</strong>
+                              <span className="text-gray-400 text-[11px] block truncate" title={m.customerEmail}>{m.customerEmail}</span>
+                              <span className="text-gray-400 text-[10px] block font-mono whitespace-nowrap">{m.customerPhone}</span>
                             </td>
 
-                            <td className="p-4">
+                            <td className="p-4 whitespace-nowrap">
                               <VIPBadge badge={m.badge} tier={m.planCode} size="sm" />
                             </td>
 
-                            <td className="p-4 font-mono font-bold text-rosegold-300">
+                            <td className="p-4 font-mono font-bold text-rosegold-300 whitespace-nowrap">
                               {m.membershipId}
                             </td>
 
-                            <td className="p-4">
-                              <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-[11px]">
+                            <td className="p-4 whitespace-nowrap">
+                              <span className="inline-flex items-center justify-center px-3 py-1 rounded-full bg-green-500/20 text-green-300 border border-green-500/30 font-bold text-xs whitespace-nowrap shrink-0">
                                 {m.discountPercentage}% OFF
                               </span>
                             </td>
 
-                            <td className="p-4 space-y-0.5">
+                            <td className="p-4 space-y-0.5 whitespace-nowrap">
                               <span className="font-bold text-white block">₹{m.pricePaid?.toLocaleString('en-IN')}</span>
                               <span className="text-[10px] text-gray-400 uppercase block font-semibold">{m.billingCycle}</span>
                             </td>
 
-                            <td className="p-4 text-[11px] text-gray-300 font-mono">
+                            <td className="p-4 text-[11px] text-gray-300 font-mono whitespace-nowrap">
                               {new Date(m.expiryDate || Date.now()).toLocaleDateString()}
                             </td>
 
-                            <td className="p-4">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                            <td className="p-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap shrink-0 ${
                                 m.status === 'Active' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
                                 m.status === 'Expired' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
                                 'bg-red-500/20 text-red-300 border-red-500/40'
@@ -2997,7 +2997,7 @@ function AdminDashboardContent() {
                               </span>
                             </td>
 
-                            <td className="p-4 text-right space-x-1.5">
+                            <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
                               <button
                                 onClick={async () => {
                                   await apiFetch(`${API_BASE_URL}/membership/admin/status`, {
@@ -3940,7 +3940,7 @@ function AdminDashboardContent() {
                           {a.service}
                           <br />
                           <span className="text-[11px] text-rosegold-400 font-normal">
-                            Pkg: {a.packageTier || a.packageName || 'No Package'}
+                            Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No'}
                           </span>
                         </td>
                         <td className="p-4 text-rosegold-300 font-medium">{a.specialistName}</td>
