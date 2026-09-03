@@ -1315,11 +1315,14 @@ function AdminDashboardContent() {
     'Pending': [
       { value: 'Pending', label: 'Pending 🟡' },
       { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Completed', label: 'Completed ✅' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ],
     'Confirmed': [
       { value: 'Confirmed', label: 'Confirmed 🟢' },
       { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Completed', label: 'Completed ✅' },
       { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
       { value: 'Cancelled', label: 'Cancelled ❌' },
       { value: 'No Show', label: 'No Show ⚪' }
@@ -1327,11 +1330,13 @@ function AdminDashboardContent() {
     'Reschedule Requested': [
       { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
       { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
+      { value: 'Completed', label: 'Completed ✅' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ],
     'Rescheduled': [
       { value: 'Rescheduled', label: 'Rescheduled 🗓️' },
       { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'Completed', label: 'Completed ✅' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ],
     'In Progress': [

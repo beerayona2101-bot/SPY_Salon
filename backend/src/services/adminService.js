@@ -770,29 +770,20 @@ class AdminService {
     }
 
     const ALLOWED_TRANSITIONS = {
-      'Pending': ['Pending', 'Confirmed', 'Cancelled'],
-      'Confirmed': ['Confirmed', 'In Progress', 'Reschedule Requested', 'Cancelled', 'No Show'],
-      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Cancelled'],
-      'Rescheduled': ['Rescheduled', 'Confirmed', 'Cancelled'],
+      'Pending': ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'],
+      'Confirmed': ['Confirmed', 'In Progress', 'Completed', 'Reschedule Requested', 'Cancelled', 'No Show'],
+      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Completed', 'Cancelled'],
+      'Rescheduled': ['Rescheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'],
       'In Progress': ['In Progress', 'Completed', 'Cancelled'],
       'Completed': ['Completed'],
       'Cancelled': ['Cancelled'],
       'No Show': ['No Show'],
-      'Staff_Accepted': ['Confirmed', 'In Progress', 'Reschedule Requested', 'Cancelled', 'No Show']
+      'Staff_Accepted': ['Confirmed', 'In Progress', 'Completed', 'Reschedule Requested', 'Cancelled', 'No Show']
     };
 
     const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];
     if (!allowed.includes(targetStatus)) {
       throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${targetStatus}'. Allowed options: ${allowed.join(', ')}`);
-    }
-
-    // Explicit Rule Enforcement
-    if (targetStatus === 'In Progress' && currentStatus !== 'Confirmed' && currentStatus !== 'In Progress' && currentStatus !== 'Staff_Accepted') {
-      throw ApiError.badRequest(`Appointment must be Confirmed before entering In Progress.`);
-    }
-
-    if (targetStatus === 'Completed' && currentStatus !== 'In Progress' && currentStatus !== 'Completed') {
-      throw ApiError.badRequest(`Appointment must be In Progress before it can be marked Completed.`);
     }
 
     // Atomic conditional state update in MongoDB
