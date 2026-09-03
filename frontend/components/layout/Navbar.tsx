@@ -34,12 +34,13 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import VIPBadge from '@/components/common/VIPBadge';
 import ProfileAvatar from '@/components/common/ProfileAvatar';
+import { AnimatedThemeToggler } from '@/registry/magicui/animated-theme-toggler';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, setTheme } = useTheme();
   const { socket } = useSocket();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -394,17 +395,10 @@ export default function Navbar() {
               <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
                 
                 {/* THEME TOGGLE BUTTON */}
-                <button
-                  onClick={toggleTheme}
-                  className="p-1.5 sm:p-2 rounded-full bg-dark-800 border border-white/10 text-rosegold-400 hover:text-white hover:border-rosegold-500/40 transition-all cursor-pointer flex items-center justify-center"
-                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
-                  ) : (
-                    <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400" />
-                  )}
-                </button>
+                <AnimatedThemeToggler
+                  theme={theme}
+                  onThemeChange={setTheme}
+                />
 
                 {/* UNIVERSAL REAL-TIME NOTIFICATION BELL */}
                 <div className="relative" ref={notifRef}>

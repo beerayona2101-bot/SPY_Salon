@@ -731,6 +731,25 @@ html, body, * {
 .light section:has(form) span,
 .light section:has(form) p,
 
+/* QUICK ENQUIRY TEMPLATE BUTTONS LIGHT MODE FONT COLOR OVERRIDE */
+html.light .quick-template-btn span,
+html.light form .quick-template-btn span,
+html.light .quick-template-btn,
+html.light form .quick-template-btn {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  font-weight: 800 !important;
+}
+
+html.light .quick-template-btn.selected span,
+html.light form .quick-template-btn.selected span,
+html.light .quick-template-btn.selected,
+html.light form .quick-template-btn.selected {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
 .light .rosegold-gradient-bg .text-white,
 .light .rosegold-gradient-bg .text-gray-100,
 .light .rosegold-gradient-bg .text-gray-200,

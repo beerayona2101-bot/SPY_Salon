@@ -155,15 +155,15 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
     );
   }, [templates, searchQuery]);
 
-  const isLight = theme === 'light';
+  const isLight = theme === 'light' || (typeof document !== 'undefined' && document.documentElement.classList.contains('light'));
 
   return (
     <div className="space-y-2.5 text-left">
       {/* Header with Theme-Based Font Colors & Search Toggle */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center space-x-1.5">
-          <Sparkles className={`w-4 h-4 animate-pulse ${isLight ? 'text-rosegold-600' : 'text-rosegold-400'}`} />
-          <h4 className={`text-xs uppercase font-extrabold tracking-wider transition-colors ${isLight ? 'text-rosegold-800' : 'text-rosegold-300'
+          <Sparkles className={`w-4 h-4 animate-pulse ${isLight ? 'text-amber-800' : 'text-rosegold-400'}`} />
+          <h4 className={`text-xs uppercase font-extrabold tracking-wider transition-colors ${isLight ? '!text-gray-950 font-black' : 'text-rosegold-300'
             }`}>
             ✨ Quick Message Templates
           </h4>
@@ -176,11 +176,11 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className={`w-32 sm:w-40 pl-7 pr-2 py-1 rounded-full text-[10px] font-bold transition-all focus:outline-none ${isLight
-              ? 'bg-white text-dark-900 border border-rosegold-300/80 placeholder-gray-500 focus:border-rosegold-500 shadow-sm'
+              ? 'bg-white !text-gray-950 border border-amber-900/30 placeholder-gray-600 focus:border-amber-800 shadow-sm'
               : 'bg-dark-900 text-white border border-white/15 placeholder-gray-400 focus:border-rosegold-400'
               }`}
           />
-          <Search className={`w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-gray-500' : 'text-gray-400'
+          <Search className={`w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 ${isLight ? 'text-gray-600' : 'text-gray-400'
             }`} />
         </div>
       </div>
@@ -196,15 +196,17 @@ const QuickEnquiryTemplates = memo(function QuickEnquiryTemplates({
               type="button"
               key={tmplId}
               onClick={() => onSelectTemplate({ ...tmpl, id: tmplId })}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center space-x-1.5 shrink-0 cursor-pointer border ${isSelected
-                ? 'rosegold-gradient-bg text-dark-900 font-extrabold border-rosegold-500 shadow-md scale-[1.03]'
+              className={`quick-template-btn px-3.5 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 flex items-center space-x-1.5 shrink-0 cursor-pointer border ${isSelected
+                ? 'selected rosegold-gradient-bg !text-white font-extrabold border-rosegold-500 shadow-md scale-[1.03]'
                 : isLight
-                  ? 'bg-[#F5EBE1] text-gray-900 border border-rosegold-400/60 hover:bg-rosegold-100 hover:border-rosegold-500'
+                  ? 'bg-[#F5EBE1] border border-amber-900/25 hover:bg-amber-100 hover:border-amber-900/40 shadow-sm'
                   : 'bg-dark-800 text-rosegold-200 border border-rosegold-500/40 hover:bg-dark-750 hover:border-rosegold-400 hover:text-white'
                 }`}
             >
               <span>{tmpl.icon}</span>
-              <span className="font-extrabold">{tmpl.name}</span>
+              <span className="font-extrabold">
+                {tmpl.name}
+              </span>
               {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
             </button>
           );

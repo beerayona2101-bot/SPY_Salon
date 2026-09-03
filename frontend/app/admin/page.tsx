@@ -71,6 +71,7 @@ import QuickContactActions from '@/components/admin/QuickContactActions';
 import VIPBadge from '@/components/common/VIPBadge';
 import ChangePasswordModal from '@/components/common/ChangePasswordModal';
 import ProfileAvatar from '@/components/common/ProfileAvatar';
+import { AnimatedThemeToggler } from '@/registry/magicui/animated-theme-toggler';
 import { validateForm, validateName, validateEmail, validatePhone, validateNumber, validateRequired, validateDate } from '@/lib/validation';
 import { SALON_CATALOGUE } from '@/lib/servicesData';
 
