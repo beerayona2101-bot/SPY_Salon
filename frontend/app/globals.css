@@ -530,8 +530,49 @@ html, body, * {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* 2. Specific requested hero texts MUST BE PURE BLACK IN LIGHT MODE ONLY */
-.light .hero-tagline-text,
+/* 2. Hero Section Light Mode Contrast Overrides */
+html.light .hero-title-text,
+.light .hero-title-text,
+.light h1.hero-title-text,
+.light section .hero-title-text {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  font-weight: 800 !important;
+}
+
+html.light .hero-subtitle-text,
+.light .hero-subtitle-text,
+.light p.hero-subtitle-text,
+.light section .hero-subtitle-text {
+  color: #FFF2E2 !important;
+  -webkit-text-fill-color: #FFF2E2 !important;
+  opacity: 0.95 !important;
+}
+
+html.light .hero-tagline-text,
+.light .hero-tagline-text {
+  color: #F5EBE1 !important;
+  -webkit-text-fill-color: #F5EBE1 !important;
+}
+
+html.light .hero-perk-text,
+.light .hero-perk-text,
+html.light .hero-perk-text span,
+.light .hero-perk-text span {
+  color: #F3ECE2 !important;
+  -webkit-text-fill-color: #F3ECE2 !important;
+}
+
+html.light .hero-cta-btn,
+html.light .hero-cta-btn *,
+html.light .hero-cta-btn span,
+.light .hero-cta-btn,
+.light .hero-cta-btn *,
+.light .hero-cta-btn span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
 .light .brand-identity-tag,
 .light .brand-identity-title,
 .light .brand-identity-desc,
@@ -1580,4 +1621,61 @@ html.light .quick-template-pill-unselected:hover {
 
 html.light .quick-template-pill-unselected:hover span {
   color: #000000 !important;
+}
+
+/* ========================================================
+   HERO SECTION LIGHT MODE HIGH-CONTRAST TEXT FIX (PURE WHITE)
+   ======================================================== */
+html.light section.hero-section-container,
+html.light section.hero-section-container *,
+html.light section.hero-section-container h1,
+html.light section.hero-section-container h2,
+html.light section.hero-section-container h3,
+html.light section.hero-section-container p,
+html.light section.hero-section-container span,
+html.light section.hero-section-container div,
+html.light section.hero-section-container a,
+html.light section.hero-section-container button,
+.light section.hero-section-container,
+.light section.hero-section-container *,
+.light section.hero-section-container h1,
+.light section.hero-section-container h2,
+.light section.hero-section-container h3,
+.light section.hero-section-container p,
+.light section.hero-section-container span,
+.light section.hero-section-container div,
+.light section.hero-section-container a,
+.light section.hero-section-container button {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html.light section.hero-section-container p.hero-subtitle-text,
+.light section.hero-section-container p.hero-subtitle-text {
+  color: #FFF2E2 !important;
+  -webkit-text-fill-color: #FFF2E2 !important;
+  opacity: 0.95 !important;
+}
+
+html.light section.hero-section-container .hero-tagline-badge,
+html.light section.hero-section-container .hero-tagline-badge *,
+.light section.hero-section-container .hero-tagline-badge,
+.light section.hero-section-container .hero-tagline-badge * {
+  color: #F5EBE1 !important;
+  -webkit-text-fill-color: #F5EBE1 !important;
+}
+
+html.light section.hero-section-container .hero-tagline-badge {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(224, 169, 109, 0.4) !important;
+}
+
+html.light section.hero-section-container a.hero-secondary-btn,
+html.light section.hero-section-container a.hero-secondary-btn *,
+html.light section.hero-section-container a.hero-secondary-btn span,
+.light section.hero-section-container a.hero-secondary-btn,
+.light section.hero-section-container a.hero-secondary-btn *,
+.light section.hero-section-container a.hero-secondary-btn span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }

@@ -306,7 +306,7 @@ export default function Home() {
     <div className="space-y-8 sm:space-y-14 pb-16">
 
       {/* ZERO-EMPTY-SPACE COMPACT HERO SECTION */}
-      <section className="relative pt-2 sm:pt-2 pb-4 overflow-hidden">
+      <section className="hero-section-container relative pt-2 sm:pt-2 pb-4 overflow-hidden">
 
         {/* Subtle Ambient Glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[320px] sm:w-[600px] h-[180px] sm:h-[300px] bg-rosegold-500/20 blur-[100px] sm:blur-[140px] rounded-full pointer-events-none animate-ambient-glow" />
@@ -348,7 +348,7 @@ export default function Home() {
                 className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
               >
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse hero-tagline-star" />
-                <span className="hero-tagline-text">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
+                <span className="hero-tagline-text font-bold">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
               </motion.div>
 
               {/* Main Responsive Headline */}
@@ -356,7 +356,8 @@ export default function Home() {
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-serif"
+                style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}
+                className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif"
               >
                 {homeSettings.heroTitle}
               </motion.h1>
@@ -366,7 +367,8 @@ export default function Home() {
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
+                style={{ color: '#FFF2E2', WebkitTextFillColor: '#FFF2E2' }}
+                className="hero-subtitle-text text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
               >
                 {homeSettings.heroSubtitle}
               </motion.p>
@@ -381,21 +383,21 @@ export default function Home() {
                 <AnimatedButton
                   as={Link}
                   href="/book"
-                  className="flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-4 rounded-full rosegold-gradient-bg !text-white font-bold text-xs sm:text-base shadow-glow-rosegold hover:scale-105 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2.5 cursor-pointer relative overflow-hidden group whitespace-nowrap text-center"
+                  className="hero-cta-btn flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-4 rounded-full rosegold-gradient-bg !text-white font-bold text-xs sm:text-base shadow-glow-rosegold hover:scale-105 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2.5 cursor-pointer relative overflow-hidden group whitespace-nowrap text-center"
                 >
                   <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity" />
                   <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0 !text-white" />
-                  <span className="hidden sm:inline !text-white font-bold">Book Appointment Now</span>
-                  <span className="sm:hidden !text-white font-bold">Book Appointment</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hidden sm:inline !text-white font-bold">Book Appointment Now</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="sm:hidden !text-white font-bold">Book Appointment</span>
                 </AnimatedButton>
 
                 <AnimatedButton
                   as={Link}
                   href="/services"
-                  className="flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-4 rounded-full bg-dark-800 border border-white/15 text-white font-medium hover:border-rosegold-400 hover:bg-dark-700 transition-all flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-base cursor-pointer whitespace-nowrap text-center"
+                  className="hero-secondary-btn flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-4 rounded-full bg-dark-800 border border-white/15 !text-white font-medium hover:border-rosegold-400 hover:bg-dark-700 transition-all flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-base cursor-pointer whitespace-nowrap text-center"
                 >
-                  <span className="hidden sm:inline">Explore Services Menu</span>
-                  <span className="sm:hidden">Explore Services</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hidden sm:inline !text-white font-semibold">Explore Services Menu</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="sm:hidden !text-white font-semibold">Explore Services</span>
                   <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
                 </AnimatedButton>
               </motion.div>
@@ -405,19 +407,19 @@ export default function Home() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
-                className="pt-3 sm:pt-4 grid grid-cols-3 gap-2 sm:gap-4 border-t border-white/10 text-center sm:text-left"
+                className="hero-perk-text pt-3 sm:pt-4 grid grid-cols-3 gap-2 sm:gap-4 border-t border-white/10 text-center sm:text-left"
               >
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span>100% Sanitized</span>
+                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">100% Sanitized</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span>Verified Experts</span>
+                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">Verified Experts</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span>Instant Slot Lock</span>
+                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">Instant Slot Lock</span>
                 </div>
               </motion.div>
 
