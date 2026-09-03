@@ -13,6 +13,29 @@
   color-scheme: dark;
 }
 
+/* Magic UI View Transitions Smooth Circle Mask Animation */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+.light::view-transition-old(root) {
+  z-index: 9999;
+}
+
+.light::view-transition-new(root) {
+  z-index: 1;
+}
+
 html, body, *, input, select, textarea, button, td, th, h1, h2, h3, h4, h5, h6, .font-sans, .font-serif, .font-mono {
   font-family: var(--font-poppins), 'Poppins', sans-serif !important;
 }
