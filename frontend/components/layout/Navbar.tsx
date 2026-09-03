@@ -586,10 +586,10 @@ export default function Navbar() {
                   <AnimatedButton 
                     as={Link}
                     href="/login" 
-                    className="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-full bg-dark-800 border border-rosegold-500/30 text-gray-200 hover:text-white hover:border-rosegold-400 font-semibold text-xs transition-all shadow-sm"
+                    className="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-full rosegold-gradient-bg border border-rosegold-500/40 !text-white font-extrabold text-xs transition-all shadow-md"
                   >
-                    <User className="w-3.5 h-3.5 text-rosegold-400 mr-1" />
-                    <span>Sign In</span>
+                    <User className="w-3.5 h-3.5 !text-white mr-1 shrink-0" />
+                    <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="!text-white font-extrabold">Sign In</span>
                   </AnimatedButton>
                 )}
 

@@ -508,7 +508,7 @@ html, body, * {
   filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.8)) !important;
 }
 
-/* 1. "Book Appointment Now" button text & icon MUST BE WHITE IN LIGHT MODE & DARK MODE */
+/* 1. "Book Appointment Now" and "Sign In" button text & icon MUST BE WHITE IN LIGHT MODE & DARK MODE */
 .light .rosegold-gradient-bg,
 .light .rosegold-gradient-bg *:not(.category-active-count-badge),
 .light button.rosegold-gradient-bg,
@@ -516,8 +516,21 @@ html, body, * {
 .light a.rosegold-gradient-bg span:not(.category-active-count-badge),
 .light button.rosegold-gradient-bg span:not(.category-active-count-badge),
 .light a.rosegold-gradient-bg svg,
-.light button.rosegold-gradient-bg svg {
+.light button.rosegold-gradient-bg svg,
+html.light button[type="submit"],
+html.light button[type="submit"] *,
+html.light button[type="submit"] span,
+html.light a[href*="login"],
+html.light a[href*="login"] *,
+html.light a[href*="login"] span,
+.light button[type="submit"],
+.light button[type="submit"] *,
+.light button[type="submit"] span,
+.light a[href*="login"],
+.light a[href*="login"] *,
+.light a[href*="login"] span {
   color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
   fill: none !important;
 }
 
