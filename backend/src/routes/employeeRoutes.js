@@ -10,8 +10,13 @@ router.use(authorize('employee', 'admin', 'manager', 'receptionist'));
 
 // Assigned Appointments
 router.get('/appointments', employeeController.getAssignedAppointments);
-router.post('/appointments/walkin', validateRequest({ required: ['customerName', 'customerPhone', 'service'] }), employeeController.createEmployeeWalkIn);
+router.post('/appointments/walkin', validateRequest({ required: ['customerName', 'service'] }), employeeController.createEmployeeWalkIn);
+router.post('/walk-in', validateRequest({ required: ['customerName', 'service'] }), employeeController.createEmployeeWalkIn);
 router.put('/appointments/:id/status', employeeController.updateAppointmentStatus);
+
+// Staff Manual Customer Entry
+router.get('/customers', employeeController.getCustomersForStaff);
+router.post('/customers', validateRequest({ required: ['name', 'phone'] }), employeeController.createCustomerByStaff);
 
 // Attendance Clock-in, Break, Clock-out & Logs
 router.post('/clock-in', employeeController.clockInAttendance);
@@ -32,7 +37,7 @@ router.get('/leaves/:id', employeeController.getLeaveById);
 router.get('/payrolls', employeeController.getEmployeePayrolls);
 
 // Bank & UPI Payout Details Update
-router.put('/bank-details', validateRequest({ required: ['accountHolderName', 'bankName', 'accountNumber', 'ifscCode'] }), employeeController.updateBankDetails);
+router.put('/bank-details', validateRequest({ required: ['accountName', 'bankName', 'accountNumber', 'ifscCode'] }), employeeController.updateBankDetails);
 
 // Employee Calendar Overview
 router.get('/calendar', employeeController.getCalendarOverview);

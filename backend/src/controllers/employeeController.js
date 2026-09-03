@@ -8,6 +8,7 @@ const Leave = require('../models/Leave');
 const Payroll = require('../models/Payroll');
 const Employee = require('../models/Employee');
 const User = require('../models/User');
+const Service = require('../models/Service');
 const Transaction = require('../models/Transaction');
 const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');
@@ -112,6 +113,9 @@ const getKolkataTimeStr = (dateObj = new Date()) => {
 exports.clockInAttendance = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
+    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    await autoCheckoutPastUnclosedShifts(employeeId);
+
     const employeeName = req.user.name;
     const todayStr = getKolkataDateStr();
 
@@ -353,6 +357,9 @@ exports.getMonthlyAttendance = async (req, res, next) => {
 exports.getTodayAttendance = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
+    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    await autoCheckoutPastUnclosedShifts(employeeId);
+
     const todayStr = getKolkataDateStr();
     const log = await Attendance.findOne({ employeeId, date: todayStr });
 
@@ -381,7 +388,12 @@ exports.getTodayAttendance = async (req, res, next) => {
 exports.getEmployeeAttendance = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
-    const list = await Attendance.find({ employeeId }).sort({ date: -1 });
+    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    await autoCheckoutPastUnclosedShifts(employeeId);
+
+    const list = await Attendance.find({
+      $or: [{ employeeId }, { employee: req.user._id }]
+    }).sort({ date: -1 });
     return ApiResponse.success(res, list, 'Personal attendance records retrieved');
   } catch (error) {
     next(error);
@@ -494,20 +506,29 @@ exports.getEmployeePayrolls = async (req, res, next) => {
 exports.updateBankDetails = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
+    const employeeEmail = (req.user.email || '').toLowerCase().trim();
     const { accountName, accountNumber, ifscCode, bankName, upiId } = req.body;
 
     if (!accountName || !accountNumber || !ifscCode || !bankName) {
-      throw ApiError.badRequest('Please complete all fields for bank transfer payouts');
+      throw ApiError.badRequest('Please complete all required fields for bank transfer payouts');
     }
 
-    // Save bank details to both User and Employee profiles
-    await User.findByIdAndUpdate(employeeId, {
-      bankDetails: { accountName, accountNumber, ifscCode, bankName, upiId: upiId || '' }
-    });
+    const bankDetailsObj = {
+      accountName: accountName.trim(),
+      accountNumber: accountNumber.trim(),
+      ifscCode: ifscCode.trim(),
+      bankName: bankName.trim(),
+      upiId: (upiId || '').trim()
+    };
 
-    await Employee.findByIdAndUpdate(employeeId, {
-      bankDetails: { accountName, accountNumber, ifscCode, bankName, upiId: upiId || '' }
-    });
+    // Save bank details to both User and Employee profiles
+    await User.findByIdAndUpdate(employeeId, { bankDetails: bankDetailsObj });
+
+    await Employee.findOneAndUpdate(
+      { $or: [{ _id: req.user._id }, { email: employeeEmail }] },
+      { bankDetails: bankDetailsObj },
+      { new: true }
+    );
 
     await ActivityLog.create({
       action: 'Bank Details Updated',
@@ -516,7 +537,67 @@ exports.updateBankDetails = async (req, res, next) => {
       branchId: req.user.branchId
     });
 
-    return ApiResponse.success(res, null, 'Bank details successfully updated for payroll payments');
+    return ApiResponse.success(res, bankDetailsObj, 'Bank details successfully updated for payroll payments');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff Member Manual Customer Entry
+exports.createCustomerByStaff = async (req, res, next) => {
+  try {
+    const { name, phone, email, gender, address } = req.body;
+
+    if (!name || !name.trim()) {
+      throw ApiError.badRequest('Customer full name is required');
+    }
+    if (!phone || !phone.trim()) {
+      throw ApiError.badRequest('Customer phone number is required');
+    }
+
+    const cleanPhone = phone.trim().replace(/\D/g, '');
+    if (cleanPhone.length < 7) {
+      throw ApiError.badRequest('Please enter a valid phone number (minimum 7 digits)');
+    }
+
+    const cleanEmail = email && email.trim() ? email.trim().toLowerCase() : `${cleanPhone}@spysalon.local`;
+
+    // Check duplicate customer by phone or email
+    let existingUser = await User.findOne({
+      $or: [{ phone: cleanPhone }, { email: cleanEmail }]
+    });
+
+    if (existingUser) {
+      return ApiResponse.success(res, existingUser, 'Customer profile already exists in system database.');
+    }
+
+    const tempPassword = `Spy@${cleanPhone.slice(-4)}`;
+    const newCustomer = await User.create({
+      name: name.trim(),
+      phone: cleanPhone,
+      email: cleanEmail,
+      password: tempPassword,
+      role: 'customer',
+      gender: gender || '',
+      address: address || '',
+      isVerified: true
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('customer:created', newCustomer);
+    }
+
+    return ApiResponse.created(res, newCustomer, 'Customer account created successfully.');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getCustomersForStaff = async (req, res, next) => {
+  try {
+    const customers = await User.find({ role: 'customer' }).select('-password').sort({ createdAt: -1 });
+    return ApiResponse.success(res, customers, 'Customer directory retrieved');
   } catch (error) {
     next(error);
   }
@@ -537,13 +618,14 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
     const bookingDateTime = now.toISOString();
     const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Resolve service price from Service model
-    const serviceDoc = await Service.findOne({ name: new RegExp((service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
-    if (!serviceDoc) {
-      return ApiResponse.badRequest(res, `Walk-in service '${service}' was not found in database.`);
-    }
-
-    const validatedPrice = Number(serviceDoc.discountPrice || serviceDoc.price || 0);
+    // Resolve service price from Service model safely
+    let validatedPrice = 999;
+    try {
+      const serviceDoc = await Service.findOne({ name: new RegExp((service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+      if (serviceDoc) {
+        validatedPrice = Number(serviceDoc.discountPrice || serviceDoc.price || 999);
+      }
+    } catch (sErr) {}
 
     const newApp = await Appointment.create({
       bookingId,

@@ -181,17 +181,16 @@ function ServicesContent() {
       </div>
 
       {/* Services Grid */}
-      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
           {filteredServices.map((service) => (
             <motion.div
-              layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
               key={service.id}
-              className="glass-card rounded-3xl overflow-hidden border border-white/10 hover:border-rosegold-500/40 transition-all flex flex-col justify-between group"
+              className="glass-card rounded-3xl overflow-hidden border border-white/10 hover:border-rosegold-500/40 transition-all duration-300 transform-gpu flex flex-col justify-between group"
             >
               <div className="relative h-52 overflow-hidden">
                 <CinematicImage
@@ -240,18 +239,16 @@ function ServicesContent() {
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <motion.button 
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
+                    <button 
                       onClick={(e) => {
                         e.stopPropagation();
                         router.push(`/services/${service.id}`);
                       }}
-                      className="p-2.5 rounded-full bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
+                      className="p-2.5 rounded-full bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-rosegold-500 hover:text-dark-900 hover:scale-105 transition-all duration-200 cursor-pointer"
                       title="View Full Treatment Details & Procedure"
                     >
                       <Eye className="w-4 h-4" />
-                    </motion.button>
+                    </button>
 
                     <AnimatedButton
                       onClick={(e: React.MouseEvent) => {

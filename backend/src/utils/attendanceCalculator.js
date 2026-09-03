@@ -28,12 +28,107 @@ const classifyAttendanceType = (effectiveWorkingMinutes) => {
 };
 
 /**
+ * Calculates 9 hours after clock in time
+ */
+const calculate9HourClockOut = (clockInTimeStr, clockInTimestamp) => {
+  if (clockInTimestamp && !isNaN(new Date(clockInTimestamp).getTime())) {
+    const dt = new Date(new Date(clockInTimestamp).getTime() + 9 * 60 * 60 * 1000);
+    return {
+      clockOutTimeStr: dt.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }),
+      clockOutTimestamp: dt
+    };
+  }
+
+  try {
+    const [time, modifier] = String(clockInTimeStr || '09:00 AM').trim().split(/\s+/);
+    let [hours, minutes] = time.split(':').map(Number);
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    const totalInMins = hours * 60 + (minutes || 0);
+    const totalOutMins = (totalInMins + 540) % 1440; // 9 hours (540 mins)
+
+    let outHours = Math.floor(totalOutMins / 60);
+    const outMins = totalOutMins % 60;
+    const outModifier = outHours >= 12 ? 'PM' : 'AM';
+    outHours = outHours % 12;
+    outHours = outHours ? outHours : 12;
+    const formattedMins = outMins < 10 ? `0${outMins}` : `${outMins}`;
+    const formattedHours = outHours < 10 ? `0${outHours}` : `${outHours}`;
+
+    return {
+      clockOutTimeStr: `${formattedHours}:${formattedMins} ${outModifier}`,
+      clockOutTimestamp: new Date()
+    };
+  } catch (e) {
+    return {
+      clockOutTimeStr: '06:00 PM',
+      clockOutTimestamp: new Date()
+    };
+  }
+};
+
+/**
+ * Auto check-out past shifts that were not checked out by employees before midnight.
+ * Assigns exactly 9 hours working time (540 minutes).
+ */
+const autoCheckoutPastUnclosedShifts = async (employeeId = null) => {
+  try {
+    const todayKolkataStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+
+    const query = {
+      date: { $lt: todayKolkataStr },
+      attendanceState: { $ne: 'CLOCKED_OUT' }
+    };
+
+    if (employeeId) {
+      const mongoose = require('mongoose');
+      const queryEmpId = String(employeeId);
+      const isObjectId = mongoose.Types.ObjectId.isValid(queryEmpId);
+      query.$or = isObjectId
+        ? [{ employeeId: queryEmpId }, { employee: queryEmpId }]
+        : [{ employeeId: queryEmpId }];
+    }
+
+    const unclosedShifts = await Attendance.find(query);
+
+    for (const log of unclosedShifts) {
+      const { clockOutTimeStr, clockOutTimestamp } = calculate9HourClockOut(log.clockIn, log.clockInTimestamp);
+
+      if (log.breaks && log.breaks.length > 0) {
+        log.breaks.forEach(b => {
+          if (!b.end) {
+            b.end = clockOutTimeStr;
+            b.endTimestamp = clockOutTimestamp;
+            b.duration = 0;
+          }
+        });
+      }
+
+      log.clockOut = clockOutTimeStr;
+      log.clockOutTimestamp = clockOutTimestamp;
+      log.totalShiftDuration = 540; // 9 hours
+      log.totalBreakDuration = log.totalBreakDuration || 0;
+      log.effectiveWorkingDuration = 540; // 9 hours
+      log.attendanceType = 'FULL_DAY';
+      log.status = 'Present';
+      log.attendanceState = 'CLOCKED_OUT';
+
+      await log.save();
+    }
+  } catch (err) {
+    console.error('[AutoCheckout] Error performing auto-checkout for past shifts:', err);
+  }
+};
+
+/**
  * Computes monthly attendance summary and date-by-date breakdown
  * @param {string} employeeId 
  * @param {string} [yearMonthStr] e.g. "2026-09"
  * @returns {Promise<object>}
  */
 const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
+  await autoCheckoutPastUnclosedShifts(employeeId);
   const todayKolkataStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   
   let targetYearMonth = yearMonthStr;
@@ -212,5 +307,6 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
 module.exports = {
   FULL_DAY_MINUTES_THRESHOLD,
   classifyAttendanceType,
+  autoCheckoutPastUnclosedShifts,
   aggregateMonthlyAttendance
 };

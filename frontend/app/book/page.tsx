@@ -274,7 +274,7 @@ function BookingContent() {
             });
           }
           if (!match) {
-            match = list[0];
+            match = list.find((s: any) => String(s.name || s.title || '').toLowerCase().trim() !== 'beard shaving') || list[0];
           }
         }
 
@@ -434,6 +434,17 @@ function BookingContent() {
   useEffect(() => {
     fetchBookedSlots(selectedDate, selectedStaff);
   }, [selectedDate, selectedStaff]);
+
+  // Auto-select first available time slot if currently selected time is past or booked
+  useEffect(() => {
+    const isUnavailable = bookedSlots.includes(selectedTime) || isSlotInPast(selectedDate, selectedTime);
+    if (isUnavailable) {
+      const firstAvailable = timeSlots.find(s => !bookedSlots.includes(s) && !isSlotInPast(selectedDate, s));
+      if (firstAvailable) {
+        setSelectedTime(firstAvailable);
+      }
+    }
+  }, [selectedDate, bookedSlots]);
 
   const [currentUserObj, setCurrentUserObj] = useState<any>(null);
 
@@ -803,11 +814,13 @@ function BookingContent() {
                 className="bg-dark-800 text-rosegold-400 font-bold text-xs px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none cursor-pointer"
               >
                 <option value="no_package">No Package (Individual Services Only)</option>
-                {allServicesList.map((srv: any) => (
-                  <option key={srv._id || srv.id} value={srv._id || srv.id}>
-                    {srv.name} (₹{srv.price})
-                  </option>
-                ))}
+                {allServicesList
+                  .filter((srv: any) => String(srv.name || srv.title || '').toLowerCase().trim() !== 'beard shaving')
+                  .map((srv: any) => (
+                    <option key={srv._id || srv.id} value={srv._id || srv.id}>
+                      {srv.name} (₹{srv.price})
+                    </option>
+                  ))}
               </select>
             </div>
           )}
@@ -1133,7 +1146,7 @@ function BookingContent() {
                             : 'bg-dark-850 text-gray-300 border border-white/10 hover:border-rosegold-500/40 cursor-pointer'
                         }`}
                       >
-                        {slot} {isBooked ? '(Booked)' : isPast ? '(Passed)' : ''}
+                        {slot}
                       </button>
                     );
                   })}

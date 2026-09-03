@@ -26,6 +26,18 @@ const payrollSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
+  eligibleAmount: {
+    type: Number,
+    default: 0
+  },
+  commissionPercentage: {
+    type: Number,
+    default: 20
+  },
+  commissionAmount: {
+    type: Number,
+    default: 0
+  },
   incentives: { 
     type: Number, 
     default: 0 

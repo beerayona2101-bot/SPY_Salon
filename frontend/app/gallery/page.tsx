@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -79,19 +79,18 @@ function GalleryContent() {
         ))}
       </div>
 
-      <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <AnimatePresence>
           {filtered.map((item, idx) => (
             <motion.div
               key={item.title}
-              layout
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.35, delay: idx * 0.05 }}
-              whileHover={{ y: -6 }}
+              whileHover={{ y: -4 }}
               onClick={() => setSelectedImage(item)}
-              className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-rosegold-500/20 hover:border-rosegold-500/60 shadow-lg relative"
+              className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-rosegold-500/20 hover:border-rosegold-500/60 shadow-lg relative transform-gpu"
             >
               <div className="relative h-64 overflow-hidden">
                 <img 

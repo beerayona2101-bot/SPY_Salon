@@ -151,7 +151,16 @@ export default function MembershipDetailsPage() {
   const params = useParams();
   const router = useRouter();
 
-  const tierKey = (params?.tier as string || 'gold').toLowerCase();
+  const rawTier = (params?.tier as string || 'standard').toLowerCase();
+  const tierKeyMap: Record<string, string> = {
+    silver: 'standard',
+    bronze: 'standard',
+    basic: 'standard',
+    standard: 'standard',
+    premium: 'premium',
+    gold: 'gold'
+  };
+  const tierKey = tierKeyMap[rawTier] || 'standard';
   const [dynamicPlanData, setDynamicPlanData] = useState<any>(null);
 
   const fetchLivePlanData = async () => {
@@ -159,10 +168,10 @@ export default function MembershipDetailsPage() {
       const res = await fetch(`${API_BASE_URL}/membership/plans`);
       const data = await res.json();
       if (data.data && Array.isArray(data.data)) {
-        const match = data.data.find((p: any) => p.code?.toLowerCase() === tierKey || p._id === tierKey);
+        const match = data.data.find((p: any) => p.code?.toLowerCase() === tierKey || p.code?.toLowerCase() === rawTier || p._id === tierKey);
         if (match) {
           setDynamicPlanData({
-            ...(STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.gold),
+            ...(STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.standard),
             ...match,
             benefits: Array.isArray(match.benefits) ? match.benefits : (match.benefits ? match.benefits.split(',').map((b: string) => b.trim()) : (STATIC_PLANS_DATA[tierKey]?.benefits || []))
           });
@@ -175,9 +184,9 @@ export default function MembershipDetailsPage() {
 
   useEffect(() => {
     fetchLivePlanData();
-  }, [tierKey]);
+  }, [tierKey, rawTier]);
 
-  const planData = dynamicPlanData || STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.gold;
+  const planData = dynamicPlanData || STATIC_PLANS_DATA[tierKey] || STATIC_PLANS_DATA.standard;
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
@@ -225,7 +234,7 @@ export default function MembershipDetailsPage() {
           customerName: form.name,
           customerEmail: form.email,
           customerPhone: form.phone,
-          planCode: planData.code,
+          planCode: planData.code || tierKey,
           billingCycle,
           paymentMethod: form.paymentMethod
         })
@@ -233,15 +242,20 @@ export default function MembershipDetailsPage() {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        // Update localStorage user with new VIP status
-        const storedUserStr = localStorage.getItem('spy_user');
-        if (storedUserStr) {
-          try {
-            const u = JSON.parse(storedUserStr);
-            u.membership = data.data.userMembership;
-            localStorage.setItem('spy_user', JSON.stringify(u));
-          } catch (e) {}
+        if (data.token || data.data?.token) {
+          localStorage.setItem('spy_token', data.token || data.data?.token);
         }
+        const storedUserStr = localStorage.getItem('spy_user');
+        let userObj = storedUserStr ? JSON.parse(storedUserStr) : (data.data?.user || {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          role: 'customer'
+        });
+        if (data.data?.userMembership) {
+          userObj.membership = data.data.userMembership;
+        }
+        localStorage.setItem('spy_user', JSON.stringify(userObj));
         setPaymentSuccess(true);
       } else {
         showToast(data.message || 'Payment failed. Please try again.', 'error');
@@ -328,13 +342,7 @@ export default function MembershipDetailsPage() {
 
             <button
               onClick={() => {
-                const token = typeof window !== 'undefined' ? localStorage.getItem('spy_token') : null;
-                if (!token) {
-                  showToast('Please log in first to purchase a membership.', 'error');
-                  router.push(`/login?redirect=/membership/${tierKey}`);
-                } else {
-                  setPurchaseModalOpen(true);
-                }
+                setPurchaseModalOpen(true);
               }}
               className="w-full sm:w-auto px-8 py-4 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-sm shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
             >

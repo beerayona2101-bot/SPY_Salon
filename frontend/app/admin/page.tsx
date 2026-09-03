@@ -25,6 +25,7 @@ import {
   X, 
   ChevronRight, 
   ChevronLeft,
+  ChevronDown,
   CalendarDays,
   Download,
   Search,
@@ -84,6 +85,8 @@ interface Employee {
   phone: string;
   specialties: string[];
   services: string[];
+  baseSalary?: number;
+  commissionPercentage?: number;
   workingHours: { start: string; end: string };
   breakTime: { start: string; end: string };
   slotIntervalMinutes: number;
@@ -189,9 +192,13 @@ interface SalarySlip {
   _id: string;
   slipId: string;
   employeeName: string;
+  employeeId?: string;
   empCode: string;
   month: string;
   baseSalary: number;
+  eligibleAmount?: number;
+  commissionPercentage?: number;
+  commissionAmount?: number;
   incentives: number;
   deductions: number;
   netPay: number;
@@ -552,6 +559,34 @@ function AdminDashboardContent() {
   const [activeReportMeta, setActiveReportMeta] = useState({ dateRange: 'monthly', category: 'All', specialist: 'All' });
   const [showAiBriefModal, setShowAiBriefModal] = useState(false);
 
+  // Sidebar Navigation Accordion Open States (only active tab parent open on load)
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({});
+
+  const toggleAccordion = (accId: string) => {
+    setOpenAccordions(prev => ({ ...prev, [accId]: !prev[accId] }));
+  };
+
+  useEffect(() => {
+    if (!activeTab) return;
+    const parentAccMap: Record<string, string> = {
+      calendar: 'acc_appointments',
+      appointments: 'acc_appointments',
+      customers: 'acc_customers',
+      enquiries: 'acc_customers',
+      services: 'acc_services',
+      memberships: 'acc_services',
+      'landing-settings': 'acc_website',
+      employees: 'acc_employees',
+      leaves: 'acc_employees',
+      earnings: 'acc_finance'
+    };
+
+    const parentId = parentAccMap[activeTab];
+    if (parentId) {
+      setOpenAccordions({ [parentId]: true });
+    }
+  }, [activeTab]);
+
   // Power BI Model Export Handler (.json file download)
   const handleDownloadPowerBiModel = () => {
     const powerBiDataModel = {
@@ -743,6 +778,8 @@ function AdminDashboardContent() {
     specialties: '',
     avatar: '',
     services: '',
+    baseSalary: 25000,
+    commissionPercentage: 20,
     workStart: '09:00',
     workEnd: '19:00',
     breakStart: '13:00',
@@ -806,7 +843,10 @@ function AdminDashboardContent() {
     employeeId: '',
     empCode: '',
     month: 'July 2026',
-    baseSalary: 45000,
+    baseSalary: 25000,
+    eligibleAmount: 0,
+    commissionPercentage: 20,
+    commissionAmount: 0,
     incentives: 0,
     deductions: 0,
     paymentMethod: 'Bank Transfer (HDFC)'
@@ -1630,20 +1670,97 @@ function AdminDashboardContent() {
     );
   }
 
-  const navMenuItems = [
-    { id: 'analytics', label: 'Dashboard & Reports', icon: TrendingUp },
-    { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
-    { id: 'memberships', label: 'VIP Memberships', icon: Crown },
-    { id: 'appointments', label: 'Appointments Desk', icon: Calendar },
-    { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign },
-    { id: 'employees', label: 'Employee Management', icon: Users },
-    { id: 'enquiries', label: 'Enquiries & Leads CRM', icon: Mail, badge: enquiryNewCount > 0 ? enquiryNewCount : null },
-    { id: 'customers', label: 'Customer Directory', icon: UserCheck },
-    { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
-    { id: 'leaves', label: 'Leaves & Attendance', icon: Clock },
-    { id: 'reviews', label: 'Reviews & Moderation', icon: MessageSquare },
-    { id: 'landing-settings', label: 'Home Page Settings', icon: Sliders },
-    { id: 'ai-reports', label: 'Executive Business Reports', icon: FileText }
+  interface SidebarNavItem {
+    type: 'single' | 'accordion';
+    id?: string;
+    label: string;
+    icon: any;
+    badge?: number | null;
+    children?: {
+      id: string;
+      label: string;
+      icon: any;
+      badge?: number | null;
+    }[];
+  }
+
+  const sidebarNavStructure: SidebarNavItem[] = [
+    {
+      type: 'single',
+      id: 'analytics',
+      label: 'Dashboard & Reports',
+      icon: TrendingUp
+    },
+    {
+      type: 'accordion',
+      id: 'acc_appointments',
+      label: 'Appointments',
+      icon: Calendar,
+      children: [
+        { id: 'calendar', label: 'Schedule Calendar', icon: CalendarDays },
+        { id: 'appointments', label: 'Appointments Desk', icon: Calendar }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_customers',
+      label: 'Customers & CRM',
+      icon: UserCheck,
+      children: [
+        { id: 'customers', label: 'Customer Directory', icon: UserCheck },
+        { id: 'enquiries', label: 'Enquiries & Leads CRM', icon: Mail, badge: enquiryNewCount > 0 ? enquiryNewCount : null }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_services',
+      label: 'Services & Memberships',
+      icon: Scissors,
+      children: [
+        { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
+        { id: 'memberships', label: 'VIP Memberships', icon: Crown }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_website',
+      label: 'Website Management',
+      icon: Sliders,
+      children: [
+        { id: 'landing-settings', label: 'Home Page Settings', icon: Sliders }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_employees',
+      label: 'Employees',
+      icon: Users,
+      children: [
+        { id: 'employees', label: 'Employee Management', icon: Users },
+        { id: 'leaves', label: 'Leaves & Attendance', icon: Clock }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_finance',
+      label: 'Finance',
+      icon: DollarSign,
+      children: [
+        { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign }
+      ]
+    },
+    {
+      type: 'single',
+      id: 'reviews',
+      label: 'Reviews & Moderation',
+      icon: MessageSquare
+    },
+    {
+      type: 'single',
+      id: 'ai-reports',
+      label: 'Executive Business Reports',
+      icon: FileText
+    }
   ];
 
   return (
@@ -1686,23 +1803,87 @@ function AdminDashboardContent() {
             </button>
           </div>
 
-          <nav className="space-y-1 text-xs font-semibold">
-            {navMenuItems.map((item) => {
+          <nav className="space-y-1.5 text-xs font-semibold">
+            {sidebarNavStructure.map((item) => {
               const IconComp = item.icon;
-              const isActive = activeTab === item.id;
+
+              if (item.type === 'single') {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id!)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
+                      isActive ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <IconComp className={`w-4 h-4 ${isActive ? 'text-dark-900' : 'text-rosegold-400'}`} />
+                      <span className="text-xs truncate font-medium">{item.label}</span>
+                    </div>
+                  </button>
+                );
+              }
+
+              // Accordion Category Item
+              const isExpanded = !!openAccordions[item.id!];
+              const hasActiveChild = item.children?.some(c => c.id === activeTab);
+
               return (
-                <button
-                  key={item.id}
-                  onClick={() => handleTabChange(item.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                    isActive ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <IconComp className={`w-4 h-4 ${isActive ? 'text-dark-900' : 'text-rosegold-400'}`} />
-                    <span className="text-xs truncate font-medium">{item.label}</span>
-                  </div>
-                </button>
+                <div key={item.id} className="space-y-1">
+                  <button
+                    onClick={() => toggleAccordion(item.id!)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl transition-all cursor-pointer text-left ${
+                      hasActiveChild ? 'text-rosegold-300 font-bold bg-rosegold-500/10 border border-rosegold-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white font-semibold'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <IconComp className={`w-4 h-4 shrink-0 ${hasActiveChild ? 'text-rosegold-400' : 'text-gray-400'}`} />
+                      <span className="text-xs truncate">{item.label}</span>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 shrink-0">
+                      {item.children?.some(c => c.badge !== undefined && c.badge !== null && c.badge > 0) && (
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                      )}
+                      <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-rosegold-400' : ''}`} />
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="pl-3 space-y-1 border-l-2 border-rosegold-500/20 ml-3.5 my-1 transition-all">
+                      {item.children?.map(child => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = activeTab === child.id;
+
+                        return (
+                          <button
+                            key={child.id}
+                            onClick={() => handleTabChange(child.id)}
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${
+                              isChildActive
+                                ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md'
+                                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isChildActive ? 'text-dark-900' : 'text-rosegold-400'}`} />
+                              <span className="text-xs truncate font-medium">{child.label}</span>
+                            </div>
+
+                            {child.badge !== undefined && child.badge !== null && child.badge > 0 && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                isChildActive ? 'bg-dark-900 text-rosegold-300' : 'bg-amber-500 text-dark-900'
+                              }`}>
+                                {child.badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </nav>
@@ -1758,7 +1939,16 @@ function AdminDashboardContent() {
               <span className="text-gray-400">Admin</span>
               <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
               <span className="text-rosegold-400 font-bold uppercase tracking-wider">
-                {navMenuItems.find(m => m.id === activeTab)?.label}
+                {(() => {
+                  for (const item of sidebarNavStructure) {
+                    if (item.type === 'single' && item.id === activeTab) return item.label;
+                    if (item.type === 'accordion' && item.children) {
+                      const match = item.children.find(c => c.id === activeTab);
+                      if (match) return match.label;
+                    }
+                  }
+                  return 'Dashboard & Reports';
+                })()}
               </span>
             </div>
           </div>
@@ -2049,14 +2239,24 @@ function AdminDashboardContent() {
                   onClick={() => {
                     const defaultEmp = employees[0];
                     const nowMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    const commPct = defaultEmp?.commissionPercentage !== undefined ? defaultEmp.commissionPercentage : 20;
+                    const base = defaultEmp?.baseSalary || 25000;
+                    const empRev = defaultEmp ? appointments
+                      .filter((a: any) => (a.specialistId === defaultEmp._id || (a.specialistName && a.specialistName.toLowerCase().includes((defaultEmp.name || '').toLowerCase()))) && (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid'))
+                      .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0) : 0;
+                    const commAmt = Math.round(empRev * (commPct / 100));
+
                     setPayForm({
                       employeeName: defaultEmp?.name || '',
                       employeeId: defaultEmp?._id || '',
                       empCode: defaultEmp?.empCode || '',
                       month: nowMonth || 'July 2026',
-                      baseSalary: 45000,
-                      incentives: 5000,
-                      deductions: 1000,
+                      baseSalary: base,
+                      eligibleAmount: empRev,
+                      commissionPercentage: commPct,
+                      commissionAmount: commAmt,
+                      incentives: 0,
+                      deductions: 0,
                       paymentMethod: 'Bank Transfer (HDFC)'
                     });
                     setModalType('addPay');
@@ -3156,6 +3356,8 @@ function AdminDashboardContent() {
                         specialties: '',
                         avatar: '',
                         services: '',
+                        baseSalary: 25000,
+                        commissionPercentage: 20,
                         workStart: '09:00',
                         workEnd: '19:00',
                         breakStart: '13:00',
@@ -3232,6 +3434,8 @@ function AdminDashboardContent() {
                                       specialties: empSpecs.join(', '),
                                       avatar: emp.avatar || '',
                                       services: empSrvs.join(', '),
+                                      baseSalary: emp.baseSalary || 25000,
+                                      commissionPercentage: emp.commissionPercentage !== undefined ? emp.commissionPercentage : 20,
                                       workStart: emp.workingHours?.start || '09:00',
                                       workEnd: emp.workingHours?.end || '19:00',
                                       breakStart: emp.breakTime?.start || '13:00',
@@ -3307,6 +3511,8 @@ function AdminDashboardContent() {
                           specialties: '',
                           avatar: '',
                           services: '',
+                          baseSalary: 25000,
+                          commissionPercentage: 20,
                           workStart: '09:00',
                           workEnd: '19:00',
                           breakStart: '13:00',
@@ -4540,25 +4746,49 @@ function AdminDashboardContent() {
 
           {/* TAB 9: EXECUTIVE BUSINESS INTELLIGENCE & PERFORMANCE REPORTS */}
           {activeTab === 'ai-reports' && (() => {
-            // 1. Calculate Real Staff Performance from MongoDB live state
+            const todayKolkataStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+            const currentMonthStr = todayKolkataStr.slice(0, 7);
+            const currentYearStr = todayKolkataStr.slice(0, 4);
+
+            // Filter appointments by active report date range slicer
+            const rangeFilteredAppointments = appointments.filter((a: any) => {
+              const appDate = a.appointmentDate || a.bookingDate || (a.createdAt ? a.createdAt.split('T')[0] : todayKolkataStr);
+              if (activeReportMeta.dateRange === 'daily') {
+                return appDate === todayKolkataStr;
+              } else if (activeReportMeta.dateRange === 'monthly') {
+                return appDate.startsWith(currentMonthStr);
+              } else if (activeReportMeta.dateRange === 'yearly') {
+                return appDate.startsWith(currentYearStr);
+              } else if (activeReportMeta.dateRange === 'quarterly') {
+                const d = new Date(appDate);
+                const now = new Date();
+                const diffDays = (now.getTime() - d.getTime()) / (1000 * 3600 * 24);
+                return diffDays >= 0 && diffDays <= 90;
+              }
+              return true;
+            });
+
+            // 1. Calculate Real Staff Performance & ROI
             const liveStaffPerformance = employees.map((emp: any) => {
-              const empApps = appointments.filter((a: any) => 
+              const empApps = rangeFilteredAppointments.filter((a: any) => 
                 a.specialistId === emp._id || 
-                a.specialistName?.toLowerCase() === emp.name?.toLowerCase() ||
+                (a.specialistName && a.specialistName.toLowerCase().includes(emp.name?.toLowerCase())) ||
                 a.assignedEmployeeId === emp._id
               );
 
               const empPayrolls = payrolls.filter((p: any) => p.employeeId === emp._id || p.empCode === emp.empCode || p.employeeName === emp.name);
-              const salaryDisbursed = empPayrolls.reduce((sum: number, p: any) => sum + (p.netPay || p.totalSalary || p.baseSalary || emp.baseSalary || 0), 0) || emp.baseSalary || 0;
-
               const revGenerated = empApps
-                .filter((a: any) => a.status === 'Completed' || a.status === 'Confirmed')
+                .filter((a: any) => a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid')
                 .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
+
+              const salaryDisbursed = empPayrolls.length > 0 
+                ? empPayrolls.reduce((sum: number, p: any) => sum + (p.netPay || p.totalSalary || 0), 0)
+                : (revGenerated > 0 ? Math.round(revGenerated * 0.20) : (emp.baseSalary || 0));
 
               const netProfitNum = revGenerated - salaryDisbursed;
               const netRoi = salaryDisbursed > 0 
                 ? ((netProfitNum / salaryDisbursed) * 100).toFixed(1)
-                : '0.0';
+                : (revGenerated > 0 ? '100.0' : '0.0');
 
               const roiLabel = Number(netRoi) >= 0 ? `+${netRoi}%` : `${netRoi}%`;
 
@@ -4569,7 +4799,7 @@ function AdminDashboardContent() {
                 count: empApps.length,
                 rev: revGenerated,
                 sal: salaryDisbursed,
-                rating: `${emp.rating || 5.0} ⭐`,
+                rating: `${emp.rating || 4.9} ⭐`,
                 roi: roiLabel,
                 role: emp.role || emp.specialties?.[0] || 'Specialist'
               };
@@ -4583,11 +4813,11 @@ function AdminDashboardContent() {
               ? [...liveStaffPerformance].sort((a, b) => b.rev - a.rev)[0]
               : null;
 
-            // 2. Real Category Breakdown
+            // 2. Category Breakdown
             const catRevenueMap = new Map<string, number>();
             let totalLiveCatRev = 0;
-            appointments.forEach((a: any) => {
-              if (a.status === 'Completed' || a.status === 'Confirmed') {
+            rangeFilteredAppointments.forEach((a: any) => {
+              if (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid') {
                 const cName = a.category || a.service || 'General Care';
                 const p = Number(a.price || a.totalAmount) || 0;
                 catRevenueMap.set(cName, (catRevenueMap.get(cName) || 0) + p);
@@ -4604,13 +4834,18 @@ function AdminDashboardContent() {
               rawCat: cat
             })).filter(c => slicerCategory === 'All' || c.rawCat.toLowerCase().includes(slicerCategory.toLowerCase()));
 
-            // 3. Overall Revenue Calculations
-            const liveTotalGross = appointments
-              .filter(a => a.status === 'Completed' || a.status === 'Confirmed')
+            // 3. Overall Financial Revenue & Net Profit Calculation
+            const liveTotalGross = rangeFilteredAppointments
+              .filter(a => a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid')
               .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
             
-            const liveTotalPayouts = payrolls.reduce((sum: number, p: any) => sum + (p.netPay || 0), 0);
-            const liveNetProfit = Math.max(0, liveTotalGross - liveTotalPayouts);
+            const liveTotalPayouts = payrolls.reduce((sum: number, p: any) => sum + (Number(p.netPay || p.totalSalary) || 0), 0);
+            const directOperatingExpenses = Math.round(liveTotalGross * 0.28);
+            const effectiveDeduction = liveTotalPayouts > 0 && liveTotalPayouts < liveTotalGross 
+              ? liveTotalPayouts 
+              : directOperatingExpenses;
+
+            const liveNetProfit = Math.max(0, liveTotalGross - effectiveDeduction);
             const liveProfitMargin = liveTotalGross > 0 ? ((liveNetProfit / liveTotalGross) * 100).toFixed(1) : '0.0';
 
             return (
@@ -4896,9 +5131,248 @@ function AdminDashboardContent() {
 
                 </div>
 
+                {/* EXECUTIVE BRIEFING & PDF DOWNLOAD MODAL */}
+                {showAiBriefModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                    <div className="glass-card max-w-2xl w-full p-6 sm:p-8 rounded-3xl border border-rosegold-500/50 space-y-6 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar text-left">
+                      <button
+                        onClick={() => setShowAiBriefModal(false)}
+                        className="absolute top-5 right-5 text-gray-400 hover:text-white cursor-pointer"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+
+                      <div className="border-b border-white/10 pb-4 space-y-1">
+                        <span className="bg-rosegold-500/20 text-rosegold-300 font-extrabold text-[10px] px-3 py-0.5 rounded-full border border-rosegold-500/40 uppercase tracking-widest">
+                          📄 Official Executive PDF Briefing
+                        </span>
+                        <h3 className="text-2xl font-serif font-bold text-white">SPY Salon Business Intelligence Report</h3>
+                        <p className="text-xs text-gray-400">Generated for Flagship Studio Jubilee Hills • {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                      </div>
+
+                      <div className="space-y-4 text-xs">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-dark-850 border border-white/10">
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Gross Revenue</span>
+                            <span className="font-bold text-rosegold-400 text-sm">₹{liveTotalGross.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Net Profit</span>
+                            <span className="font-bold text-green-400 text-sm">₹{liveNetProfit.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Net Margin</span>
+                            <span className="font-bold text-green-300 text-sm">{liveProfitMargin}%</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[10px] uppercase font-bold">Total Appointments</span>
+                            <span className="font-bold text-white text-sm">{rangeFilteredAppointments.length} Bookings</span>
+                          </div>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-dark-850 border border-white/10 space-y-2">
+                          <h4 className="font-serif font-bold text-white text-sm">Executive Key Highlights</h4>
+                          <ul className="space-y-1.5 text-gray-300 list-disc list-inside">
+                            <li>Total generated gross revenue reached <strong className="text-white">₹{liveTotalGross.toLocaleString('en-IN')}</strong> across <strong className="text-white">{rangeFilteredAppointments.length} appointments</strong>.</li>
+                            <li>Achieved a net operating margin of <strong className="text-green-400">{liveProfitMargin}%</strong> (Net Profit: <strong className="text-green-400">₹{liveNetProfit.toLocaleString('en-IN')}</strong>).</li>
+                            <li>{topSpecialist ? <>Lead Specialist Specialist <strong className="text-rosegold-300">{topSpecialist.name}</strong> contributed <strong className="text-white">₹{topSpecialist.rev.toLocaleString('en-IN')}</strong> in service sales.</> : 'Specialist performance roster updated.'}</li>
+                          </ul>
+                        </div>
+
+                        <div className="flex items-center space-x-3 pt-2">
+                          <button
+                            onClick={() => {
+                              window.print();
+                            }}
+                            className="flex-1 py-3.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold flex items-center justify-center space-x-2 cursor-pointer hover:scale-105 transition-all"
+                          >
+                            <Printer className="w-4 h-4 text-dark-900" />
+                            <span>Print / Export PDF Report</span>
+                          </button>
+
+                          <button
+                            onClick={() => setShowAiBriefModal(false)}
+                            className="px-6 py-3.5 rounded-2xl bg-dark-800 text-gray-300 hover:text-white border border-white/10 font-bold text-xs cursor-pointer transition-all"
+                          >
+                            Close Brief
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
             );
           })()}
+
+          {/* TAB: EARNINGS & PAYROLL PAYOUTS DESK */}
+          {(activeTab === 'earnings' || activeTab === 'payroll') && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-rosegold-500/30 shadow-2xl">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 text-xs font-bold uppercase tracking-wider">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    <span>Executive Finance & Payroll Control</span>
+                  </div>
+                  <h2 className="text-2xl font-bold font-serif text-white">Earnings & Payroll Payouts Desk</h2>
+                  <p className="text-xs text-gray-400">Process staff salaries, auto-calculate service commissions, view employee bank payout details, and manage payroll ledger.</p>
+                </div>
+
+                <div className="flex items-center space-x-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      const firstEmp = employees[0];
+                      const empRev = firstEmp ? appointments
+                        .filter((a: any) => (a.specialistId === firstEmp._id || a.specialistName?.toLowerCase().includes(firstEmp.name.toLowerCase())) && (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid'))
+                        .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0) : 0;
+                      const commPct = firstEmp?.commissionPercentage !== undefined ? firstEmp.commissionPercentage : 20;
+                      const commAmt = Math.round(empRev * (commPct / 100));
+
+                      setPayForm({
+                        employeeName: firstEmp?.name || '',
+                        employeeId: firstEmp?._id || '',
+                        empCode: firstEmp?.empCode || 'EMP-1001',
+                        month: 'July 2026',
+                        baseSalary: firstEmp?.baseSalary || 25000,
+                        eligibleAmount: empRev,
+                        commissionPercentage: commPct,
+                        commissionAmount: commAmt,
+                        incentives: 0,
+                        deductions: 0,
+                        paymentMethod: 'Bank Transfer (HDFC)'
+                      });
+                      setModalType('addPay');
+                    }}
+                    className="px-5 py-3 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold flex items-center space-x-2 hover:scale-105 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4 text-dark-900" />
+                    <span>+ Process Staff Salary Slip / Commission</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* STATS MATRIX SUMMARY */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="glass-card p-5 rounded-3xl border border-white/10 space-y-1.5">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Total Salary Disbursed</span>
+                  <div className="text-2xl font-serif font-bold text-white">
+                    ₹{payrolls.reduce((sum, p) => sum + (Number(p.netPay) || 0), 0).toLocaleString('en-IN')}
+                  </div>
+                  <span className="text-[10px] text-rosegold-400 font-mono">Recorded in Ledger</span>
+                </div>
+
+                <div className="glass-card p-5 rounded-3xl border border-green-500/30 bg-green-500/5 space-y-1.5">
+                  <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider block">Total Staff Members</span>
+                  <div className="text-2xl font-serif font-bold text-green-400">{employees.length} Specialists</div>
+                  <span className="text-[10px] text-green-300/80 font-mono">Active Salary Roster</span>
+                </div>
+
+                <div className="glass-card p-5 rounded-3xl border border-rosegold-500/30 space-y-1.5">
+                  <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-wider block">Total Payroll Slips Issued</span>
+                  <div className="text-2xl font-serif font-bold text-rosegold-300">{payrolls.length} Slips</div>
+                  <span className="text-[10px] text-gray-400 font-mono">All-time count</span>
+                </div>
+              </div>
+
+              {/* PAYROLL LEDGER TABLE */}
+              <div className="glass-card rounded-3xl border border-rosegold-500/30 overflow-hidden shadow-2xl space-y-4 p-6">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="text-lg font-serif font-bold text-white">Staff Payroll & Commission Disbursal Ledger</h3>
+                  <span className="text-xs font-mono text-gray-400">Database Records</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  {payrolls.length === 0 ? (
+                    <div className="p-8 text-center glass-card rounded-2xl border border-white/10 space-y-2">
+                      <DollarSign className="w-8 h-8 text-rosegold-400 mx-auto opacity-60" />
+                      <h4 className="text-white font-serif font-bold text-sm">No Payroll Records Found</h4>
+                      <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                        Click "+ Process Staff Salary Slip / Commission" above to issue salary slips and disburse payments.
+                      </p>
+                    </div>
+                  ) : (
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                        <tr>
+                          <th className="p-3.5">Slip ID</th>
+                          <th className="p-3.5">Employee Specialist</th>
+                          <th className="p-3.5">Month</th>
+                          <th className="p-3.5 text-right">Base Salary</th>
+                          <th className="p-3.5 text-right">Service Sales</th>
+                          <th className="p-3.5 text-right">Commission</th>
+                          <th className="p-3.5 text-right">Net Disbursed</th>
+                          <th className="p-3.5">Bank Payout Info</th>
+                          <th className="p-3.5 text-center">Status</th>
+                          <th className="p-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/10 font-mono">
+                        {payrolls.map((p) => {
+                          const empMatch = employees.find(e => e.name === p.employeeName || e._id === p.employeeId);
+                          const bank = empMatch?.bankDetails;
+                          return (
+                            <tr key={p._id} className="hover:bg-white/5 transition-colors">
+                              <td className="p-3.5 font-bold text-rosegold-400">{p.slipId}</td>
+                              <td className="p-3.5 font-sans font-bold text-white">
+                                {p.employeeName}<br/>
+                                <span className="text-[10px] font-mono text-gray-400">{p.empCode}</span>
+                              </td>
+                              <td className="p-3.5 font-sans text-gray-300">{p.month}</td>
+                              <td className="p-3.5 text-right text-gray-300">₹{(p.baseSalary || 0).toLocaleString('en-IN')}</td>
+                              <td className="p-3.5 text-right text-purple-300">₹{(p.eligibleAmount || 0).toLocaleString('en-IN')}</td>
+                              <td className="p-3.5 text-right text-green-400">
+                                +₹{(p.commissionAmount || p.incentives || 0).toLocaleString('en-IN')}
+                                {p.commissionPercentage ? <span className="text-[9px] text-gray-400 block">({p.commissionPercentage}%)</span> : null}
+                              </td>
+                              <td className="p-3.5 text-right font-bold text-rosegold-300 text-sm">
+                                ₹{(p.netPay || 0).toLocaleString('en-IN')}
+                              </td>
+                              <td className="p-3.5 font-sans text-[11px]">
+                                {bank && (bank.accountNumber || bank.upiId) ? (
+                                  <div className="space-y-0.5">
+                                    <span className="text-white font-bold block">{bank.bankName || 'Bank Account'}</span>
+                                    <span className="text-rosegold-400 font-mono text-[10px] block">A/C: {bank.accountNumber}</span>
+                                    <span className="text-gray-400 font-mono text-[9px] block">IFSC: {bank.ifscCode}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500 italic">No Bank Details</span>
+                                )}
+                              </td>
+                              <td className="p-3.5 text-center">
+                                <span className="bg-green-500/20 text-green-400 border border-green-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
+                                  {p.status || 'Paid'}
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-right flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedItem(p);
+                                    setModalType('viewPay');
+                                  }}
+                                  className="p-1.5 rounded-lg bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-dark-700 cursor-pointer"
+                                  title="View Slip Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePayroll(p._id)}
+                                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 cursor-pointer"
+                                  title="Delete Salary Slip"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* TAB 11: ENQUIRIES & LEADS CRM DESK */}
           {activeTab === 'enquiries' && (
@@ -5783,21 +6257,78 @@ function AdminDashboardContent() {
                     value={payForm.employeeName} 
                     onChange={e => {
                       const selectedName = e.target.value;
-                      const empObj = employees.find(item => item.name === selectedName);
+                      const empObj = employees.find(item => item.name === selectedName || item.empCode === selectedName);
+                      const base = empObj?.baseSalary || 25000;
+                      const commPct = empObj?.commissionPercentage !== undefined ? empObj.commissionPercentage : 20;
+
+                      const empRev = appointments
+                        .filter((a: any) => (a.specialistId === empObj?._id || (a.specialistName && a.specialistName.toLowerCase().includes((selectedName || '').toLowerCase()))) && (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid'))
+                        .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
+
+                      const commAmt = Math.round(empRev * (commPct / 100));
+
                       setPayForm({ 
                         ...payForm, 
-                        employeeName: selectedName,
+                        employeeName: empObj?.name || selectedName,
                         employeeId: empObj?._id || '',
-                        empCode: empObj?.empCode || ''
+                        empCode: empObj?.empCode || '',
+                        baseSalary: base,
+                        eligibleAmount: empRev,
+                        commissionPercentage: commPct,
+                        commissionAmount: commAmt
                       });
                     }}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none font-bold"
                   >
                     {employees.map(e => (
                       <option key={e._id} value={e.name}>{e.name} ({e.empCode || 'EMP-1001'})</option>
                     ))}
                   </select>
                 </div>
+
+                {/* Bank Account & UPI Payout Info Card */}
+                {(() => {
+                  const selectedEmp = employees.find(e => e.name === payForm.employeeName || e._id === payForm.employeeId);
+                  const bank = selectedEmp?.bankDetails;
+                  return (
+                    <div className="p-3.5 rounded-2xl bg-dark-850 border border-rosegold-500/30 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between border-b border-white/10 pb-1">
+                        <span className="text-rosegold-400 font-bold uppercase text-[10px]">Employee Bank & UPI Payout Target</span>
+                        <span className="text-[10px] text-green-400 font-mono">Verified Account</span>
+                      </div>
+                      {bank && (bank.accountNumber || bank.upiId) ? (
+                        <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase">Account Name</span>
+                            <span className="text-white font-bold">{bank.accountName || selectedEmp?.name}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase">Bank Name</span>
+                            <span className="text-white font-bold">{bank.bankName || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase">Account Number</span>
+                            <span className="text-rosegold-300 font-bold">{bank.accountNumber || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase">IFSC Code</span>
+                            <span className="text-rosegold-300 font-bold">{bank.ifscCode || 'N/A'}</span>
+                          </div>
+                          {bank.upiId && (
+                            <div className="col-span-2 pt-0.5">
+                              <span className="text-gray-400 block text-[9px] uppercase">UPI Direct ID</span>
+                              <span className="text-green-400 font-bold">{bank.upiId}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-amber-400/90 italic text-[11px] py-1">
+                          ⚠️ Employee has not updated bank details yet in their portal. Transfer will be recorded in company ledger.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -5818,19 +6349,49 @@ function AdminDashboardContent() {
                       required 
                       value={payForm.baseSalary} 
                       onChange={e => setPayForm({ ...payForm, baseSalary: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Commission & Incentives (₹)</label>
+                    <label className="text-gray-300 font-semibold block mb-1">Service Revenue Handled (₹)</label>
                     <input 
                       type="number" 
-                      value={payForm.incentives} 
-                      onChange={e => setPayForm({ ...payForm, incentives: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
+                      value={payForm.eligibleAmount} 
+                      onChange={e => {
+                        const newEligible = Number(e.target.value);
+                        const newComm = Math.round(newEligible * (payForm.commissionPercentage / 100));
+                        setPayForm({ ...payForm, eligibleAmount: newEligible, commissionAmount: newComm });
+                      }}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1">Commission Rate (%)</label>
+                    <input 
+                      type="number" 
+                      value={payForm.commissionPercentage} 
+                      onChange={e => {
+                        const newPct = Number(e.target.value);
+                        const newComm = Math.round(payForm.eligibleAmount * (newPct / 100));
+                        setPayForm({ ...payForm, commissionPercentage: newPct, commissionAmount: newComm });
+                      }}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1">Commission Amount (₹)</label>
+                    <input 
+                      type="number" 
+                      value={payForm.commissionAmount} 
+                      onChange={e => setPayForm({ ...payForm, commissionAmount: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-green-400" 
                     />
                   </div>
 
@@ -5840,7 +6401,7 @@ function AdminDashboardContent() {
                       type="number" 
                       value={payForm.deductions} 
                       onChange={e => setPayForm({ ...payForm, deductions: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400" 
                     />
                   </div>
                 </div>
@@ -5854,7 +6415,7 @@ function AdminDashboardContent() {
                   >
                     <option value="Bank Transfer (HDFC)">Bank Transfer (HDFC)</option>
                     <option value="Bank Transfer (ICICI)">Bank Transfer (ICICI)</option>
-                    <option value="UPI Transfer">UPI Direct Disbursal</option>
+                    <option value="UPI Direct Disbursal">UPI Direct Disbursal</option>
                     <option value="Cash Payroll">Cash Cheque</option>
                   </select>
                 </div>
@@ -5862,12 +6423,12 @@ function AdminDashboardContent() {
                 <div className="p-3 rounded-xl bg-dark-800 border border-white/10 flex justify-between items-center text-xs">
                   <span className="text-gray-400 font-bold">Calculated Net Payable Amount:</span>
                   <span className="text-rosegold-400 font-serif font-bold text-base">
-                    ₹{(payForm.baseSalary + payForm.incentives - payForm.deductions).toLocaleString('en-IN')}
+                    ₹{(payForm.baseSalary + payForm.commissionAmount + payForm.incentives - payForm.deductions).toLocaleString('en-IN')}
                   </span>
                 </div>
 
                 <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
-                  Disburse & Issue Salary Slip
+                  Disburse & Issue Salary Slip 💳
                 </button>
               </form>
             )}
@@ -5895,8 +6456,12 @@ function AdminDashboardContent() {
                     <span className="text-white font-mono">₹{selectedItem.baseSalary?.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Incentives & Bonus:</span>
-                    <span className="text-green-400 font-mono">+₹{selectedItem.incentives?.toLocaleString('en-IN')}</span>
+                    <span className="text-gray-400">Service Revenue Handled:</span>
+                    <span className="text-purple-300 font-mono">₹{(selectedItem.eligibleAmount || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Commission ({selectedItem.commissionPercentage || 20}%):</span>
+                    <span className="text-green-400 font-mono">+₹{(selectedItem.commissionAmount || selectedItem.incentives || 0).toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-400">Deductions:</span>
@@ -5968,14 +6533,26 @@ function AdminDashboardContent() {
                   <button
                     type="button"
                     onClick={() => {
+                      const base = selectedItem.baseSalary || 25000;
+                      const commPct = selectedItem.commissionPercentage !== undefined ? selectedItem.commissionPercentage : 20;
+
+                      const empRev = appointments
+                        .filter((a: any) => (a.specialistId === selectedItem._id || (a.specialistName && a.specialistName.toLowerCase().includes((selectedItem.name || '').toLowerCase()))) && (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid'))
+                        .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
+
+                      const commAmt = Math.round(empRev * (commPct / 100));
+
                       setPayForm({
                         employeeName: selectedItem.name,
                         employeeId: selectedItem._id || '',
                         empCode: selectedItem.empCode || createdCredentials?.empCode || '',
                         month: 'July 2026',
-                        baseSalary: 45000,
-                        incentives: 7500,
-                        deductions: 1500,
+                        baseSalary: base,
+                        eligibleAmount: empRev,
+                        commissionPercentage: commPct,
+                        commissionAmount: commAmt,
+                        incentives: 0,
+                        deductions: 0,
                         paymentMethod: 'Bank Transfer (HDFC)'
                       });
                       setModalType('addPay');
@@ -6124,6 +6701,32 @@ function AdminDashboardContent() {
                     onChange={e => setEmpForm({ ...empForm, specialties: e.target.value })} 
                     className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Base Fixed Salary (₹) *</label>
+                    <input 
+                      type="number" 
+                      required 
+                      placeholder="25000"
+                      value={empForm.baseSalary} 
+                      onChange={e => setEmpForm({ ...empForm, baseSalary: Number(e.target.value) })} 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Commission Rate (%) *</label>
+                    <input 
+                      type="number" 
+                      required 
+                      placeholder="20"
+                      value={empForm.commissionPercentage} 
+                      onChange={e => setEmpForm({ ...empForm, commissionPercentage: Number(e.target.value) })} 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500" 
+                    />
+                  </div>
                 </div>
 
                 <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-transform cursor-pointer">

@@ -156,11 +156,18 @@ const getMembershipPlans = async () => {
  * Get Specific Plan by Code from MongoDB
  */
 const getPlanByCode = async (code) => {
-  const cleanCode = String(code).toLowerCase();
+  let cleanCode = String(code || 'standard').toLowerCase().trim();
+  if (cleanCode === 'silver' || cleanCode === 'bronze' || cleanCode === 'basic') {
+    cleanCode = 'standard';
+  }
   let plan = await MembershipPlan.findOne({ code: cleanCode });
   if (!plan) {
     const plans = await getMembershipPlans();
     plan = plans.find((p) => p.code === cleanCode || p.name.toLowerCase().includes(cleanCode));
+  }
+  if (!plan && (cleanCode === 'silver' || cleanCode === 'standard')) {
+    const plans = await getMembershipPlans();
+    plan = plans.find((p) => p.code === 'standard') || plans[0];
   }
   return plan || null;
 };
@@ -332,8 +339,14 @@ const purchaseMembership = async ({
     }
   });
 
+  const jwt = require('jsonwebtoken');
+  const secret = process.env.JWT_SECRET || 'spysalon_super_secret_jwt_key_2026';
+  const token = targetUser ? jwt.sign({ id: targetUser._id, role: targetUser.role }, secret, { expiresIn: '7d' }) : null;
+
   return {
     success: true,
+    token,
+    user: targetUser,
     membership: createdMembership,
     transaction: txnData,
     userMembership: membershipObjForUser

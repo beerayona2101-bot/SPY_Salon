@@ -736,7 +736,12 @@ exports.createPayroll = async (req, res, next) => {
     const base = Number(req.body.baseSalary || 0);
     const inc = Number(req.body.incentives || 0);
     const ded = Number(req.body.deductions || 0);
-    const net = base + inc - ded;
+    const eligible = Number(req.body.eligibleAmount || 0);
+    const commPct = Number(req.body.commissionPercentage || 20);
+    const commAmt = Number(req.body.commissionAmount || Math.round(eligible * (commPct / 100)));
+    
+    // Net pay includes base salary + commission amount + additional incentives - deductions
+    const net = Number(req.body.netPay) || (base + commAmt + inc - ded);
 
     let empId = req.body.employeeId;
     let empCode = req.body.empCode;
@@ -758,6 +763,9 @@ exports.createPayroll = async (req, res, next) => {
       empCode: empCode || 'EMP-1001',
       month: req.body.month || 'July 2026',
       baseSalary: base,
+      eligibleAmount: eligible,
+      commissionPercentage: commPct,
+      commissionAmount: commAmt,
       incentives: inc,
       deductions: ded,
       netPay: net,

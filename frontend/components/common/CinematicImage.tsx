@@ -66,7 +66,7 @@ const CinematicImage = memo(function CinematicImage({
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden'
         }}
-        className={`w-full h-full object-cover transition-all duration-500 ease-out hover:scale-105 ${
+        className={`w-full h-full object-cover transition-transform duration-500 ease-out transform-gpu will-change-transform ${
           isLoaded ? 'opacity-100' : 'opacity-70 blur-xs'
         } ${className}`}
       />

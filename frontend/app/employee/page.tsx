@@ -193,6 +193,57 @@ function EmployeeDashboardContent() {
     notes: 'Direct Walk-In Client added by Stylist Desk.'
   });
 
+  // Staff Manual Customer Entry State
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
+  const [customerForm, setCustomerForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    gender: 'Female',
+    address: ''
+  });
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+
+  const handleCreateCustomerByStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerForm.name.trim()) {
+      showToast('Customer full name is required', 'error');
+      return;
+    }
+    if (!customerForm.phone.trim()) {
+      showToast('Customer phone number is required', 'error');
+      return;
+    }
+
+    try {
+      setCustomerSubmitting(true);
+      const res = await apiFetch(`${API_BASE_URL}/employee/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customerForm)
+      });
+      const data = await res.json();
+      setCustomerSubmitting(false);
+
+      if (res.ok && data.data) {
+        showToast(`Customer profile for "${data.data.name}" created successfully!`, 'success');
+        const createdCust = data.data;
+        setCustomerForm({ name: '', phone: '', email: '', gender: 'Female', address: '' });
+        setCustomerModalOpen(false);
+        setWalkInForm(prev => ({
+          ...prev,
+          customerName: createdCust.name,
+          customerPhone: createdCust.phone
+        }));
+      } else {
+        showToast(data.message || 'Failed to create customer record', 'error');
+      }
+    } catch (err: any) {
+      setCustomerSubmitting(false);
+      showToast(err.message || 'Error creating customer record', 'error');
+    }
+  };
+
   const formatRelativeTime = (dateStr: string) => {
     if (!dateStr) return 'Just now';
     const now = new Date();
@@ -1113,22 +1164,35 @@ function EmployeeDashboardContent() {
                     <h3 className="text-xl font-bold font-serif text-white mt-1">Assigned Client Queue & Workload Control</h3>
                   </div>
 
-                  <button
-                    onClick={() => {
-                      setWalkInForm({
-                        customerName: '',
-                        customerPhone: '+91 98765 43210',
-                        service: 'Signature Keratin Hair Spa & Mask',
-                        paymentMethod: 'Cash',
-                        notes: 'Direct Walk-In Client added by Stylist Desk.'
-                      });
-                      setWalkInModalOpen(true);
-                    }}
-                    className="px-4 py-2.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md flex items-center justify-center space-x-1.5 cursor-pointer hover:scale-105 transition-all self-start md:self-auto"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add Walk-In Client</span>
-                  </button>
+                  <div className="flex items-center space-x-2 self-start md:self-auto flex-wrap gap-y-2">
+                    <button
+                      onClick={() => {
+                        setCustomerForm({ name: '', phone: '', email: '', gender: 'Female', address: '' });
+                        setCustomerModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 rounded-2xl bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-extrabold text-xs shadow-md flex items-center justify-center space-x-1.5 cursor-pointer hover:bg-dark-700 transition-all"
+                    >
+                      <User className="w-4 h-4" />
+                      <span>+ New Customer Entry</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setWalkInForm({
+                          customerName: '',
+                          customerPhone: '+91 98765 43210',
+                          service: 'Signature Keratin Hair Spa & Mask',
+                          paymentMethod: 'Cash',
+                          notes: 'Direct Walk-In Client added by Stylist Desk.'
+                        });
+                        setWalkInModalOpen(true);
+                      }}
+                      className="px-4 py-2.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md flex items-center justify-center space-x-1.5 cursor-pointer hover:scale-105 transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Walk-In Client</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Metric Summary Counters */}
@@ -1908,6 +1972,101 @@ function EmployeeDashboardContent() {
                 </button>
                 <button type="submit" className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold cursor-pointer">
                   Seat & Record Walk-In Client
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* STAFF MANUAL CUSTOMER ENTRY MODAL */}
+      {customerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-md glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-4 text-left text-xs">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center space-x-2">
+                <User className="w-4 h-4 text-rosegold-400" />
+                <h3 className="text-base font-serif font-bold text-white">Manual Customer Account Entry</h3>
+              </div>
+              <button onClick={() => setCustomerModalOpen(false)} className="text-gray-400 text-lg cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleCreateCustomerByStaff} className="space-y-3">
+              <div>
+                <label className="text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Radhika Sharma"
+                  value={customerForm.name}
+                  onChange={(e) => setCustomerForm({ ...customerForm, name: e.target.value })}
+                  className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-300 font-semibold block mb-1">Mobile Phone Number *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 9876543210"
+                  value={customerForm.phone}
+                  onChange={(e) => setCustomerForm({ ...customerForm, phone: e.target.value })}
+                  className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-gray-300 font-semibold block mb-1">Email Address (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="radhika@example.com"
+                  value={customerForm.email}
+                  onChange={(e) => setCustomerForm({ ...customerForm, email: e.target.value })}
+                  className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-mono"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1">Gender</label>
+                  <select
+                    value={customerForm.gender}
+                    onChange={(e) => setCustomerForm({ ...customerForm, gender: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10"
+                  >
+                    <option value="Female">Female 👩</option>
+                    <option value="Male">Male 👨</option>
+                    <option value="Other">Other 🌟</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1">City / Area</label>
+                  <input
+                    type="text"
+                    placeholder="Jubilee Hills"
+                    value={customerForm.address}
+                    onChange={(e) => setCustomerForm({ ...customerForm, address: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-dark-850 border border-white/10 text-[11px] text-gray-400 space-y-1">
+                <span>Account Credentials Info:</span>
+                <p className="text-white font-mono">Temp Pass: Spy@[Last4DigitsOfPhone]</p>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-2">
+                <button type="button" onClick={() => setCustomerModalOpen(false)} className="px-4 py-2.5 rounded-xl bg-dark-800 text-gray-300 cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={customerSubmitting}
+                  className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold cursor-pointer hover:scale-105 transition-all shadow-glow-rosegold disabled:opacity-50"
+                >
+                  {customerSubmitting ? 'Creating Profile...' : 'Save & Register Customer'}
                 </button>
               </div>
             </form>

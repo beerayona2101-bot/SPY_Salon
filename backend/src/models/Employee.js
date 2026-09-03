@@ -8,8 +8,8 @@ const employeeSchema = new mongoose.Schema({
   specialties: [{ type: String }], // e.g. ['Hair Stylist', 'Skin Care', 'Nail Artist', 'Massage']
   services: [{ type: String }],    // Names or Slugs of services provided by this employee
   workingHours: {
-    start: { type: String, default: '09:00' }, // 24hr format
-    end: { type: String, default: '19:00' }
+    start: { type: String, default: '9:00' }, // 24hr format
+    end: { type: String, default: '20:00' }
   },
   breakTime: {
     start: { type: String, default: '13:00' },
@@ -19,6 +19,8 @@ const employeeSchema = new mongoose.Schema({
   status: { type: String, enum: ['Active', 'On Leave', 'Inactive'], default: 'Active' },
   avatar: { type: String, default: '' },
   branchId: { type: String, default: null },
+  baseSalary: { type: Number, default: null },
+  commissionPercentage: { type: Number, default: null },
   bankDetails: {
     accountName: String,
     accountNumber: String,

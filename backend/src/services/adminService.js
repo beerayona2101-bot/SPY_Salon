@@ -138,9 +138,9 @@ class AdminService {
       filter.name = new RegExp(search.trim(), 'i');
     }
 
-    // Sort by registration join date (oldest first: createdAt: 1)
     const rawData = await Employee.find(filter).sort({ createdAt: 1 }).skip(skip).limit(limitNum);
     const total = await Employee.countDocuments(filter);
+    const users = await User.find({ role: 'employee' }).select('email bankDetails baseSalary commissionPercentage');
 
     const data = await Promise.all(rawData.map(async (emp, index) => {
       const doc = emp.toObject ? emp.toObject() : emp;
@@ -150,6 +150,17 @@ class AdminService {
           await Employee.findByIdAndUpdate(emp._id, { empCode: doc.empCode });
         } catch (e) {}
       }
+
+      // Merge bankDetails and financial params from User collection
+      const matchingUser = users.find(u => u._id.toString() === emp._id.toString() || (u.email && doc.email && u.email.toLowerCase() === doc.email.toLowerCase()));
+      if (matchingUser) {
+        if (matchingUser.bankDetails && matchingUser.bankDetails.accountNumber) {
+          doc.bankDetails = matchingUser.bankDetails;
+        }
+      }
+      doc.baseSalary = doc.baseSalary || 25000;
+      doc.commissionPercentage = doc.commissionPercentage !== undefined ? doc.commissionPercentage : 20;
+
       return doc;
     }));
 
@@ -159,7 +170,16 @@ class AdminService {
   async getEmployeeById(id) {
     const employee = await Employee.findById(id);
     if (!employee) throw ApiError.notFound(`Employee with ID '${id}' not found`);
-    return employee;
+    const doc = employee.toObject();
+
+    const matchingUser = await User.findOne({ $or: [{ _id: id }, { email: employee.email }] });
+    if (matchingUser && matchingUser.bankDetails && matchingUser.bankDetails.accountNumber) {
+      doc.bankDetails = matchingUser.bankDetails;
+    }
+    doc.baseSalary = doc.baseSalary || 25000;
+    doc.commissionPercentage = doc.commissionPercentage !== undefined ? doc.commissionPercentage : 20;
+
+    return doc;
   }
 
   async createEmployee(payload) {
@@ -208,6 +228,8 @@ class AdminService {
       avatar: payload.avatar || '',
       specialties: parsedSpecs,
       services: parsedServices,
+      baseSalary: Number(payload.baseSalary || 25000),
+      commissionPercentage: Number(payload.commissionPercentage || 20),
       workingHours: payload.workingHours || { start: '09:00', end: '19:00' },
       breakTime: payload.breakTime || { start: '13:00', end: '14:00' },
       slotIntervalMinutes: Number(payload.slotIntervalMinutes || 30),
@@ -240,7 +262,6 @@ class AdminService {
         });
       }
     } catch (userErr) {
-      // Rollback newly created Employee record to prevent orphan documents
       await Employee.findByIdAndDelete(newEmp._id);
       throw ApiError.badRequest(`Failed to create employee authentication account: ${userErr.message}`);
     }
@@ -281,38 +302,76 @@ class AdminService {
     const updated = await Employee.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
     if (!updated) throw ApiError.notFound(`Employee with ID '${id}' not found`);
 
+    if (payload.baseSalary !== undefined) updated.baseSalary = Number(payload.baseSalary);
+    if (payload.commissionPercentage !== undefined) updated.commissionPercentage = Number(payload.commissionPercentage);
+    await updated.save();
+
     // Synchronize updates to User collection (find by _id or email)
-    const userDoc = await User.findOne({ $or: [{ _id: id }, { email: updated.email }] });
+    let userDoc = await User.findOne({ $or: [{ _id: id }, { email: updated.email }] });
+    const newPasswordPlain = payload.password && payload.password.trim();
+
     if (userDoc) {
       userDoc.name = updated.name;
       userDoc.email = updated.email;
       userDoc.phone = updated.phone;
       if (updated.avatar) userDoc.avatar = updated.avatar;
-      if (payload.password && payload.password.trim()) {
-        userDoc.password = payload.password.trim(); // Triggers bcrypt hash in User pre-save hook
+      if (newPasswordPlain) {
+        userDoc.password = newPasswordPlain; // Triggers bcrypt hash in User pre-save hook
       }
       await userDoc.save();
     } else {
-      await User.create({
+      userDoc = await User.create({
         _id: updated._id,
         name: updated.name,
         email: updated.email,
         phone: updated.phone,
-        password: payload.password || ('EMP-' + crypto.randomBytes(5).toString('hex').toUpperCase()),
+        password: newPasswordPlain || ('EMP-' + crypto.randomBytes(5).toString('hex').toUpperCase()),
         role: 'employee',
         isVerified: true
       });
     }
 
+    // Dispatch credentials email and notification if password was updated
+    let emailSent = false;
+    if (newPasswordPlain) {
+      try {
+        const username = updated.email;
+        const emailRes = await emailService.sendEmployeeCredentialsEmail({
+          email: updated.email,
+          name: updated.name,
+          username,
+          tempPassword: newPasswordPlain,
+          empCode: updated.empCode || 'EMP-1001'
+        });
+        emailSent = emailRes?.success || false;
+      } catch (mailErr) {
+        console.error('[adminService] Failed to dispatch updated credentials email:', mailErr.message);
+      }
+
+      try {
+        const notificationController = require('../controllers/notificationController');
+        await notificationController.dispatchNotification(null, {
+          userId: userDoc ? userDoc._id.toString() : updated._id.toString(),
+          role: 'employee',
+          title: '🔐 Security Alert: Account Credentials Updated',
+          message: `Your login password has been updated by Admin. Check your registered email (${updated.email}) for login details.`,
+          type: 'system',
+          priority: 'high'
+        });
+      } catch (notifErr) {
+        console.warn('[adminService] Credential notification dispatch warning:', notifErr.message);
+      }
+    }
+
     await this.createActivityLog({
       action: 'Employee Profile Updated',
-      details: `Updated details and login credentials for employee ${updated.name}.`,
+      details: `Updated details for employee ${updated.name}${newPasswordPlain ? ' (Credentials updated & email dispatched)' : ''}.`,
       user: 'Admin',
       branchId: updated.branchId
     });
 
     broadcastEvent('employee:updated', { employee: updated });
-    return updated;
+    return { ...updated.toObject(), emailSent };
   }
 
   async deleteEmployee(id) {
