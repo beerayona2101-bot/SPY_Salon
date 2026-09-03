@@ -331,6 +331,7 @@ export default function Navbar() {
   const isPricingOrOffersActive = pathname === '/pricing' || pathname === '/offers';
   const isAdminUser = user?.role === 'admin' || user?.email?.includes('admin');
   const isEmployeeUser = user?.role === 'employee';
+  const isCustomerUser = !!user && !isAdminUser && !isEmployeeUser;
   const isDashboardRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/employee');
 
   const handleProfileButtonClick = () => {
@@ -384,6 +385,9 @@ export default function Navbar() {
                 <Link href="/services" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/services' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Services</Link>
                 <Link href="/pricing" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${isPricingOrOffersActive ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Pricing</Link>
                 <Link href="/contact" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/contact' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Contact</Link>
+                {isCustomerUser && (
+                  <Link href="/history" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/history' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>History</Link>
+                )}
               </div>
 
               {/* Notification Bell Icon & Profile Avatar / Executive Desk Button - Right Action Group */}
@@ -645,6 +649,15 @@ export default function Navbar() {
               >
                 Contact Us
               </Link>
+              {isCustomerUser && (
+                <Link
+                  href="/history"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/history' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                >
+                  History
+                </Link>
+              )}
               <Link
                 href="/book"
                 onClick={() => setMobileMenuOpen(false)}
@@ -738,112 +751,24 @@ export default function Navbar() {
                   </Link>
                 </div>
               ) : (
-                <>
-                  {/* Customer Modal Tabs */}
-                  <div className="flex bg-dark-800 p-1 rounded-xl text-xs font-semibold text-gray-400">
-                    <button
-                      onClick={() => setProfileTab('schedules')}
-                      className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                        profileTab === 'schedules' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
-                      }`}
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                      <span>My Schedules</span>
-                    </button>
-
-                    <button
-                      onClick={() => setProfileTab('history')}
-                      className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
-                        profileTab === 'history' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
-                      }`}
-                    >
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Past Orders</span>
-                    </button>
-                  </div>
-
-                  {/* Tab 1: Schedules */}
-                  {profileTab === 'schedules' && (
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                      {userAppointments.filter(app => !['Completed', 'Cancelled', 'Rejected'].includes(app.status)).length === 0 ? (
-                        <div className="text-center py-6 bg-dark-800/40 rounded-2xl border border-white/5 space-y-1.5">
-                          <Calendar className="w-6 h-6 mx-auto text-gray-500 opacity-40" />
-                          <p className="text-xs text-gray-400 font-medium">No upcoming appointments.</p>
-                          <Link 
-                            href="/book" 
-                            onClick={() => setProfileDropdownOpen(false)} 
-                            className="inline-block text-[11px] font-bold text-rosegold-400 hover:text-white underline"
-                          >
-                            Book a service now
-                          </Link>
-                        </div>
-                      ) : (
-                        userAppointments
-                          .filter(app => !['Completed', 'Cancelled', 'Rejected'].includes(app.status))
-                          .map(app => (
-                            <div key={app._id} className="p-3.5 rounded-2xl bg-dark-800/80 border border-rosegold-500/30 text-xs space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-white font-serif text-sm">{app.service}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  app.status === 'Confirmed' ? 'text-green-400 bg-green-500/15 border border-green-500/30' :
-                                  app.status === 'Pending' ? 'text-amber-400 bg-amber-500/15 border border-amber-500/30' :
-                                  'text-gray-400 bg-white/10'
-                                }`}>
-                                  {app.status}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-300 flex items-center space-x-1.5">
-                                <Clock className="w-3.5 h-3.5 text-rosegold-400" />
-                                <span>{formatDate(app.appointmentDate)} at {app.appointmentTime} • {app.branch}</span>
-                              </p>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tab 2: Past Orders */}
-                  {profileTab === 'history' && (
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                      {userAppointments.filter(app => ['Completed', 'Cancelled', 'Rejected'].includes(app.status)).length === 0 ? (
-                        <div className="text-center py-6 bg-dark-800/40 rounded-2xl border border-white/5 space-y-1">
-                          <ShoppingBag className="w-6 h-6 mx-auto text-gray-500 opacity-40" />
-                          <p className="text-xs text-gray-400 font-medium">No past appointments found.</p>
-                        </div>
-                      ) : (
-                        userAppointments
-                          .filter(app => ['Completed', 'Cancelled', 'Rejected'].includes(app.status))
-                          .map(app => (
-                            <div key={app._id} className="p-3.5 rounded-2xl bg-dark-800/80 border border-white/10 text-xs space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-white font-serif text-sm">{app.service}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  app.status === 'Completed' ? 'text-rosegold-400 bg-rosegold-500/15 border border-rosegold-500/30' :
-                                  'text-red-400 bg-red-500/15 border border-red-500/30'
-                                }`}>
-                                  {app.status}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-400">
-                                {formatDate(app.appointmentDate)} at {app.appointmentTime} • {app.branch}
-                              </p>
-                            </div>
-                          ))
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quick Action Navigation Link */}
-                  <div className="pt-2 border-t border-white/10">
-                    <Link
-                      href="/profile"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="py-2.5 px-3 rounded-xl bg-rosegold-500/15 text-rosegold-300 hover:text-white border border-rosegold-500/30 text-xs font-bold text-center block w-full"
-                    >
-                      Full Customer Profile Page →
-                    </Link>
-                  </div>
-                </>
+                <div className="space-y-2">
+                  <Link
+                    href="/history"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center space-x-2.5 p-3 rounded-xl bg-rosegold-500/15 hover:bg-rosegold-500/25 text-rosegold-300 hover:text-white border border-rosegold-500/30 text-xs font-bold transition-all"
+                  >
+                    <Clock className="w-4 h-4 text-rosegold-400" />
+                    <span>My History & Schedules</span>
+                  </Link>
+                  <Link
+                    href="/profile"
+                    onClick={() => setProfileDropdownOpen(false)}
+                    className="flex items-center space-x-2.5 p-3 rounded-xl bg-dark-800 hover:bg-dark-700 text-gray-300 hover:text-white border border-white/10 text-xs font-semibold transition-all"
+                  >
+                    <User className="w-4 h-4 text-gray-400" />
+                    <span>My Profile Details</span>
+                  </Link>
+                </div>
               )}
 
               {/* Logout Footer Button */}

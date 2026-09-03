@@ -6,6 +6,7 @@ const { protect } = require('../middlewares/authMiddleware');
 // Protect all user routes
 router.use(protect);
 
+router.get('/history', userController.getUserHistory);
 router.get('/appointments', userController.getUserAppointments);
 router.post('/appointments/:id/reschedule', userController.requestReschedule);
 router.post('/appointments/:id/cancel', userController.cancelAppointment);

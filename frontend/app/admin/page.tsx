@@ -4398,7 +4398,6 @@ function AdminDashboardContent() {
                       <th className="p-4 text-left whitespace-nowrap">Booking ID</th>
                       <th className="p-4 text-left whitespace-nowrap">Customer</th>
                       <th className="p-4 text-left whitespace-nowrap">Service Requested</th>
-                      <th className="p-4 text-left whitespace-nowrap">Specialist</th>
                       <th className="p-4 text-left whitespace-nowrap">Booking Date & Time</th>
                       <th className="p-4 text-left whitespace-nowrap">Scheduled Visit</th>
                       <th className="p-4 text-left whitespace-nowrap">Payment</th>
@@ -4424,7 +4423,6 @@ function AdminDashboardContent() {
                             Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No'}
                           </span>
                         </td>
-                        <td className="p-4 align-middle whitespace-nowrap text-rosegold-300 font-medium">{a.specialistName}</td>
                         <td className="p-4 align-middle whitespace-nowrap font-mono text-[11px] text-rosegold-300">
                           {(() => {
                             const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;

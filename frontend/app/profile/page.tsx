@@ -624,6 +624,7 @@ function UserProfileContent() {
           { id: 'membership', label: '👑 Membership Pass', icon: Crown },
           { id: 'packages', label: '🎟️ My Packages', icon: Package },
           { id: 'schedules', label: '📅 Active Schedules', icon: Calendar },
+          { id: 'history', label: '📜 Booking History', icon: Clock },
           { id: 'security', label: '🔒 Security & Alerts', icon: Lock }
         ].map(tab => (
           <button
@@ -1020,7 +1021,65 @@ function UserProfileContent() {
         </div>
       )}
 
-      {/* 8. TAB 5: 🔒 SECURITY & PREFERENCES */}
+      {/* 8. TAB 5: 📜 BOOKING HISTORY MODULE */}
+      {activeTab === 'history' && (
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/30 space-y-6 animate-fadeIn text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div>
+              <h2 className="text-xl font-serif font-bold text-white flex items-center space-x-2">
+                <Clock className="w-5 h-5 text-rosegold-400" />
+                <span>Customer History Hub</span>
+              </h2>
+              <p className="text-xs text-gray-400 mt-0.5">Inspect all active schedules, past completed treatments, packages, and individual services.</p>
+            </div>
+            <button
+              onClick={() => router.push('/history')}
+              className="px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
+            >
+              Open Full History Module →
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {appointments.length === 0 ? (
+              <div className="text-center py-8 space-y-3">
+                <Clock className="w-10 h-10 text-rosegold-400 mx-auto opacity-50" />
+                <p className="text-xs text-gray-400">No booking history records available yet.</p>
+                <button onClick={() => router.push('/book')} className="px-6 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs">
+                  Book a Service Now →
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {appointments.slice(0, 4).map(app => (
+                  <div key={app._id} className="p-4 rounded-2xl bg-dark-850 border border-white/10 space-y-2 text-xs">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
+                      <span className="font-mono text-rosegold-400 font-bold">#{app.bookingId}</span>
+                      <AppointmentStatusBadge status={app.status} />
+                    </div>
+                    <h4 className="font-serif font-bold text-white text-sm">{app.service}</h4>
+                    <p className="text-gray-400 flex items-center space-x-1">
+                      <Calendar className="w-3 h-3 text-rosegold-400" />
+                      <span>{app.appointmentDate} at {app.appointmentTime}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 text-center">
+              <Link
+                href="/history"
+                className="inline-block px-8 py-3 rounded-full bg-dark-800 hover:bg-dark-750 text-rosegold-300 font-bold text-xs border border-rosegold-500/30 shadow-md"
+              >
+                View Complete History Matrix & Receipts →
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. TAB 6: 🔒 SECURITY & PREFERENCES */}
       {activeTab === 'security' && (
         <div className="space-y-8 animate-fadeIn text-left">
           {/* Change Password Form */}

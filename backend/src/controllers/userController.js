@@ -11,6 +11,38 @@ const ApiResponse = require('../utils/apiResponse');
 const ApiError = require('../utils/apiError');
 const { broadcastEvent } = require('../utils/socket');
 
+exports.getUserHistory = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      throw ApiError.unauthorized('Authentication required to access customer history.');
+    }
+    if (req.user.role === 'admin' || req.user.role === 'employee') {
+      throw ApiError.forbidden(`Role '${req.user.role}' is not authorized to access customer history.`);
+    }
+
+    const userId = req.user._id ? req.user._id.toString() : '';
+    const email = req.user.email ? String(req.user.email).toLowerCase().trim() : '';
+    const phone = req.user.phone ? String(req.user.phone).trim() : '';
+
+    const userConditions = [];
+    if (userId) userConditions.push({ customerId: userId });
+    if (email) userConditions.push({ customerEmail: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+    if (phone) userConditions.push({ customerPhone: phone });
+
+    if (userConditions.length === 0) {
+      return ApiResponse.success(res, [], 'Customer history retrieved');
+    }
+
+    const historyItems = await Appointment.find({
+      $or: userConditions
+    }).sort({ createdAt: -1 });
+
+    return ApiResponse.success(res, historyItems, 'Customer history retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getUserAppointments = async (req, res, next) => {
   try {
     const userId = req.user ? req.user._id.toString() : (req.query.userId || req.query.id);
