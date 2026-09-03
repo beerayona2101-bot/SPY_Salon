@@ -11,6 +11,7 @@ const Employee = require('../models/Employee');
 const RefreshToken = require('../models/RefreshToken');
 const Otp = require('../models/Otp');
 const emailService = require('./emailService');
+const smsService = require('./smsService');
 const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');
 
@@ -378,7 +379,7 @@ class AuthService {
     }
   }
 
-  // Send OTP for Login
+  // Send OTP for Login (Auto-registers new clients seamlessly if not found)
   async sendLoginOtp(identifier) {
     if (!identifier) {
       throw ApiError.badRequest('Please provide your email address or mobile number');
@@ -387,16 +388,35 @@ class AuthService {
     const input = String(identifier).trim().toLowerCase();
     
     // Find User in MongoDB
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [
         { email: input },
         { phone: input },
-        { phone: new RegExp(input + '$') }
+        { phone: new RegExp(input.replace(/[^0-9]/g, '') + '$') }
       ]
     });
 
+    // If user is not found, seamlessly auto-create Customer profile so OTP login auto-registers them!
     if (!user) {
-      throw ApiError.badRequest('No registered account found with this email or mobile number.');
+      const isEmail = input.includes('@');
+      const cleanPhone = isEmail ? '' : input.trim();
+      const cleanEmail = isEmail ? input.trim() : `${input.replace(/\D/g, '')}@spysalon.com`;
+      const displayName = isEmail ? input.split('@')[0] : `Client ${input.slice(-4)}`;
+
+      user = await User.create({
+        name: displayName,
+        email: cleanEmail,
+        phone: cleanPhone || input,
+        password: crypto.randomBytes(8).toString('hex'),
+        role: 'customer',
+        isVerified: true
+      });
+      
+      await ActivityLog.create({
+        action: 'Auto Registered via OTP',
+        details: `Auto-created customer profile for ${user.name} via OTP sign in.`,
+        user: user.name
+      });
     }
 
     // Generate 6-digit dynamic numeric OTP code
@@ -406,7 +426,9 @@ class AuthService {
 
     // Delete any active login OTP requests for this identifier first
     await Otp.deleteMany({ identifier: user.email, purpose: 'login' });
-    await Otp.deleteMany({ identifier: user.phone, purpose: 'login' });
+    if (user.phone) {
+      await Otp.deleteMany({ identifier: user.phone, purpose: 'login' });
+    }
 
     // Save to database
     await Otp.create({
@@ -416,21 +438,34 @@ class AuthService {
       purpose: 'login'
     });
 
-    // Send OTP via email/SMS
+    // Send OTP via SMS & Email
+    let smsResult = { sent: false };
+    const targetPhone = user.phone || input;
+    if (targetPhone && !targetPhone.includes('@')) {
+      smsResult = await smsService.sendOtpSms(targetPhone, otp);
+    }
+
     try {
-      await emailService.sendPasswordResetOtpEmail({
-        email: user.email,
-        name: user.name,
-        otp
-      });
-      console.log(`[authService] Login OTP sent to ${user.email}: ${otp}`);
+      if (user.email && user.email.includes('@')) {
+        await emailService.sendPasswordResetOtpEmail({
+          email: user.email,
+          name: user.name,
+          otp
+        });
+        console.log(`[authService] Login OTP sent to ${user.email}: ${otp}`);
+      }
     } catch (err) {
       console.warn(`[authService] Nodemailer error sending login OTP to ${user.email}:`, err.message);
     }
 
+    const isRealSmsSent = smsResult.sent === true;
+    const msg = isRealSmsSent
+        ? `A 6-digit OTP code has been sent to your mobile number +91 ${targetPhone.slice(-4)}!`
+        : `A 6-digit OTP code has been dispatched. Please check your inbox or server console.`;
+
     return {
       success: true,
-      message: 'A 6-digit OTP code has been dispatched. Please check your email.'
+      message: msg
     };
   }
 
@@ -441,22 +476,26 @@ class AuthService {
     }
 
     const input = String(identifier).trim().toLowerCase();
-    const user = await User.findOne({
+    let user = await User.findOne({
       $or: [
         { email: input },
         { phone: input },
-        { phone: new RegExp(input + '$') }
+        { phone: new RegExp(input.replace(/[^0-9]/g, '') + '$') }
       ]
     });
 
     if (!user) {
-      throw ApiError.badRequest('Account not found.');
+      throw ApiError.badRequest('Account not found. Please request a new OTP code.');
     }
 
     // Validate OTP against MongoDB record
     const hashedInputOtp = this.hashOtp(otp);
     const otpRecord = await Otp.findOne({
-      identifier: user.email,
+      $or: [
+        { identifier: user.email },
+        { identifier: user.phone },
+        { identifier: input }
+      ],
       hashedOtp: hashedInputOtp,
       purpose: 'login'
     });

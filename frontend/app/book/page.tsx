@@ -448,24 +448,31 @@ function BookingContent() {
 
   const [currentUserObj, setCurrentUserObj] = useState<any>(null);
 
-  // User Auth state check
+  // User Auth state check - Enforces login before booking!
   useEffect(() => {
-    const userToken = localStorage.getItem('spy_user') || localStorage.getItem('spy_token');
-    if (userToken) {
-      try {
-        const parsed = JSON.parse(userToken);
-        if (parsed && typeof parsed === 'object') {
-          setCurrentUserObj(parsed);
-          setFormData(prev => ({
-            ...prev,
-            name: parsed.name || prev.name,
-            email: parsed.email || prev.email,
-            phone: parsed.phone || prev.phone
-          }));
-        }
-      } catch (e) {}
+    if (typeof window === 'undefined') return;
+    const userToken = localStorage.getItem('spy_user') || localStorage.getItem('spy_token') || localStorage.getItem('jwt_token');
+    if (!userToken) {
+      router.push('/login?redirect=/book');
+      return;
     }
-  }, []);
+    try {
+      const parsed = JSON.parse(userToken);
+      if (parsed && typeof parsed === 'object') {
+        setCurrentUserObj(parsed);
+        setFormData(prev => ({
+          ...prev,
+          name: parsed.name || prev.name,
+          email: parsed.email || prev.email,
+          phone: parsed.phone || prev.phone
+        }));
+      } else {
+        router.push('/login?redirect=/book');
+      }
+    } catch (e) {
+      router.push('/login?redirect=/book');
+    }
+  }, [router]);
 
   // Time Slots
   const timeSlots = [
