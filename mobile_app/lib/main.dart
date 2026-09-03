@@ -68,6 +68,40 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _navigateToUserDashboard() {
+    if (_currentUser == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(onLoginSuccess: () async {
+            await _loadUserSession();
+            _navigateToUserDashboard();
+          }),
+        ),
+      );
+      return;
+    }
+
+    final role = (_currentUser!['role'] ?? 'customer').toString().toLowerCase();
+
+    if (role == 'admin' || role == 'manager') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+      );
+    } else if (role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+      );
+    }
+  }
+
   Future<void> _checkBackendAndLoadData() async {
     setState(() {
       _isCheckingBackend = true;
@@ -462,81 +496,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 onSelected: (value) async {
-                  if (value == 'customer') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => const CustomerDashboardScreen(),
-                      ),
-                    );
-                  } else if (value == 'admin') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => const AdminDashboardScreen(),
-                      ),
-                    );
-                  } else if (value == 'staff') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => const EmployeeDashboardScreen(),
-                      ),
-                    );
+                  if (value == 'dashboard') {
+                    _navigateToUserDashboard();
                   } else if (value == 'logout') {
                     await ApiService.logout();
                     setState(() => _currentUser = null);
                   }
                 },
-                itemBuilder: (ctx) => [
-                  PopupMenuItem(
-                    enabled: false,
-                    child: Text(
-                      'Signed in as ${_currentUser!['email'] ?? _currentUser!['phone'] ?? ''}',
-                      style: const TextStyle(color: Colors.white54, fontSize: 11),
+                itemBuilder: (ctx) {
+                  final role = (_currentUser!['role'] ?? 'customer').toString().toLowerCase();
+                  final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+                  final isAdmin = role == 'admin' || role == 'manager';
+
+                  String dashboardLabel = 'My Profile & Bookings';
+                  IconData dashboardIcon = Icons.person_outline;
+                  if (isAdmin) {
+                    dashboardLabel = 'Admin Dashboard';
+                    dashboardIcon = Icons.dashboard_customize_outlined;
+                  } else if (isStaff) {
+                    dashboardLabel = 'Staff Dashboard';
+                    dashboardIcon = Icons.badge_outlined;
+                  }
+
+                  return [
+                    PopupMenuItem(
+                      enabled: false,
+                      child: Text(
+                        'Signed in as ${_currentUser!['email'] ?? _currentUser!['phone'] ?? ''}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 11),
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'customer',
-                    child: Row(
-                      children: [
-                        Icon(Icons.person_outline, color: goldColor, size: 18),
-                        SizedBox(width: 8),
-                        Text('My Profile & Bookings', style: TextStyle(color: goldColor)),
-                      ],
+                    PopupMenuItem(
+                      value: 'dashboard',
+                      child: Row(
+                        children: [
+                          Icon(dashboardIcon, color: goldColor, size: 18),
+                          const SizedBox(width: 8),
+                          Text(dashboardLabel, style: const TextStyle(color: goldColor)),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'admin',
-                    child: Row(
-                      children: [
-                        Icon(Icons.dashboard_customize_outlined, color: goldColor, size: 18),
-                        SizedBox(width: 8),
-                        Text('Admin Dashboard', style: TextStyle(color: goldColor)),
-                      ],
+                    const PopupMenuItem(
+                      value: 'logout',
+                      child: Row(
+                        children: [
+                          Icon(Icons.logout, color: Colors.redAccent, size: 18),
+                          SizedBox(width: 8),
+                          Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
+                        ],
+                      ),
                     ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'staff',
-                    child: Row(
-                      children: [
-                        Icon(Icons.badge_outlined, color: goldColor, size: 18),
-                        SizedBox(width: 8),
-                        Text('Staff Dashboard', style: TextStyle(color: goldColor)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, color: Colors.redAccent, size: 18),
-                        SizedBox(width: 8),
-                        Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
-                      ],
-                    ),
-                  ),
-                ],
+                  ];
+                },
               ),
             ),
           ] else ...[
@@ -547,7 +558,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (ctx) => LoginScreen(onLoginSuccess: _loadUserSession),
+                    builder: (ctx) => LoginScreen(
+                      onLoginSuccess: () async {
+                        await _loadUserSession();
+                        _navigateToUserDashboard();
+                      },
+                    ),
                   ),
                 );
               },
@@ -697,26 +713,44 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+                      Builder(
+                        builder: (ctx) {
+                          String label = 'Sign In';
+                          IconData icon = Icons.login;
+
+                          if (_currentUser != null) {
+                            final role = (_currentUser!['role'] ?? 'customer').toString().toLowerCase();
+                            final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+                            final isAdmin = role == 'admin' || role == 'manager';
+
+                            if (isAdmin) {
+                              label = 'Admin Dashboard';
+                              icon = Icons.dashboard_outlined;
+                            } else if (isStaff) {
+                              label = 'Staff Dashboard';
+                              icon = Icons.badge_outlined;
+                            } else {
+                              label = 'My Profile & Bookings';
+                              icon = Icons.person_outline;
+                            }
+                          }
+
+                          return OutlinedButton.icon(
+                            onPressed: _navigateToUserDashboard,
+                            icon: Icon(icon, color: goldColor, size: 18),
+                            label: Text(
+                              label,
+                              style: const TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: goldColor),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                            ),
                           );
                         },
-                        icon: const Icon(Icons.dashboard_outlined, color: goldColor, size: 18),
-                        label: const Text(
-                          'Admin Dashboard',
-                          style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: goldColor),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
                       ),
                     ],
                   ),
