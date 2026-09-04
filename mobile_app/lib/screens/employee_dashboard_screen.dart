@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 
 class EmployeeDashboardScreen extends StatefulWidget {
   const EmployeeDashboardScreen({super.key});
@@ -181,18 +182,48 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: startCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: 'Start Date (YYYY-MM-DD)', prefixIcon: Icon(Icons.calendar_month, color: Color(0xFFE0A96D))),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        startCtrl.text = picked.toString().split(' ')[0];
+                      }
+                    },
+                    child: IgnorePointer(
+                      child: TextField(
+                        controller: startCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(labelText: 'Start Date', prefixIcon: Icon(Icons.calendar_month, color: Color(0xFFE0A96D))),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: TextField(
-                    controller: endCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: const InputDecoration(labelText: 'End Date (YYYY-MM-DD)', prefixIcon: Icon(Icons.event, color: Color(0xFFE0A96D))),
+                  child: InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: DateTime.now().add(const Duration(days: 1)),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        endCtrl.text = picked.toString().split(' ')[0];
+                      }
+                    },
+                    child: IgnorePointer(
+                      child: TextField(
+                        controller: endCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(labelText: 'End Date', prefixIcon: Icon(Icons.event, color: Color(0xFFE0A96D))),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -210,16 +241,28 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE0A96D)),
                 onPressed: () async {
-                  if (reasonCtrl.text.trim().isEmpty) return;
+                  final reason = reasonCtrl.text.trim();
+                  if (reason.isEmpty) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Please enter a reason for leave application'), backgroundColor: Colors.amber),
+                    );
+                    return;
+                  }
                   final res = await ApiService.submitLeaveRequest({
                     'startDate': startCtrl.text.trim(),
                     'endDate': endCtrl.text.trim(),
-                    'reason': reasonCtrl.text.trim(),
+                    'reason': reason,
                     'employeeName': _user?['name'] ?? 'Staff Member',
                   });
                   if (ctx.mounted) {
-                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(res['message'] ?? (res['success'] == true ? 'Leave request submitted!' : 'Submission failed')),
+                        backgroundColor: res['success'] == true ? Colors.green : Colors.redAccent,
+                      ),
+                    );
                     if (res['success'] == true) {
+                      Navigator.pop(ctx);
                       _loadStaffData();
                     }
                   }
@@ -324,80 +367,121 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       shiftText = 'CLOCKED OUT ⚪';
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF13100E),
-      appBar: AppBar(
-        backgroundColor: cardBg,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: Image.asset(
-                'assets/images/logo.png',
-                width: 24,
-                height: 24,
-                fit: BoxFit.cover,
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF13100E),
+        appBar: AppBar(
+          backgroundColor: cardBg,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  width: 24,
+                  height: 24,
+                  fit: BoxFit.cover,
+                ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('STAFF DESK', style: TextStyle(color: Color(0xFFF6F2EB), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                    Text(_user?['name'] ?? 'Stylist', style: const TextStyle(color: goldColor, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              margin: const EdgeInsets.only(right: 4),
+              decoration: BoxDecoration(color: shiftColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: shiftColor)),
+              child: Text(shiftText, style: TextStyle(color: shiftColor, fontSize: 10, fontWeight: FontWeight.bold)),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
+              onPressed: _loadStaffData,
+              tooltip: 'Refresh Data',
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+              tooltip: 'Sign Out',
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: const Color(0xFF191512),
+                    title: const Text('Sign Out', style: TextStyle(color: Colors.white)),
+                    content: const Text('Are you sure you want to sign out of Staff Desk?', style: TextStyle(color: Colors.white70)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await ApiService.logout();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => LoginScreen(
+                          onLoginSuccess: () {},
+                        ),
+                      ),
+                      (route) => false,
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+          bottom: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: goldColor,
+            labelColor: goldColor,
+            unselectedLabelColor: Colors.white54,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            tabs: const [
+              Tab(text: 'MY QUEUE'),
+              Tab(text: 'TIMECARD'),
+              Tab(text: 'LEAVES'),
+              Tab(text: 'PAYROLL'),
+              Tab(text: 'BANK SETUP'),
+              Tab(text: 'MY CLIENTS'),
+            ],
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: goldColor))
+            : TabBarView(
+                controller: _tabController,
                 children: [
-                  const Text('STAFF DESK', style: TextStyle(color: Color(0xFFF6F2EB), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                  Text(_user?['name'] ?? 'Stylist', style: const TextStyle(color: goldColor, fontSize: 11)),
+                  _buildQueueTab(goldColor, cardBg),
+                  _buildTimecardTab(goldColor, cardBg),
+                  _buildLeavesTab(goldColor, cardBg),
+                  _buildPayrollTab(goldColor, cardBg),
+                  _buildBankSetupTab(goldColor, cardBg),
+                  _buildClientsTab(goldColor, cardBg),
                 ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(color: shiftColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: shiftColor)),
-            child: Text(shiftText, style: TextStyle(color: shiftColor, fontSize: 10, fontWeight: FontWeight.bold)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
-            onPressed: _loadStaffData,
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: goldColor,
-          labelColor: goldColor,
-          unselectedLabelColor: Colors.white54,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: const [
-            Tab(text: 'MY QUEUE'),
-            Tab(text: 'TIMECARD'),
-            Tab(text: 'LEAVES'),
-            Tab(text: 'PAYROLL'),
-            Tab(text: 'BANK SETUP'),
-            Tab(text: 'MY CLIENTS'),
-          ],
-        ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: goldColor))
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildQueueTab(goldColor, cardBg),
-                _buildTimecardTab(goldColor, cardBg),
-                _buildLeavesTab(goldColor, cardBg),
-                _buildPayrollTab(goldColor, cardBg),
-                _buildBankSetupTab(goldColor, cardBg),
-                _buildClientsTab(goldColor, cardBg),
-              ],
-            ),
     );
   }
 
@@ -476,28 +560,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
-                              PopupMenuButton<String>(
-                                color: const Color(0xFF25201C),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(color: goldColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                                  child: Row(
-                                    children: [
-                                      Text('Update Status', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                                      Icon(Icons.arrow_drop_down, color: goldColor, size: 18),
-                                    ],
-                                  ),
-                                ),
-                                onSelected: (newStatus) async {
-                                  final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': newStatus});
-                                  if (success) _loadStaffData();
-                                },
-                                itemBuilder: (ctx) => const [
-                                  PopupMenuItem(value: 'In Progress', child: Text('In Progress ✂️', style: TextStyle(color: Colors.purpleAccent))),
-                                  PopupMenuItem(value: 'Completed', child: Text('Complete ✅', style: TextStyle(color: Colors.greenAccent))),
-                                  PopupMenuItem(value: 'Cancelled', child: Text('Cancel ❌', style: TextStyle(color: Colors.redAccent))),
-                                ],
-                              ),
+                              _buildStatusUpdatePopupMenu(appt, id, goldColor),
                             ],
                           ),
                         ],
@@ -506,6 +569,76 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                   },
                 ),
         ),
+      ],
+    );
+  }
+
+  bool _hasAppointmentStarted(String? dateStr, String? timeStr) {
+    if (dateStr == null || timeStr == null || dateStr.isEmpty || timeStr.isEmpty) return true;
+    try {
+      final now = DateTime.now();
+      final dateParts = dateStr.trim().split('T')[0].split('-');
+      if (dateParts.length < 3) return true;
+      final year = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final day = int.parse(dateParts[2]);
+
+      final timeParts = timeStr.trim().split(RegExp(r'\s+'));
+      if (timeParts.length < 2) return true;
+      final clockParts = timeParts[0].split(':');
+      int hour = int.parse(clockParts[0]);
+      final minute = int.parse(clockParts[1]);
+      final isPm = timeParts[1].toUpperCase() == 'PM';
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+
+      final scheduledDateTime = DateTime(year, month, day, hour, minute);
+      return now.isAfter(scheduledDateTime) || now.isAtSameMomentAs(scheduledDateTime);
+    } catch (e) {
+      return true;
+    }
+  }
+
+  Widget _buildStatusUpdatePopupMenu(Map<String, dynamic> app, String id, Color goldColor) {
+    final appDate = app['appointmentDate']?.toString();
+    final appTime = app['appointmentTime']?.toString();
+    final hasStarted = _hasAppointmentStarted(appDate, appTime);
+
+    return PopupMenuButton<String>(
+      color: const Color(0xFF25201C),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(color: goldColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          children: [
+            Text('Update Status', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
+            Icon(Icons.arrow_drop_down, color: goldColor, size: 18),
+          ],
+        ),
+      ),
+      onSelected: (newStatus) async {
+        if (newStatus == 'Completed' && !_hasAppointmentStarted(appDate, appTime)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFFC8868F),
+              content: Text('Cannot mark appointment as Completed before scheduled time ($appDate $appTime).'),
+            ),
+          );
+          return;
+        }
+        Map<String, dynamic> body = {'status': newStatus};
+        if (newStatus == 'Staff_Rejected') {
+          body['rejectionReason'] = 'Specialist unavailable';
+        }
+        final success = await ApiService.updateEmployeeAppointmentStatus(id, body);
+        if (success) _loadStaffData();
+      },
+      itemBuilder: (ctx) => [
+        const PopupMenuItem(value: 'In Progress', child: Text('In Progress ✂️', style: TextStyle(color: Colors.purpleAccent))),
+        if (hasStarted)
+          const PopupMenuItem(value: 'Completed', child: Text('Complete ✅', style: TextStyle(color: Colors.greenAccent))),
+        const PopupMenuItem(value: 'Staff_Rejected', child: Text('Reject & Reassign ❌', style: TextStyle(color: Colors.orangeAccent))),
+        const PopupMenuItem(value: 'Cancelled', child: Text('Cancel Appointment 🚫', style: TextStyle(color: Colors.redAccent))),
       ],
     );
   }
@@ -539,6 +672,14 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent),
                       onPressed: () async {
                         final res = await ApiService.clockInAttendance();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? (res['success'] == true ? 'Clocked in successfully!' : 'Clock-in failed')),
+                              backgroundColor: res['success'] == true ? Colors.green : Colors.redAccent,
+                            ),
+                          );
+                        }
                         if (res['success'] == true) _loadStaffData();
                       },
                       icon: const Icon(Icons.login, color: Colors.black),
@@ -548,6 +689,14 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                       style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.amber)),
                       onPressed: () async {
                         final res = await ApiService.startBreakAttendance();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? (res['success'] == true ? 'Break started!' : 'Start break failed')),
+                              backgroundColor: res['success'] == true ? Colors.amber[800] : Colors.redAccent,
+                            ),
+                          );
+                        }
                         if (res['success'] == true) _loadStaffData();
                       },
                       icon: const Icon(Icons.coffee, color: Colors.amber),
@@ -557,6 +706,14 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                       style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.greenAccent)),
                       onPressed: () async {
                         final res = await ApiService.endBreakAttendance();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? (res['success'] == true ? 'Break ended!' : 'End break failed')),
+                              backgroundColor: res['success'] == true ? Colors.green : Colors.redAccent,
+                            ),
+                          );
+                        }
                         if (res['success'] == true) _loadStaffData();
                       },
                       icon: const Icon(Icons.coffee, color: Colors.greenAccent),
@@ -566,6 +723,14 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
                       onPressed: () async {
                         final res = await ApiService.clockOutAttendance();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? (res['success'] == true ? 'Clocked out successfully!' : 'Clock-out failed')),
+                              backgroundColor: res['success'] == true ? Colors.green : Colors.redAccent,
+                            ),
+                          );
+                        }
                         if (res['success'] == true) _loadStaffData();
                       },
                       icon: const Icon(Icons.logout, color: Colors.white),
@@ -590,10 +755,16 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                     final date = att['date'] ?? 'Today';
                     final clockIn = att['clockIn'] ?? '--';
                     final clockOut = att['clockOut'] ?? '--';
+                    final state = (att['attendanceState'] ?? 'CLOCKED_IN').toString();
+
+                    Color stateColor = Colors.greenAccent;
+                    if (state == 'ON_BREAK') stateColor = Colors.amber;
+                    if (state == 'CLOCKED_OUT') stateColor = Colors.blueAccent;
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(10), border: Border.all(color: stateColor.withValues(alpha: 0.3))),
                       child: Row(
                         children: [
                           Icon(Icons.schedule, color: goldColor, size: 20),
@@ -606,6 +777,11 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                                 Text('In: $clockIn | Out: $clockOut', style: const TextStyle(color: Colors.white54, fontSize: 11)),
                               ],
                             ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: stateColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: stateColor)),
+                            child: Text(state.replaceAll('_', ' '), style: TextStyle(color: stateColor, fontSize: 10, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -639,7 +815,23 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
         ),
         Expanded(
           child: _leaves.isEmpty
-              ? const Center(child: Text('No Leave Requests Submitted', style: TextStyle(color: Colors.white54)))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.event_note_outlined, size: 48, color: Colors.white24),
+                      const SizedBox(height: 12),
+                      const Text('No Leave Requests Submitted', style: TextStyle(color: Colors.white54)),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                        onPressed: _showLeaveModal,
+                        icon: const Icon(Icons.add, color: Colors.black),
+                        label: const Text('Apply Leave', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _leaves.length,

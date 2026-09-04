@@ -31,7 +31,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
   Future<void> _loadCustomerData() async {
     setState(() => _isLoading = true);
     final storedUser = await ApiService.getStoredUser();
-    final appointmentsList = await ApiService.getCustomerAppointments();
+    final appointmentsList = await ApiService.getCustomerAppointments(userParam: storedUser);
 
     if (mounted) {
       setState(() {
@@ -109,6 +109,475 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
           ),
         ),
       ),
+    );
+  }
+
+  bool _isSlotInPast(String dateStr, String timeStr) {
+    try {
+      final now = DateTime.now();
+      final dateParts = dateStr.trim().split('-');
+      if (dateParts.length < 3) return false;
+      final selectedDate = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
+      final todayDate = DateTime(now.year, now.month, now.day);
+
+      if (selectedDate.isBefore(todayDate)) return true;
+      if (selectedDate.isAfter(todayDate)) return false;
+
+      final parts = timeStr.trim().split(RegExp(r'\s+'));
+      if (parts.length < 2) return false;
+      final timeParts = parts[0].split(':');
+      int hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      final isPm = parts[1].toUpperCase() == 'PM';
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+
+      final slotTime = DateTime(now.year, now.month, now.day, hour, minute);
+      return slotTime.isBefore(now);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- MODAL: BOOK NEW APPOINTMENT ---
+  void _showBookAppointmentModal() async {
+    final nameCtrl = TextEditingController(text: _user?['name'] ?? '');
+    final phoneCtrl = TextEditingController(text: _user?['phone'] ?? '');
+    final notesCtrl = TextEditingController();
+    final dateCtrl = TextEditingController(text: DateTime.now().add(const Duration(days: 1)).toString().split(' ')[0]);
+
+    List<dynamic> fetchedServices = await ApiService.getServices();
+    List<dynamic> fetchedSpecialists = await ApiService.getSpecialists();
+
+    String selectedService = fetchedServices.isNotEmpty 
+        ? (fetchedServices[0]['name'] ?? fetchedServices[0]['title'] ?? 'Hair Cut & Styling')
+        : 'Hair Cut & Styling';
+    String selectedBranch = 'Jubilee Hills';
+    String selectedSpecialist = 'Any Available Specialist';
+    String selectedTime = '11:30 AM';
+    List<String> bookedSlots = [];
+    bool isLoadingSlots = false;
+
+    final timeOptions = ['09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'];
+    final branchOptions = ['Jubilee Hills', 'Banjara Hills', 'Gachibowli'];
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF191512),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setModalState) {
+            Future<void> refreshBookedSlots() async {
+              setModalState(() => isLoadingSlots = true);
+              final slots = await ApiService.getBookedSlots(dateCtrl.text.trim(), specialist: selectedSpecialist);
+              setModalState(() {
+                bookedSlots = slots;
+                isLoadingSlots = false;
+
+                final isCurrentPast = _isSlotInPast(dateCtrl.text.trim(), selectedTime);
+                final isCurrentBooked = bookedSlots.contains(selectedTime);
+                if (isCurrentPast || isCurrentBooked) {
+                  for (final opt in timeOptions) {
+                    if (!bookedSlots.contains(opt) && !_isSlotInPast(dateCtrl.text.trim(), opt)) {
+                      selectedTime = opt;
+                      break;
+                    }
+                  }
+                }
+              });
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Book New Appointment',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE0A96D),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white54),
+                          onPressed: () => Navigator.pop(modalCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Your Full Name *',
+                        labelStyle: TextStyle(color: Colors.white60),
+                        prefixIcon: Icon(Icons.person_outline, color: Color(0xFFE0A96D)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number *',
+                        labelStyle: TextStyle(color: Colors.white60),
+                        prefixIcon: Icon(Icons.phone_outlined, color: Color(0xFFE0A96D)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Select Service *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Builder(
+                      builder: (ctx) {
+                        final rawList = fetchedServices.isNotEmpty ? fetchedServices : [
+                          {'name': 'Hair Cut & Styling'},
+                          {'name': 'Beard Shaving'},
+                          {'name': 'Botanical Facial Spa'},
+                          {'name': 'Luxury Manicure'},
+                        ];
+                        
+                        final Set<String> uniqueTitles = {};
+                        for (final s in rawList) {
+                          final t = (s['name'] ?? s['title'] ?? '').toString().trim();
+                          if (t.isNotEmpty) uniqueTitles.add(t);
+                        }
+                        if (uniqueTitles.isEmpty) {
+                          uniqueTitles.addAll(['Hair Cut & Styling', 'Beard Shaving', 'Botanical Facial Spa', 'Luxury Manicure']);
+                        }
+                        
+                        final validTitles = uniqueTitles.toList();
+                        if (!validTitles.contains(selectedService)) {
+                          selectedService = validTitles.first;
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          initialValue: selectedService,
+                          dropdownColor: const Color(0xFF25201C),
+                          style: const TextStyle(color: Colors.white),
+                          items: validTitles.map<DropdownMenuItem<String>>((title) {
+                            return DropdownMenuItem<String>(
+                              value: title,
+                              child: Text(title),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setModalState(() => selectedService = val);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFF25201C),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Select Branch *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedBranch,
+                                dropdownColor: const Color(0xFF25201C),
+                                style: const TextStyle(color: Colors.white, fontSize: 13),
+                                items: branchOptions.map<DropdownMenuItem<String>>((b) {
+                                  return DropdownMenuItem<String>(value: b, child: Text(b));
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) setModalState(() => selectedBranch = val);
+                                },
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFF25201C),
+                                  isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Specialist', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              Builder(
+                                builder: (ctx) {
+                                  final specNames = <String>['Any Available Specialist'];
+                                  for (final spec in fetchedSpecialists) {
+                                    final name = (spec['name'] ?? spec['username'] ?? '').toString().trim();
+                                    if (name.isNotEmpty && !specNames.contains(name)) {
+                                      specNames.add(name);
+                                    }
+                                  }
+                                  if (!specNames.contains(selectedSpecialist)) {
+                                    selectedSpecialist = specNames.first;
+                                  }
+
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: selectedSpecialist,
+                                    dropdownColor: const Color(0xFF25201C),
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    items: specNames.map<DropdownMenuItem<String>>((sp) {
+                                      return DropdownMenuItem<String>(value: sp, child: Text(sp, overflow: TextOverflow.ellipsis));
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setModalState(() => selectedSpecialist = val);
+                                        refreshBookedSlots();
+                                      }
+                                    },
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFF25201C),
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Date *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: modalCtx,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime.now().add(const Duration(days: 180)),
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() {
+                                      dateCtrl.text = picked.toString().split(' ')[0];
+                                    });
+                                    refreshBookedSlots();
+                                  }
+                                },
+                                child: IgnorePointer(
+                                  child: TextField(
+                                    controller: dateCtrl,
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFF25201C),
+                                      isDense: true,
+                                      prefixIcon: const Icon(Icons.calendar_month, color: Color(0xFFE0A96D), size: 18),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Text('Select Time Slot *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        if (isLoadingSlots) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFE0A96D))),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: timeOptions.map((t) {
+                        final isPast = _isSlotInPast(dateCtrl.text.trim(), t);
+                        final isBooked = bookedSlots.contains(t);
+                        final isUnavailable = isPast || isBooked;
+                        final isSelected = t == selectedTime && !isUnavailable;
+
+                        String labelText = t;
+                        if (isBooked) labelText = '$t (Booked)';
+                        if (isPast) labelText = '$t (Past)';
+
+                        return ChoiceChip(
+                          label: Text(
+                            labelText,
+                            style: TextStyle(
+                              color: isUnavailable
+                                  ? Colors.white30
+                                  : (isSelected ? Colors.black : Colors.white),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              decoration: isUnavailable ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFFE0A96D),
+                          backgroundColor: isUnavailable
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFF25201C),
+                          onSelected: isUnavailable
+                              ? null
+                              : (val) => setModalState(() => selectedTime = t),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: const InputDecoration(
+                        labelText: 'Notes / Special Instructions (Optional)',
+                        labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                        prefixIcon: Icon(Icons.notes, color: Color(0xFFE0A96D), size: 18),
+                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE0A96D),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          final phone = phoneCtrl.text.trim();
+                          final dateStr = dateCtrl.text.trim();
+
+                          if (name.isEmpty || phone.isEmpty || dateStr.isEmpty) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(content: Text('Please enter name, phone, and appointment date')),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (_isSlotInPast(dateStr, selectedTime)) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(backgroundColor: Colors.amber, content: Text('Please select a future time slot for your appointment.')),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (bookedSlots.contains(selectedTime)) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(backgroundColor: Colors.redAccent, content: Text('This time slot is already booked. Please select another slot.')),
+                              );
+                            }
+                            return;
+                          }
+
+                          final res = await ApiService.bookAppointment(
+                            customerName: name,
+                            customerPhone: phone,
+                            customerEmail: _user?['email'],
+                            service: selectedService,
+                            branch: selectedBranch,
+                            specialistName: selectedSpecialist,
+                            appointmentDate: dateStr,
+                            appointmentTime: selectedTime,
+                            notes: notesCtrl.text.trim(),
+                          );
+
+                          if (modalCtx.mounted) {
+                            Navigator.pop(modalCtx);
+                            ScaffoldMessenger.of(modalCtx).showSnackBar(
+                              SnackBar(
+                                backgroundColor: res['success'] == true ? Colors.green[800] : Colors.red[800],
+                                content: Text(
+                                  res['success'] == true
+                                      ? 'Appointment booked successfully!'
+                                      : 'Booking Failed: ${res['message']}',
+                                ),
+                              ),
+                            );
+                            if (res['success'] == true) {
+                              _loadCustomerData();
+                            }
+                          }
+                        },
+                        child: const Text(
+                          'Confirm Booking',
+                          style: TextStyle(
+                            color: Color(0xFF13100E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -204,7 +673,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${_appointments.length} Total Appointments', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              const Text('20% VIP Discount Applied', style: TextStyle(color: Color(0xFFE0A96D), fontSize: 11, fontWeight: FontWeight.bold)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                onPressed: _showBookAppointmentModal,
+                icon: const Icon(Icons.add, color: Colors.black, size: 16),
+                label: const Text('Book New Appointment', style: TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
             ],
           ),
         ),

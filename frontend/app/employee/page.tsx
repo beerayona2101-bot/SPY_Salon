@@ -535,17 +535,62 @@ function EmployeeDashboardContent() {
     ]
   };
 
-  const getValidStatusOptions = (currentStatus: string) => {
+  const hasAppointmentStarted = (dateStr?: string, timeStr?: string) => {
+    if (!dateStr || !timeStr) return true;
+    try {
+      const now = new Date();
+      let year: number, month: number, day: number;
+      if (dateStr.includes('-')) {
+        const parts = dateStr.trim().split('T')[0].split('-');
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        day = parseInt(parts[2], 10);
+      } else {
+        const parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) return true;
+        year = parsedDate.getFullYear();
+        month = parsedDate.getMonth();
+        day = parsedDate.getDate();
+      }
+
+      const timeParts = timeStr.trim().split(/\s+/);
+      if (timeParts.length < 2) return true;
+      const clockParts = timeParts[0].split(':');
+      let hour = parseInt(clockParts[0], 10);
+      const minute = parseInt(clockParts[1], 10);
+      const isPm = timeParts[1].toUpperCase() === 'PM';
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour === 12) hour = 0;
+
+      const scheduledDateTime = new Date(year, month, day, hour, minute);
+      return now >= scheduledDateTime;
+    } catch (e) {
+      return true;
+    }
+  };
+
+  const getValidStatusOptions = (currentStatus: string, appointment?: any) => {
     const norm = (currentStatus || 'Pending').trim();
-    return STATUS_OPTIONS_CONFIG[norm] || [
+    let options = STATUS_OPTIONS_CONFIG[norm] || [
       { value: norm, label: norm },
       { value: 'Confirmed', label: 'Confirmed 🟢' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ];
+    if (appointment && !hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime)) {
+      options = options.filter(opt => opt.value !== 'Completed');
+    }
+    return options;
   };
 
   // Update Service Status (In Progress, Completed, Cancelled, Staff_Accepted, Staff_Rejected)
   const handleUpdateStatus = async (id: string, newStatus: string, rejectionReason?: string) => {
+    if (newStatus === 'Completed') {
+      const app = appointments.find(a => a._id === id);
+      if (app && !hasAppointmentStarted(app.appointmentDate, app.appointmentTime)) {
+        showToast(`Cannot mark appointment as Completed before its scheduled time (${app.appointmentDate} ${app.appointmentTime}).`, 'error');
+        return;
+      }
+    }
     try {
       const res = await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
@@ -565,13 +610,25 @@ function EmployeeDashboardContent() {
   };
 
   const handleMarkPaymentPaid = async (id: string) => {
+    const app = appointments.find(a => a._id === id);
+    const canComplete = app ? hasAppointmentStarted(app.appointmentDate, app.appointmentTime) : true;
+    const updateBody: any = { paymentStatus: 'Paid', paymentMethod: 'Cash' };
+    if (canComplete) {
+      updateBody.status = 'Completed';
+    }
     try {
-      await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
+      const res = await apiFetch(`${API_BASE_URL}/employee/appointments/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentStatus: 'Paid', paymentMethod: 'Cash', status: 'Completed' })
+        body: JSON.stringify(updateBody)
       });
-      setAppointments(appointments.map(a => a._id === id ? { ...a, paymentStatus: 'Paid', status: 'Completed' } : a));
+      const data = await res.json();
+      if (res.ok && data.data) {
+        setAppointments(appointments.map(a => a._id === id ? { ...a, ...data.data } : a));
+        showToast(canComplete ? 'Payment marked as Paid & Appointment Completed!' : 'Payment marked as Paid!', 'success');
+      } else {
+        showToast(data.message || 'Failed to update payment status.', 'error');
+      }
     } catch (e) {
       fetchEmployeeData();
     }
@@ -1331,7 +1388,7 @@ function EmployeeDashboardContent() {
                           disabled={['Completed', 'Cancelled', 'No Show'].includes(app.status)}
                           className="w-[130px] bg-dark-800 text-xs font-bold text-white px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
                         >
-                          {getValidStatusOptions(app.status).map(opt => (
+                          {getValidStatusOptions(app.status, app).map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
                         </select>

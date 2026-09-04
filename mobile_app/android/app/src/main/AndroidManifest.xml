@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="spy_salon_mobile"
+        android:label="Spy_Salon"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

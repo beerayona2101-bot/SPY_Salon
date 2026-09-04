@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -297,7 +298,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         controller: priceCtrl,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'Price (\$) *', prefixIcon: Icon(Icons.attach_money, color: Color(0xFFE0A96D))),
+                        decoration: const InputDecoration(labelText: 'Price (₹) *', prefixIcon: Icon(Icons.currency_rupee, color: Color(0xFFE0A96D))),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -306,7 +307,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         controller: discountCtrl,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'Discount Price (\$)', prefixIcon: Icon(Icons.local_offer_outlined, color: Color(0xFFE0A96D))),
+                        decoration: const InputDecoration(labelText: 'Discount Price (₹)', prefixIcon: Icon(Icons.local_offer_outlined, color: Color(0xFFE0A96D))),
                       ),
                     ),
                   ],
@@ -500,7 +501,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         controller: salaryCtrl,
                         keyboardType: TextInputType.number,
                         style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(labelText: 'Base Fixed Salary (₹ / \$) *', hintText: '25000', prefixIcon: Icon(Icons.payments_outlined, color: Color(0xFFE0A96D))),
+                        decoration: const InputDecoration(labelText: 'Base Fixed Salary (₹) *', hintText: '25000', prefixIcon: Icon(Icons.payments_outlined, color: Color(0xFFE0A96D))),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -678,7 +679,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final amountCtrl = TextEditingController();
     final catCtrl = TextEditingController(text: 'General');
     final descCtrl = TextEditingController();
-    String type = 'income';
+    String type = 'Credited';
 
     showModalBottomSheet(
       context: context,
@@ -704,19 +705,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Income'),
-                      selected: type == 'income',
+                      label: const Text('Income (Credited)'),
+                      selected: type == 'Credited',
                       selectedColor: Colors.greenAccent,
-                      onSelected: (val) => setModalState(() => type = 'income'),
+                      labelStyle: TextStyle(color: type == 'Credited' ? Colors.black : Colors.white, fontWeight: FontWeight.bold),
+                      onSelected: (val) => setModalState(() => type = 'Credited'),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Expense'),
-                      selected: type == 'expense',
+                      label: const Text('Expense (Debited)'),
+                      selected: type == 'Debited',
                       selectedColor: Colors.redAccent,
-                      onSelected: (val) => setModalState(() => type = 'expense'),
+                      labelStyle: TextStyle(color: type == 'Debited' ? Colors.white : Colors.white, fontWeight: FontWeight.bold),
+                      onSelected: (val) => setModalState(() => type = 'Debited'),
                     ),
                   ),
                 ],
@@ -726,13 +729,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 controller: amountCtrl,
                 keyboardType: TextInputType.number,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Amount (\$)', prefixIcon: Icon(Icons.attach_money, color: Color(0xFFE0A96D))),
+                decoration: const InputDecoration(labelText: 'Amount (₹) *', prefixIcon: Icon(Icons.currency_rupee, color: Color(0xFFE0A96D))),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: catCtrl,
                 style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(labelText: 'Category (e.g. Sales, Supplies)', prefixIcon: Icon(Icons.category, color: Color(0xFFE0A96D))),
+                decoration: const InputDecoration(labelText: 'Category (e.g. Sales, Supplies) *', prefixIcon: Icon(Icons.category, color: Color(0xFFE0A96D))),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -747,15 +750,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE0A96D)),
                   onPressed: () async {
-                    if (amountCtrl.text.trim().isEmpty) return;
-                    await ApiService.createTransaction({
+                    final rawAmt = amountCtrl.text.trim();
+                    if (rawAmt.isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Please enter transaction amount'), backgroundColor: Colors.amber),
+                      );
+                      return;
+                    }
+                    final amt = double.tryParse(rawAmt);
+                    if (amt == null || amt <= 0) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid positive amount'), backgroundColor: Colors.amber),
+                      );
+                      return;
+                    }
+
+                    final success = await ApiService.createTransaction({
                       'type': type,
-                      'category': catCtrl.text.trim(),
-                      'amount': double.tryParse(amountCtrl.text.trim()) ?? 0.0,
+                      'category': catCtrl.text.trim().isNotEmpty ? catCtrl.text.trim() : 'General',
+                      'amount': amt,
                       'description': descCtrl.text.trim(),
                     });
+
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text(success ? 'Transaction logged successfully!' : 'Failed to log transaction'),
+                          backgroundColor: success ? Colors.green : Colors.redAccent,
+                        ),
+                      );
                       _loadAllAdminData();
                     }
                   },
@@ -781,7 +805,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          },
         ),
         title: Row(
           children: [
@@ -812,6 +846,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             onPressed: _loadAllAdminData,
             tooltip: 'Refresh Admin Data',
           ),
+          IconButton(
+            icon: const Icon(Icons.home_outlined, color: goldColor),
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            tooltip: 'Back to Home',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent),
+            onPressed: () async {
+              await ApiService.logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            tooltip: 'Sign Out',
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -826,7 +889,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             Tab(text: 'SERVICES'),
             Tab(text: 'STAFF & CLIENTS'),
             Tab(text: 'FINANCE'),
-            Tab(text: 'LEADS'),
+            Tab(text: 'ENQUIRIES'),
           ],
         ),
       ),
@@ -852,7 +915,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final totalAppts = _appointments.isNotEmpty ? _appointments.length : (_analytics['totalAppointments'] ?? 48);
     final totalServices = _services.isNotEmpty ? _services.length : (_analytics['totalServices'] ?? 12);
     final totalClients = _customers.isNotEmpty ? _customers.length : (_analytics['totalCustomers'] ?? 35);
-    final totalLeads = _enquiries.length;
+    final totalEnquiries = _enquiries.length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -869,11 +932,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: [
-              _buildStatCard('Total Revenue', '\$$revenue', Icons.monetization_on_outlined, Colors.greenAccent, cardBg),
+              _buildStatCard('Total Revenue', '₹$revenue', Icons.monetization_on_outlined, Colors.greenAccent, cardBg),
               _buildStatCard('Bookings', '$totalAppts', Icons.calendar_month_outlined, goldColor, cardBg),
               _buildStatCard('Active Services', '$totalServices', Icons.dry_cleaning_rounded, Colors.purpleAccent, cardBg),
               _buildStatCard('Registered Clients', '$totalClients', Icons.people_outline, Colors.blueAccent, cardBg),
-              _buildStatCard('New Leads', '$totalLeads', Icons.mark_email_unread_outlined, Colors.amberAccent, cardBg),
+              _buildStatCard('Enquiries', '$totalEnquiries', Icons.mark_email_unread_outlined, Colors.amberAccent, cardBg),
             ],
           ),
           const SizedBox(height: 24),
@@ -906,12 +969,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 onPressed: _showAddCustomerModal,
                 icon: Icon(Icons.person_add_alt, color: goldColor),
                 label: const Text('Add Customer', style: TextStyle(color: Colors.white)),
-              ),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(side: BorderSide(color: goldColor)),
-                onPressed: _showAddTransactionModal,
-                icon: Icon(Icons.receipt_long, color: goldColor),
-                label: const Text('Log Transaction', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -1097,7 +1154,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     final item = _services[index];
                     final id = item['_id'] ?? item['id'] ?? '';
                     final name = item['name'] ?? item['title'] ?? 'Service';
-                    final price = item['price'] != null ? '\$${item['price']}' : '\$50';
+                    final price = item['price'] != null ? '₹${item['price']}' : '₹50';
                     final category = item['category'] ?? 'Beauty';
                     final duration = item['durationMinutes'] != null ? '${item['durationMinutes']} mins' : (item['duration'] ?? '60 mins');
 
@@ -1296,6 +1353,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   // --- TAB 5: FINANCE LEDGER ---
   Widget _buildFinanceTab(Color goldColor, Color cardBg) {
+    double totalIncome = 0;
+    double totalExpenses = 0;
+
+    for (final tx in _transactions) {
+      final typeStr = (tx['type'] ?? 'income').toString().toLowerCase();
+      final amt = double.tryParse((tx['amount'] ?? 0).toString()) ?? 0.0;
+      if (typeStr == 'income' || typeStr == 'credited') {
+        totalIncome += amt;
+      } else {
+        totalExpenses += amt;
+      }
+    }
+
+    if (_transactions.isEmpty) {
+      totalIncome = 18500;
+      totalExpenses = 4220;
+    }
+
+    final netBalance = totalIncome - totalExpenses;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1308,17 +1385,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: goldColor.withValues(alpha: 0.3)),
             ),
-            child: const Column(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Financial Ledger Summary', style: TextStyle(color: Colors.white60, fontSize: 13)),
-                SizedBox(height: 6),
-                Text('\$14,280.00', style: TextStyle(color: Colors.greenAccent, fontSize: 28, fontWeight: FontWeight.bold)),
-                SizedBox(height: 12),
+                const Text('Financial Ledger Summary', style: TextStyle(color: Colors.white60, fontSize: 13)),
+                const SizedBox(height: 6),
+                Text('₹${netBalance.toStringAsFixed(2)}', style: TextStyle(color: netBalance >= 0 ? Colors.greenAccent : Colors.redAccent, fontSize: 28, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Income', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('\$18,500.00', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))])),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Expenses', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('\$4,220.00', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Income', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('₹${totalIncome.toStringAsFixed(2)}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Expenses', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('₹${totalExpenses.toStringAsFixed(2)}', style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))])),
                   ],
                 ),
               ],
@@ -1347,8 +1424,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   itemBuilder: (ctx, i) {
                     final tx = _transactions[i];
                     final id = tx['_id'] ?? tx['id'] ?? '';
-                    final isIncome = (tx['type'] ?? 'income') == 'income';
-                    final amount = tx['amount'] != null ? '\$${tx['amount']}' : '\$100';
+                    final typeStr = (tx['type'] ?? 'income').toString().toLowerCase();
+                    final isIncome = typeStr == 'income' || typeStr == 'credited';
+                    final amountVal = tx['amount'] != null ? tx['amount'].toString() : '0';
+                    final amount = '₹$amountVal';
+
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),
@@ -1384,7 +1464,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  // --- TAB 6: ENQUIRIES / LEAD DESK ---
+  // --- TAB 6: ENQUIRIES DESK ---
   Widget _buildEnquiriesTab(Color goldColor, Color cardBg) {
     if (_enquiries.isEmpty) {
       return Center(

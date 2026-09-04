@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../services/api_service.dart';
+import 'admin_dashboard_screen.dart';
+import 'employee_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -75,7 +78,35 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         if (res['success'] == true) {
           _showSnackBar(res['message'], isError: false);
           widget.onLoginSuccess();
-          Navigator.pop(context);
+
+          final user = res['user'] ?? await ApiService.getStoredUser();
+          final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+          final isAdmin = role == 'admin' || role == 'manager';
+          final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+          if (isAdmin && mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+              (route) => false,
+            );
+          } else if (isStaff && mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+              (route) => false,
+            );
+          } else if (mounted) {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          }
         } else {
           _showSnackBar(res['message']);
         }
@@ -96,7 +127,35 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         if (res['success'] == true) {
           _showSnackBar(res['message'], isError: false);
           widget.onLoginSuccess();
-          Navigator.pop(context);
+
+          final user = res['user'] ?? await ApiService.getStoredUser();
+          final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+          final isAdmin = role == 'admin' || role == 'manager';
+          final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+          if (isAdmin && mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+              (route) => false,
+            );
+          } else if (isStaff && mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+              (route) => false,
+            );
+          } else if (mounted) {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          }
         } else {
           _showSnackBar(res['message']);
         }
@@ -151,7 +210,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (res['success'] == true) {
         _showSnackBar(res['message'], isError: false);
         widget.onLoginSuccess();
-        Navigator.pop(context);
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+            (route) => false,
+          );
+        }
       } else {
         _showSnackBar(res['message']);
       }
@@ -180,7 +247,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                (route) => false,
+              );
+            }
+          },
         ),
         title: Row(
           children: [

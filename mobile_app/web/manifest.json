@@ -1,6 +1,6 @@
 {
-    "name": "spy_salon_mobile",
-    "short_name": "spy_salon_mobile",
+    "name": "Spy_Salon",
+    "short_name": "Spy_Salon",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

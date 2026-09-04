@@ -1356,16 +1356,61 @@ function AdminDashboardContent() {
     ]
   };
 
-  const getValidStatusOptions = (currentStatus: string) => {
+  const hasAppointmentStarted = (dateStr?: string, timeStr?: string) => {
+    if (!dateStr || !timeStr) return true;
+    try {
+      const now = new Date();
+      let year: number, month: number, day: number;
+      if (dateStr.includes('-')) {
+        const parts = dateStr.trim().split('T')[0].split('-');
+        year = parseInt(parts[0], 10);
+        month = parseInt(parts[1], 10) - 1;
+        day = parseInt(parts[2], 10);
+      } else {
+        const parsedDate = new Date(dateStr);
+        if (isNaN(parsedDate.getTime())) return true;
+        year = parsedDate.getFullYear();
+        month = parsedDate.getMonth();
+        day = parsedDate.getDate();
+      }
+
+      const timeParts = timeStr.trim().split(/\s+/);
+      if (timeParts.length < 2) return true;
+      const clockParts = timeParts[0].split(':');
+      let hour = parseInt(clockParts[0], 10);
+      const minute = parseInt(clockParts[1], 10);
+      const isPm = timeParts[1].toUpperCase() === 'PM';
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour === 12) hour = 0;
+
+      const scheduledDateTime = new Date(year, month, day, hour, minute);
+      return now >= scheduledDateTime;
+    } catch (e) {
+      return true;
+    }
+  };
+
+  const getValidStatusOptions = (currentStatus: string, appointment?: any) => {
     const norm = (currentStatus || 'Pending').trim();
-    return STATUS_OPTIONS_CONFIG[norm] || [
+    let options = STATUS_OPTIONS_CONFIG[norm] || [
       { value: norm, label: norm },
       { value: 'Confirmed', label: 'Confirmed 🟢' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ];
+    if (appointment && !hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime)) {
+      options = options.filter(opt => opt.value !== 'Completed');
+    }
+    return options;
   };
 
   const handleUpdateAppStatus = async (id: string, newStatus: string) => {
+    if (newStatus === 'Completed') {
+      const app = appointments.find(a => a._id === id);
+      if (app && !hasAppointmentStarted(app.appointmentDate, app.appointmentTime)) {
+        showToast(`Cannot mark appointment as Completed before its scheduled time (${app.appointmentDate} ${app.appointmentTime}).`, 'error');
+        return;
+      }
+    }
     try {
       const res = await apiFetch(`${API_BASE_URL}/admin/appointments/${id}`, {
         method: 'PUT',
@@ -4484,7 +4529,7 @@ function AdminDashboardContent() {
                             disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
                             className="w-[130px] bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
                           >
-                            {getValidStatusOptions(a.status).map(opt => (
+                            {getValidStatusOptions(a.status, a).map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>

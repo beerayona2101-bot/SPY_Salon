@@ -16,7 +16,7 @@ class SpySalonApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SPY Salon',
+      title: 'Spy_Salon',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
@@ -65,6 +65,32 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentUser = user;
       });
+      if (user != null) {
+        final role = (user['role'] ?? 'customer').toString().toLowerCase();
+        final isAdmin = role == 'admin' || role == 'manager';
+        final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+        if (isAdmin) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+            }
+          });
+        } else if (isStaff) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+                (route) => false,
+              );
+            }
+          });
+        }
+      }
     }
   }
 
@@ -90,9 +116,10 @@ class _HomeScreenState extends State<HomeScreen> {
         MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
       );
     } else if (role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber') {
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+        (route) => false,
       );
     } else {
       Navigator.push(
@@ -119,9 +146,8 @@ class _HomeScreenState extends State<HomeScreen> {
             : (health['error'] ?? 'Backend unreachable');
       });
 
-      if (_isBackendConnected) {
-        _fetchBackendData();
-      }
+      // Always load catalog data (uses live API if connected, fallback demo data if offline)
+      _fetchBackendData();
     }
   }
 
@@ -148,60 +174,118 @@ class _HomeScreenState extends State<HomeScreen> {
     final controller = TextEditingController(text: ApiConfig.baseUrl);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF191512),
-        title: const Text('Backend Server Settings', style: TextStyle(color: Color(0xFFE0A96D))),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Specify your backend server address:',
-              style: TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'e.g. http://192.168.1.3:5000',
-                hintStyle: const TextStyle(color: Colors.white30),
-                filled: true,
-                fillColor: const Color(0xFF25201C),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFFE0A96D)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF191512),
+          title: const Text('Backend Server Settings', style: TextStyle(color: Color(0xFFE0A96D))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Specify your backend server address:',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'e.g. http://10.0.2.2:5000',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF25201C),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFE0A96D)),
+                  ),
                 ),
               ),
+              const SizedBox(height: 14),
+              const Text(
+                'Quick Presets:',
+                style: TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ActionChip(
+                    backgroundColor: const Color(0xFF25201C),
+                    label: const Text('Android Emulator', style: TextStyle(color: Color(0xFFE0A96D), fontSize: 11)),
+                    onPressed: () {
+                      controller.text = 'http://10.0.2.2:5000';
+                    },
+                  ),
+                  ActionChip(
+                    backgroundColor: const Color(0xFF25201C),
+                    label: const Text('Localhost', style: TextStyle(color: Color(0xFFE0A96D), fontSize: 11)),
+                    onPressed: () {
+                      controller.text = 'http://localhost:5000';
+                    },
+                  ),
+                  ActionChip(
+                    backgroundColor: const Color(0xFF25201C),
+                    label: const Text('LAN Wi-Fi (192.168.1.6)', style: TextStyle(color: Color(0xFFE0A96D), fontSize: 11)),
+                    onPressed: () {
+                      controller.text = 'http://192.168.1.6:5000';
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Candidate Addresses:\n• Physical Phone: http://192.168.1.3:5000\n• Android Emulator: http://10.0.2.2:5000\n• Web / Localhost: http://localhost:5000',
-              style: TextStyle(color: Colors.white38, fontSize: 11),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE0A96D),
+              ),
+              onPressed: () async {
+                final targetUrl = controller.text.trim();
+                if (targetUrl.isNotEmpty) {
+                  await ApiConfig.setActiveBaseUrl(targetUrl);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  _checkBackendAndLoadData();
+                }
+              },
+              child: const Text('Save & Connect', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE0A96D),
-            ),
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                ApiConfig.setActiveBaseUrl(controller.text.trim());
-                Navigator.pop(ctx);
-                _checkBackendAndLoadData();
-              }
-            },
-            child: const Text('Save & Reconnect', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-          ),
-        ],
       ),
     );
+  }
+
+  bool _isSlotInPast(String dateStr, String timeStr) {
+    try {
+      final now = DateTime.now();
+      final dateParts = dateStr.trim().split('-');
+      if (dateParts.length < 3) return false;
+      final selectedDate = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
+      final todayDate = DateTime(now.year, now.month, now.day);
+
+      if (selectedDate.isBefore(todayDate)) return true;
+      if (selectedDate.isAfter(todayDate)) return false;
+
+      final parts = timeStr.trim().split(RegExp(r'\s+'));
+      if (parts.length < 2) return false;
+      final timeParts = parts[0].split(':');
+      int hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+      final isPm = parts[1].toUpperCase() == 'PM';
+      if (isPm && hour < 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+
+      final slotTime = DateTime(now.year, now.month, now.day, hour, minute);
+      return slotTime.isBefore(now);
+    } catch (e) {
+      return false;
+    }
   }
 
   void _showBookingModal() {
@@ -228,9 +312,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final nameCtrl = TextEditingController(text: _currentUser?['name'] ?? '');
     final phoneCtrl = TextEditingController(text: _currentUser?['phone'] ?? '');
+    final notesCtrl = TextEditingController();
+    final dateCtrl = TextEditingController(text: DateTime.now().add(const Duration(days: 1)).toString().split(' ')[0]);
+
     String selectedService = _services.isNotEmpty 
-        ? (_services[0]['name'] ?? _services[0]['title'] ?? 'Hair Styling & Cut')
+        ? (_services[0]['name'] ?? _services[0]['title'] ?? 'Hair Cut & Styling')
         : 'Hair Cut & Styling';
+    String selectedBranch = 'Jubilee Hills';
+    String selectedSpecialist = 'Any Available Specialist';
+    String selectedTime = '11:30 AM';
+    List<String> bookedSlots = [];
+    bool isLoadingSlots = false;
+
+    final timeOptions = ['09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'];
+    final branchOptions = ['Jubilee Hills', 'Banjara Hills', 'Gachibowli'];
 
     showModalBottomSheet(
       context: context,
@@ -240,182 +335,408 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (modalCtx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'Book Appointment',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFE0A96D),
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54),
-                    onPressed: () => Navigator.pop(modalCtx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameCtrl,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Your Full Name',
-                  labelStyle: TextStyle(color: Colors.white60),
-                  prefixIcon: Icon(Icons.person_outline, color: Color(0xFFE0A96D)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Phone Number',
-                  labelStyle: TextStyle(color: Colors.white60),
-                  prefixIcon: Icon(Icons.phone_outlined, color: Color(0xFFE0A96D)),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white24),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text('Select Service:', style: TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(height: 8),
-              StatefulBuilder(
-                builder: (ctx, setModalState) {
-                  final rawList = _services.isNotEmpty ? _services : [
-                    {'name': 'Hair Cut & Styling'},
-                    {'name': 'Botanical Facial Spa'},
-                    {'name': 'Luxury Manicure'},
-                  ];
-                  
-                  final Set<String> uniqueTitles = {};
-                  for (final s in rawList) {
-                    final t = (s['name'] ?? s['title'] ?? '').toString().trim();
-                    if (t.isNotEmpty) uniqueTitles.add(t);
-                  }
-                  if (uniqueTitles.isEmpty) {
-                    uniqueTitles.addAll(['Hair Cut & Styling', 'Botanical Facial Spa', 'Luxury Manicure']);
-                  }
-                  
-                  final validTitles = uniqueTitles.toList();
-                  if (!validTitles.contains(selectedService)) {
-                    selectedService = validTitles.first;
-                  }
-                  
-                  return DropdownButtonFormField<String>(
-                    initialValue: selectedService,
-                    dropdownColor: const Color(0xFF25201C),
-                    style: const TextStyle(color: Colors.white),
-                    items: validTitles.map<DropdownMenuItem<String>>((title) {
-                      return DropdownMenuItem<String>(
-                        value: title,
-                        child: Text(title),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() {
-                          selectedService = val;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      filled: true,
-                      fillColor: const Color(0xFF25201C),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFE0A96D),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  onPressed: () async {
-                    final name = nameCtrl.text.trim();
-                    final phone = phoneCtrl.text.trim();
+        return StatefulBuilder(
+          builder: (dialogCtx, setModalState) {
+            Future<void> refreshBookedSlots() async {
+              setModalState(() => isLoadingSlots = true);
+              final slots = await ApiService.getBookedSlots(dateCtrl.text.trim(), specialist: selectedSpecialist);
+              setModalState(() {
+                bookedSlots = slots;
+                isLoadingSlots = false;
 
-                    if (name.isEmpty || phone.isEmpty) {
-                      if (modalCtx.mounted) {
-                        ScaffoldMessenger.of(modalCtx).showSnackBar(
-                          const SnackBar(content: Text('Please enter name and phone number')),
-                        );
-                      }
-                      return;
+                final isCurrentPast = _isSlotInPast(dateCtrl.text.trim(), selectedTime);
+                final isCurrentBooked = bookedSlots.contains(selectedTime);
+                if (isCurrentPast || isCurrentBooked) {
+                  for (final opt in timeOptions) {
+                    if (!bookedSlots.contains(opt) && !_isSlotInPast(dateCtrl.text.trim(), opt)) {
+                      selectedTime = opt;
+                      break;
                     }
+                  }
+                }
+              });
+            }
 
-                    final res = await ApiService.bookAppointment(
-                      customerName: name,
-                      customerPhone: phone,
-                      service: selectedService,
-                      appointmentDate: DateTime.now().add(const Duration(days: 1)).toString().split(' ')[0],
-                      appointmentTime: '11:00 AM',
-                    );
-
-                    if (modalCtx.mounted) {
-                      Navigator.pop(modalCtx);
-                      ScaffoldMessenger.of(modalCtx).showSnackBar(
-                        SnackBar(
-                          backgroundColor: res['success'] ? Colors.green[800] : Colors.red[800],
-                          content: Text(
-                            res['success']
-                                ? 'Appointment booked successfully via Backend API!'
-                                : 'Booking Failed: ${res['message']}',
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                      );
-                    }
-                  },
-                  child: const Text(
-                    'Confirm Booking',
-                    style: TextStyle(
-                      color: Color(0xFF13100E),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Book Appointment',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFE0A96D),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white54),
+                          onPressed: () => Navigator.pop(modalCtx),
+                        ),
+                      ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Your Full Name *',
+                        labelStyle: TextStyle(color: Colors.white60),
+                        prefixIcon: Icon(Icons.person_outline, color: Color(0xFFE0A96D)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: const InputDecoration(
+                        labelText: 'Phone Number *',
+                        labelStyle: TextStyle(color: Colors.white60),
+                        prefixIcon: Icon(Icons.phone_outlined, color: Color(0xFFE0A96D)),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white24),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Select Service *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Builder(
+                      builder: (ctx) {
+                        final rawList = _services.isNotEmpty ? _services : [
+                          {'name': 'Hair Cut & Styling'},
+                          {'name': 'Beard Shaving'},
+                          {'name': 'Botanical Facial Spa'},
+                          {'name': 'Luxury Manicure'},
+                        ];
+                        
+                        final Set<String> uniqueTitles = {};
+                        for (final s in rawList) {
+                          final t = (s['name'] ?? s['title'] ?? '').toString().trim();
+                          if (t.isNotEmpty) uniqueTitles.add(t);
+                        }
+                        if (uniqueTitles.isEmpty) {
+                          uniqueTitles.addAll(['Hair Cut & Styling', 'Beard Shaving', 'Botanical Facial Spa', 'Luxury Manicure']);
+                        }
+                        
+                        final validTitles = uniqueTitles.toList();
+                        if (!validTitles.contains(selectedService)) {
+                          selectedService = validTitles.first;
+                        }
+                        
+                        return DropdownButtonFormField<String>(
+                          initialValue: selectedService,
+                          dropdownColor: const Color(0xFF25201C),
+                          style: const TextStyle(color: Colors.white),
+                          items: validTitles.map<DropdownMenuItem<String>>((title) {
+                            return DropdownMenuItem<String>(
+                              value: title,
+                              child: Text(title),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setModalState(() => selectedService = val);
+                            }
+                          },
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: const Color(0xFF25201C),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Select Branch *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              DropdownButtonFormField<String>(
+                                initialValue: selectedBranch,
+                                dropdownColor: const Color(0xFF25201C),
+                                style: const TextStyle(color: Colors.white, fontSize: 13),
+                                items: branchOptions.map<DropdownMenuItem<String>>((b) {
+                                  return DropdownMenuItem<String>(value: b, child: Text(b));
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) setModalState(() => selectedBranch = val);
+                                },
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFF25201C),
+                                  isDense: true,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Specialist', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              Builder(
+                                builder: (ctx) {
+                                  final specNames = <String>['Any Available Specialist'];
+                                  for (final spec in _specialists) {
+                                    final name = (spec['name'] ?? spec['username'] ?? '').toString().trim();
+                                    if (name.isNotEmpty && !specNames.contains(name)) {
+                                      specNames.add(name);
+                                    }
+                                  }
+                                  if (!specNames.contains(selectedSpecialist)) {
+                                    selectedSpecialist = specNames.first;
+                                  }
+
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: selectedSpecialist,
+                                    dropdownColor: const Color(0xFF25201C),
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    items: specNames.map<DropdownMenuItem<String>>((sp) {
+                                      return DropdownMenuItem<String>(value: sp, child: Text(sp, overflow: TextOverflow.ellipsis));
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setModalState(() => selectedSpecialist = val);
+                                        refreshBookedSlots();
+                                      }
+                                    },
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFF25201C),
+                                      isDense: true,
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Date *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 6),
+                              InkWell(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: modalCtx,
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime.now().add(const Duration(days: 180)),
+                                  );
+                                  if (picked != null) {
+                                    setModalState(() {
+                                      dateCtrl.text = picked.toString().split(' ')[0];
+                                    });
+                                    refreshBookedSlots();
+                                  }
+                                },
+                                child: IgnorePointer(
+                                  child: TextField(
+                                    controller: dateCtrl,
+                                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFF25201C),
+                                      isDense: true,
+                                      prefixIcon: const Icon(Icons.calendar_month, color: Color(0xFFE0A96D), size: 18),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Text('Select Time Slot *', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        if (isLoadingSlots) ...[
+                          const SizedBox(width: 8),
+                          const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFE0A96D))),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: timeOptions.map((t) {
+                        final isPast = _isSlotInPast(dateCtrl.text.trim(), t);
+                        final isBooked = bookedSlots.contains(t);
+                        final isUnavailable = isPast || isBooked;
+                        final isSelected = t == selectedTime && !isUnavailable;
+
+                        String labelText = t;
+                        if (isBooked) labelText = '$t (Booked)';
+                        if (isPast) labelText = '$t (Past)';
+
+                        return ChoiceChip(
+                          label: Text(
+                            labelText,
+                            style: TextStyle(
+                              color: isUnavailable
+                                  ? Colors.white30
+                                  : (isSelected ? Colors.black : Colors.white),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              decoration: isUnavailable ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          selected: isSelected,
+                          selectedColor: const Color(0xFFE0A96D),
+                          backgroundColor: isUnavailable
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFF25201C),
+                          onSelected: isUnavailable
+                              ? null
+                              : (val) => setModalState(() => selectedTime = t),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notesCtrl,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: const InputDecoration(
+                        labelText: 'Notes / Special Instructions (Optional)',
+                        labelStyle: TextStyle(color: Colors.white54, fontSize: 12),
+                        prefixIcon: Icon(Icons.notes, color: Color(0xFFE0A96D), size: 18),
+                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFE0A96D),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          final phone = phoneCtrl.text.trim();
+                          final dateStr = dateCtrl.text.trim();
+
+                          if (name.isEmpty || phone.isEmpty || dateStr.isEmpty) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(content: Text('Please enter name, phone, and appointment date')),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (_isSlotInPast(dateStr, selectedTime)) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(backgroundColor: Colors.amber, content: Text('Please select a future time slot for your appointment.')),
+                              );
+                            }
+                            return;
+                          }
+
+                          if (bookedSlots.contains(selectedTime)) {
+                            if (modalCtx.mounted) {
+                              ScaffoldMessenger.of(modalCtx).showSnackBar(
+                                const SnackBar(backgroundColor: Colors.redAccent, content: Text('This time slot is already booked. Please select another slot.')),
+                              );
+                            }
+                            return;
+                          }
+
+                          final res = await ApiService.bookAppointment(
+                            customerName: name,
+                            customerPhone: phone,
+                            customerEmail: _currentUser?['email'],
+                            service: selectedService,
+                            branch: selectedBranch,
+                            specialistName: selectedSpecialist,
+                            appointmentDate: dateStr,
+                            appointmentTime: selectedTime,
+                            notes: notesCtrl.text.trim(),
+                          );
+
+                          if (modalCtx.mounted) {
+                            Navigator.pop(modalCtx);
+                            ScaffoldMessenger.of(modalCtx).showSnackBar(
+                              SnackBar(
+                                backgroundColor: res['success'] == true ? Colors.green[800] : Colors.red[800],
+                                content: Text(
+                                  res['success'] == true
+                                      ? 'Appointment booked successfully!'
+                                      : 'Booking Failed: ${res['message']}',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: const Text(
+                          'Confirm Booking',
+                          style: TextStyle(
+                            color: Color(0xFF13100E),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -814,19 +1135,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const Divider(color: Colors.white10),
 
-            // Services Section Loaded from Backend REST API
+            // Services Section Loaded from Backend REST API or Offline Demo Fallback
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Backend Services Catalog',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: goldColor,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Services Catalog',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: goldColor,
+                        ),
+                      ),
+                      if (!_isBackendConnected) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.amber, width: 0.8),
+                          ),
+                          child: const Text(
+                            'OFFLINE DEMO',
+                            style: TextStyle(color: Colors.amber, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   if (_isLoadingData)
                     const SizedBox(
@@ -868,7 +1208,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (ctx, index) {
                   final service = _services[index];
                   final name = service['name'] ?? service['title'] ?? 'Service';
-                  final price = service['price'] != null ? '\$${service['price']}' : '\$50+';
+                  final rawPrice = service['price']?.toString() ?? '50+';
+                  final price = (rawPrice.startsWith('₹') || rawPrice.startsWith('\$'))
+                      ? rawPrice
+                      : '₹$rawPrice';
                   final category = service['category'] ?? 'Beauty';
 
                   return Container(

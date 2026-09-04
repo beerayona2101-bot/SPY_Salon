@@ -21,7 +21,39 @@ const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const { broadcastEvent } = require('../utils/socket');
 const { invalidateCache } = require('../middlewares/cacheMiddleware');
-const { isPastDateTimeKolkata } = require('../utils/timezoneHelper');
+function hasAppointmentStarted(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return true;
+  try {
+    const now = new Date();
+    let year, month, day;
+    if (dateStr.includes('-')) {
+      const parts = dateStr.trim().split('T')[0].split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      day = parseInt(parts[2], 10);
+    } else {
+      const parsedDate = new Date(dateStr);
+      if (isNaN(parsedDate.getTime())) return true;
+      year = parsedDate.getFullYear();
+      month = parsedDate.getMonth();
+      day = parsedDate.getDate();
+    }
+
+    const timeParts = timeStr.trim().split(/\s+/);
+    if (timeParts.length < 2) return true;
+    const clockParts = timeParts[0].split(':');
+    let hour = parseInt(clockParts[0], 10);
+    const minute = parseInt(clockParts[1], 10);
+    const isPm = timeParts[1].toUpperCase() === 'PM';
+    if (isPm && hour < 12) hour += 12;
+    if (!isPm && hour === 12) hour = 0;
+
+    const scheduledDateTime = new Date(year, month, day, hour, minute);
+    return now >= scheduledDateTime;
+  } catch (e) {
+    return true;
+  }
+}
 
 class AdminService {
   // Summary Analytics Loading (Calculated directly from database)
@@ -786,6 +818,15 @@ class AdminService {
       throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${targetStatus}'. Allowed options: ${allowed.join(', ')}`);
     }
 
+    if (targetStatus === 'Completed') {
+      const hasStarted = hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime);
+      if (!hasStarted) {
+        throw ApiError.badRequest(
+          `Cannot mark appointment as Completed before its scheduled start time (${appointment.appointmentDate} at ${appointment.appointmentTime}).`
+        );
+      }
+    }
+
     // Atomic conditional state update in MongoDB
     const updateDoc = {
       status: targetStatus,
@@ -805,8 +846,12 @@ class AdminService {
       updateDoc.paymentStatus = paymentStatus;
     }
 
+    if (updaterInfo.specialistName) {
+      updateDoc.specialistName = updaterInfo.specialistName;
+    }
+
     const updated = await Appointment.findOneAndUpdate(
-      { _id: id, status: currentStatus },
+      { _id: id },
       updateDoc,
       { new: true }
     );

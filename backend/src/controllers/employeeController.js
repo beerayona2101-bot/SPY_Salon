@@ -65,7 +65,7 @@ exports.getAssignedAppointments = async (req, res, next) => {
 exports.updateAppointmentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, paymentStatus } = req.body;
+    const { status, paymentStatus, rejectionReason } = req.body;
     const employeeName = req.user.name || 'Specialist';
 
     const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { bookingId: id };
@@ -79,15 +79,64 @@ exports.updateAppointmentStatus = async (req, res, next) => {
       throw ApiError.forbidden('You are not authorized to update this appointment.');
     }
 
+    const isRejection = status === 'Staff_Rejected' || status === 'Rejected' || Boolean(rejectionReason);
+    let targetStatus = status || appointment.status;
+    let targetSpecialistName = appointment.specialistName;
+
+    if (isRejection) {
+      targetStatus = 'Pending'; // Reassign to open Pending status for any available staff
+      targetSpecialistName = 'Any Available Specialist';
+      appointment.rejectedAt = new Date();
+      appointment.rejectionReason = rejectionReason || `Unavailable (${employeeName})`;
+      await appointment.save();
+    }
+
     const adminService = require('../services/adminService');
     const updated = await adminService.updateAppointmentStatus(
       appointment._id.toString(),
-      status || appointment.status,
+      targetStatus,
       paymentStatus || appointment.paymentStatus,
-      { name: req.user.name || 'Specialist', role: req.user.role || 'employee' }
+      { 
+        name: req.user.name || 'Specialist', 
+        role: req.user.role || 'employee',
+        specialistName: targetSpecialistName,
+        note: isRejection ? `Declined by ${employeeName} and reassigned to Any Available Specialist. Reason: ${rejectionReason || 'Staff unavailable'}` : undefined
+      }
     );
 
-    return ApiResponse.success(res, updated, 'Appointment status updated successfully');
+    if (isRejection) {
+      // Broadcast notification to ALL Employees & Admins so everyone sees the reassigned appointment
+      try {
+        const notificationController = require('./notificationController');
+        await notificationController.dispatchNotification(req.app, {
+          role: 'employee',
+          title: 'Appointment Reassigned 📢',
+          message: `Specialist ${employeeName} was unavailable for appointment #${appointment.bookingId} (${appointment.service}). It is now open to all available specialists.`,
+          type: 'appointment',
+          priority: 'high',
+          bookingId: appointment.bookingId,
+          appointmentId: appointment._id.toString(),
+          link: '/employee?tab=queue'
+        });
+
+        await notificationController.dispatchNotification(req.app, {
+          role: 'admin',
+          title: 'Specialist Declined Booking ⚠️',
+          message: `Specialist ${employeeName} declined booking #${appointment.bookingId} (${appointment.service}). Appointment reassigned to Any Available Specialist.`,
+          type: 'appointment',
+          priority: 'high',
+          bookingId: appointment.bookingId,
+          appointmentId: appointment._id.toString()
+        });
+
+        broadcastEvent('appointment:new', { appointment: updated });
+        broadcastEvent('appointment:updated', { appointment: updated });
+      } catch (notifErr) {
+        console.error('[EmployeeController] Rejection notification dispatch error:', notifErr);
+      }
+    }
+
+    return ApiResponse.success(res, updated, isRejection ? 'Appointment declined and reassigned to all available staff.' : 'Appointment status updated successfully');
   } catch (error) {
     next(error);
   }

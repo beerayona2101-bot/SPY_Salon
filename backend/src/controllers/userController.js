@@ -20,14 +20,45 @@ exports.getUserHistory = async (req, res, next) => {
       throw ApiError.forbidden(`Role '${req.user.role}' is not authorized to access customer history.`);
     }
 
-    const userId = req.user._id ? req.user._id.toString() : '';
-    const email = req.user.email ? String(req.user.email).toLowerCase().trim() : '';
-    const phone = req.user.phone ? String(req.user.phone).trim() : '';
-
     const userConditions = [];
-    if (userId) userConditions.push({ customerId: userId });
-    if (email) userConditions.push({ customerEmail: new RegExp(`^${email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
-    if (phone) userConditions.push({ customerPhone: phone });
+
+    const userIds = [
+      req.user?._id ? req.user._id.toString() : null,
+      req.query?.userId,
+      req.query?.id
+    ].filter(Boolean);
+    for (const uid of userIds) {
+      if (String(uid).trim()) userConditions.push({ customerId: String(uid).trim() });
+    }
+
+    const emails = [req.user?.email, req.query?.email].filter(Boolean);
+    for (const em of emails) {
+      const cleanEmail = String(em).toLowerCase().trim();
+      if (cleanEmail.length > 0) {
+        userConditions.push({ customerEmail: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      }
+    }
+
+    const phones = [req.user?.phone, req.query?.phone].filter(Boolean);
+    for (const ph of phones) {
+      const cleanPhone = String(ph).trim();
+      if (cleanPhone.length > 0) {
+        const digits = cleanPhone.replace(/\D/g, '');
+        if (digits.length >= 7) {
+          userConditions.push({ customerPhone: new RegExp(digits.slice(-10), 'i') });
+        } else {
+          userConditions.push({ customerPhone: new RegExp(cleanPhone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+        }
+      }
+    }
+
+    const names = [req.user?.name, req.query?.name].filter(Boolean);
+    for (const nm of names) {
+      const cleanName = String(nm).trim();
+      if (cleanName.length > 0) {
+        userConditions.push({ customerName: new RegExp(cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+      }
+    }
 
     if (userConditions.length === 0) {
       return ApiResponse.success(res, [], 'Customer history retrieved');
@@ -45,21 +76,44 @@ exports.getUserHistory = async (req, res, next) => {
 
 exports.getUserAppointments = async (req, res, next) => {
   try {
-    const userId = req.user ? req.user._id.toString() : (req.query.userId || req.query.id);
-    const email = req.user?.email || req.query.email;
-    const phone = req.user?.phone || req.query.phone;
-
     const userConditions = [];
-    if (userId) {
-      userConditions.push({ customerId: String(userId) });
+
+    const userIds = [
+      req.user?._id ? req.user._id.toString() : null,
+      req.query?.userId,
+      req.query?.id
+    ].filter(Boolean);
+    for (const uid of userIds) {
+      if (String(uid).trim()) userConditions.push({ customerId: String(uid).trim() });
     }
-    if (email) {
-      const cleanEmail = String(email).toLowerCase().trim();
-      userConditions.push({ customerEmail: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+
+    const emails = [req.user?.email, req.query?.email].filter(Boolean);
+    for (const em of emails) {
+      const cleanEmail = String(em).toLowerCase().trim();
+      if (cleanEmail.length > 0) {
+        userConditions.push({ customerEmail: new RegExp(`^${cleanEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      }
     }
-    if (phone) {
-      const cleanPhone = String(phone).trim();
-      userConditions.push({ customerPhone: cleanPhone });
+
+    const phones = [req.user?.phone, req.query?.phone].filter(Boolean);
+    for (const ph of phones) {
+      const cleanPhone = String(ph).trim();
+      if (cleanPhone.length > 0) {
+        const digits = cleanPhone.replace(/\D/g, '');
+        if (digits.length >= 7) {
+          userConditions.push({ customerPhone: new RegExp(digits.slice(-10), 'i') });
+        } else {
+          userConditions.push({ customerPhone: new RegExp(cleanPhone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+        }
+      }
+    }
+
+    const names = [req.user?.name, req.query?.name].filter(Boolean);
+    for (const nm of names) {
+      const cleanName = String(nm).trim();
+      if (cleanName.length > 0) {
+        userConditions.push({ customerName: new RegExp(cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+      }
     }
 
     if (userConditions.length === 0) {
