@@ -4,6 +4,7 @@ import 'screens/admin_dashboard_screen.dart';
 import 'screens/customer_dashboard_screen.dart';
 import 'screens/employee_dashboard_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/api_service.dart';
 
 void main() {
@@ -30,7 +31,7 @@ class SpySalonApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -65,32 +66,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _currentUser = user;
       });
-      if (user != null) {
-        final role = (user['role'] ?? 'customer').toString().toLowerCase();
-        final isAdmin = role == 'admin' || role == 'manager';
-        final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-        if (isAdmin) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
-                (route) => false,
-              );
-            }
-          });
-        } else if (isStaff) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
-                (route) => false,
-              );
-            }
-          });
-        }
-      }
     }
   }
 
