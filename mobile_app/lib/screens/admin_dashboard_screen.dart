@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -25,6 +26,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadAllAdminData();
   }
 
@@ -36,6 +40,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   Future<void> _loadAllAdminData() async {
     setState(() => _isLoading = true);
+
+    final storedUser = await ApiService.getStoredUser();
+
+    if (!mounted) return;
+
+    if (storedUser == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    final role = (storedUser['role'] ?? 'customer').toString().toLowerCase();
+    final isAdmin = role == 'admin' || role == 'manager';
+
+    if (!isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFC8868F),
+          content: Text('Access Denied: Admin privileges required.'),
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+        (route) => false,
+      );
+      return;
+    }
 
     final results = await Future.wait([
       ApiService.getAdminAnalytics(),
@@ -793,29 +840,242 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  Widget _buildAdminDrawer(Color goldColor, Color cardBg) {
+    final navItems = [
+      {'title': 'Overview & Analytics', 'icon': Icons.dashboard_outlined, 'badge': ''},
+      {'title': 'Appointments Manager', 'icon': Icons.calendar_month_outlined, 'badge': '${_appointments.length}'},
+      {'title': 'Services Catalog', 'icon': Icons.content_cut, 'badge': '${_services.length}'},
+      {'title': 'Staff & Clients Desk', 'icon': Icons.people_outline, 'badge': '${_employees.length + _customers.length}'},
+      {'title': 'Finance Ledger', 'icon': Icons.account_balance_wallet_outlined, 'badge': ''},
+      {'title': 'Enquiries Desk', 'icon': Icons.mark_email_unread_outlined, 'badge': '${_enquiries.length}'},
+    ];
+
+    return Drawer(
+      backgroundColor: const Color(0xFF13100E),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF191512),
+              border: Border(bottom: BorderSide(color: Color(0xFF25201C))),
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Spy_Salon',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: goldColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: goldColor.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          'ADMIN PORTAL',
+                          style: TextStyle(color: goldColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'ADMIN NAVIGATION',
+                style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              itemCount: navItems.length,
+              itemBuilder: (ctx, index) {
+                final item = navItems[index];
+                final isSelected = _tabController.index == index;
+                final String badge = item['badge'] as String;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? goldColor.withValues(alpha: 0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isSelected ? Border.all(color: goldColor.withValues(alpha: 0.4)) : null,
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                    leading: Icon(
+                      item['icon'] as IconData,
+                      color: isSelected ? goldColor : Colors.white60,
+                      size: 22,
+                    ),
+                    title: Text(
+                      item['title'] as String,
+                      style: TextStyle(
+                        color: isSelected ? goldColor : Colors.white70,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: badge.isNotEmpty && badge != '0'
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isSelected ? goldColor : const Color(0xFF25201C),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                color: isSelected ? Colors.black : Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _tabController.index = index;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.home_outlined, color: Colors.white70, size: 20),
+                  title: const Text('Back to Main App', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    } else {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                        (route) => false,
+                      );
+                    }
+                  },
+                ),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                  title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        backgroundColor: const Color(0xFF191512),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFE0A96D), width: 0.8),
+                        ),
+                        title: const Row(
+                          children: [
+                            Icon(Icons.logout, color: Colors.redAccent, size: 22),
+                            SizedBox(width: 10),
+                            Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        content: const Text('Are you sure you want to sign out from Admin Portal?', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx, false),
+                            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () => Navigator.pop(dialogCtx, true),
+                            child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await ApiService.logout();
+                      if (mounted) {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                          (route) => false,
+                        );
+                      }
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
     const cardBg = Color(0xFF191512);
 
+    final sectionTitles = [
+      'Performance Overview',
+      'Appointments Manager',
+      'Services Catalog',
+      'Staff & Clients',
+      'Finance Ledger',
+      'Enquiries Desk'
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFF13100E),
+      drawer: _buildAdminDrawer(goldColor, cardBg),
       appBar: AppBar(
         backgroundColor: cardBg,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
-          onPressed: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                (route) => false,
-              );
-            }
-          },
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: goldColor, size: 24),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            tooltip: 'Open Side Menu',
+          ),
         ),
         title: Row(
           children: [
@@ -823,19 +1083,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               borderRadius: BorderRadius.circular(6),
               child: Image.asset(
                 'assets/images/logo.png',
-                width: 26,
-                height: 26,
+                width: 24,
+                height: 24,
                 fit: BoxFit.cover,
               ),
             ),
             const SizedBox(width: 8),
-            const Text(
-              'ADMIN DASHBOARD',
-              style: TextStyle(
-                color: Color(0xFFF6F2EB),
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
+            Expanded(
+              child: Text(
+                sectionTitles[_tabController.index].toUpperCase(),
+                style: const TextStyle(
+                  color: Color(0xFFF6F2EB),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -861,52 +1124,70 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             },
             tooltip: 'Back to Home',
           ),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            onPressed: () async {
-              await ApiService.logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            tooltip: 'Sign Out',
-          ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: goldColor,
-          labelColor: goldColor,
-          unselectedLabelColor: Colors.white54,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: const [
-            Tab(text: 'OVERVIEW'),
-            Tab(text: 'APPOINTMENTS'),
-            Tab(text: 'SERVICES'),
-            Tab(text: 'STAFF & CLIENTS'),
-            Tab(text: 'FINANCE'),
-            Tab(text: 'ENQUIRIES'),
-          ],
-        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: goldColor))
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(goldColor, cardBg),
-                _buildAppointmentsTab(goldColor, cardBg),
-                _buildServicesTab(goldColor, cardBg),
-                _buildStaffAndClientsTab(goldColor, cardBg),
-                _buildFinanceTab(goldColor, cardBg),
-                _buildEnquiriesTab(goldColor, cardBg),
-              ],
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                final fadeAnimation = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                );
+                final slideAnimation = Tween<Offset>(
+                  begin: const Offset(0.04, 0.0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ));
+                final scaleAnimation = Tween<double>(
+                  begin: 0.98,
+                  end: 1.0,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ));
+
+                return FadeTransition(
+                  opacity: fadeAnimation,
+                  child: SlideTransition(
+                    position: slideAnimation,
+                    child: ScaleTransition(
+                      scale: scaleAnimation,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(_tabController.index),
+                child: _buildAdminTabContent(_tabController.index, goldColor, cardBg),
+              ),
             ),
     );
+  }
+
+  Widget _buildAdminTabContent(int index, Color goldColor, Color cardBg) {
+    switch (index) {
+      case 0:
+        return _buildOverviewTab(goldColor, cardBg);
+      case 1:
+        return _buildAppointmentsTab(goldColor, cardBg);
+      case 2:
+        return _buildServicesTab(goldColor, cardBg);
+      case 3:
+        return _buildStaffAndClientsTab(goldColor, cardBg);
+      case 4:
+        return _buildFinanceTab(goldColor, cardBg);
+      case 5:
+        return _buildEnquiriesTab(goldColor, cardBg);
+      default:
+        return _buildOverviewTab(goldColor, cardBg);
+    }
   }
 
   // --- TAB 1: OVERVIEW & ANALYTICS ---

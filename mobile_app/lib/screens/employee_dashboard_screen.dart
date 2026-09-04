@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../main.dart';
 import '../services/api_service.dart';
 import 'login_screen.dart';
 
@@ -26,6 +27,9 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadStaffData();
   }
 
@@ -39,6 +43,48 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
     setState(() => _isLoading = true);
 
     final storedUser = await ApiService.getStoredUser();
+
+    if (!mounted) return;
+
+    if (storedUser == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    final role = (storedUser['role'] ?? 'customer').toString().toLowerCase();
+    final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber' || role == 'admin' || role == 'manager';
+
+    if (!isStaff) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFC8868F),
+          content: Text('Access Denied: Staff privileges required.'),
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+        (route) => false,
+      );
+      return;
+    }
+    
     final results = await Future.wait([
       ApiService.getEmployeeAppointments(),
       ApiService.getEmployeeAttendance(),
@@ -349,13 +395,219 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
     );
   }
 
+  Widget _buildStaffDrawer(Color goldColor, Color cardBg, Color shiftColor, String shiftText) {
+    final navItems = [
+      {'title': 'My Appointment Queue', 'icon': Icons.calendar_month_outlined, 'badge': '${_appointments.length}'},
+      {'title': 'Timecard & Attendance', 'icon': Icons.access_time_outlined, 'badge': ''},
+      {'title': 'Leave Applications', 'icon': Icons.event_busy_outlined, 'badge': '${_leaves.length}'},
+      {'title': 'Payroll & Earnings', 'icon': Icons.payments_outlined, 'badge': ''},
+      {'title': 'Bank & Payout Setup', 'icon': Icons.account_balance_outlined, 'badge': ''},
+      {'title': 'My Clients Directory', 'icon': Icons.people_outline, 'badge': '${_customers.length}'},
+    ];
+
+    final staffName = _user?['name'] ?? 'Staff Member';
+    final staffRole = _user?['role'] ?? 'Specialist';
+
+    return Drawer(
+      backgroundColor: const Color(0xFF13100E),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF191512),
+              border: Border(bottom: BorderSide(color: Color(0xFF25201C))),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: goldColor.withValues(alpha: 0.2),
+                  child: Text(
+                    staffName.isNotEmpty ? staffName[0].toUpperCase() : 'S',
+                    style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        staffName,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: shiftColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: shiftColor.withValues(alpha: 0.5)),
+                            ),
+                            child: Text(
+                              shiftText,
+                              style: TextStyle(color: shiftColor, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              staffRole.toString().toUpperCase(),
+                              style: const TextStyle(color: Colors.white38, fontSize: 10),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'STAFF NAVIGATION',
+                style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              itemCount: navItems.length,
+              itemBuilder: (ctx, index) {
+                final item = navItems[index];
+                final isSelected = _tabController.index == index;
+                final String badge = item['badge'] as String;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? goldColor.withValues(alpha: 0.15) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    border: isSelected ? Border.all(color: goldColor.withValues(alpha: 0.4)) : null,
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                    leading: Icon(
+                      item['icon'] as IconData,
+                      color: isSelected ? goldColor : Colors.white60,
+                      size: 22,
+                    ),
+                    title: Text(
+                      item['title'] as String,
+                      style: TextStyle(
+                        color: isSelected ? goldColor : Colors.white70,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 14,
+                      ),
+                    ),
+                    trailing: badge.isNotEmpty && badge != '0'
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isSelected ? goldColor : const Color(0xFF25201C),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              badge,
+                              style: TextStyle(
+                                color: isSelected ? Colors.black : Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onTap: () {
+                      setState(() {
+                        _tabController.index = index;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: ListTile(
+              dense: true,
+              leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+              title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+              onTap: () async {
+                Navigator.pop(context);
+                if (!mounted) return;
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dialogCtx) => AlertDialog(
+                    backgroundColor: const Color(0xFF191512),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(color: Color(0xFFE0A96D), width: 0.8),
+                    ),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.logout, color: Colors.redAccent, size: 22),
+                        SizedBox(width: 10),
+                        Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    content: const Text('Are you sure you want to sign out from Staff Portal?', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogCtx, false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => Navigator.pop(dialogCtx, true),
+                        child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  await ApiService.logout();
+                  if (mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                      (route) => false,
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
     const cardBg = Color(0xFF191512);
 
     Color shiftColor = Colors.grey;
-    String shiftText = 'OFF DUTY';
+    String shiftText = 'NOT CLOCKED IN ⚪';
+
     if (_shiftStatus == 'CLOCKED_IN') {
       shiftColor = Colors.greenAccent;
       shiftText = 'CLOCKED IN 🟢';
@@ -367,22 +619,38 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       shiftText = 'CLOCKED OUT ⚪';
     }
 
+    final sectionTitles = [
+      'My Appointment Queue',
+      'Timecard & Attendance',
+      'Leave Applications',
+      'Payroll & Earnings',
+      'Bank & Payout Setup',
+      'My Clients Directory'
+    ];
+
     return PopScope(
       canPop: false,
       child: Scaffold(
         backgroundColor: const Color(0xFF13100E),
+        drawer: _buildStaffDrawer(goldColor, cardBg, shiftColor, shiftText),
         appBar: AppBar(
           backgroundColor: cardBg,
           elevation: 0,
-          automaticallyImplyLeading: false,
+          leading: Builder(
+            builder: (ctx) => IconButton(
+              icon: const Icon(Icons.menu, color: goldColor, size: 24),
+              onPressed: () => Scaffold.of(ctx).openDrawer(),
+              tooltip: 'Open Side Menu',
+            ),
+          ),
           title: Row(
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Image.asset(
                   'assets/images/logo.png',
-                  width: 24,
-                  height: 24,
+                  width: 22,
+                  height: 22,
                   fit: BoxFit.cover,
                 ),
               ),
@@ -391,7 +659,11 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('STAFF DESK', style: TextStyle(color: Color(0xFFF6F2EB), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                    Text(
+                      sectionTitles[_tabController.index].toUpperCase(),
+                      style: const TextStyle(color: Color(0xFFF6F2EB), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     Text(_user?['name'] ?? 'Stylist', style: const TextStyle(color: goldColor, fontSize: 11)),
                   ],
                 ),
@@ -410,79 +682,71 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
               onPressed: _loadStaffData,
               tooltip: 'Refresh Data',
             ),
-            IconButton(
-              icon: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
-              tooltip: 'Sign Out',
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    backgroundColor: const Color(0xFF191512),
-                    title: const Text('Sign Out', style: TextStyle(color: Colors.white)),
-                    content: const Text('Are you sure you want to sign out of Staff Desk?', style: TextStyle(color: Colors.white70)),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (confirm == true) {
-                  await ApiService.logout();
-                  if (context.mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => LoginScreen(
-                          onLoginSuccess: () {},
-                        ),
-                      ),
-                      (route) => false,
-                    );
-                  }
-                }
-              },
-            ),
           ],
-          bottom: TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            indicatorColor: goldColor,
-            labelColor: goldColor,
-            unselectedLabelColor: Colors.white54,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-            tabs: const [
-              Tab(text: 'MY QUEUE'),
-              Tab(text: 'TIMECARD'),
-              Tab(text: 'LEAVES'),
-              Tab(text: 'PAYROLL'),
-              Tab(text: 'BANK SETUP'),
-              Tab(text: 'MY CLIENTS'),
-            ],
-          ),
         ),
         body: _isLoading
             ? const Center(child: CircularProgressIndicator(color: goldColor))
-            : TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildQueueTab(goldColor, cardBg),
-                  _buildTimecardTab(goldColor, cardBg),
-                  _buildLeavesTab(goldColor, cardBg),
-                  _buildPayrollTab(goldColor, cardBg),
-                  _buildBankSetupTab(goldColor, cardBg),
-                  _buildClientsTab(goldColor, cardBg),
-                ],
+            : AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  final fadeAnimation = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  );
+                  final slideAnimation = Tween<Offset>(
+                    begin: const Offset(0.04, 0.0),
+                    end: Offset.zero,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ));
+                  final scaleAnimation = Tween<double>(
+                    begin: 0.98,
+                    end: 1.0,
+                  ).animate(CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ));
+
+                  return FadeTransition(
+                    opacity: fadeAnimation,
+                    child: SlideTransition(
+                      position: slideAnimation,
+                      child: ScaleTransition(
+                        scale: scaleAnimation,
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey<int>(_tabController.index),
+                  child: _buildStaffTabContent(_tabController.index, goldColor, cardBg),
+                ),
               ),
       ),
     );
+  }
+
+  Widget _buildStaffTabContent(int index, Color goldColor, Color cardBg) {
+    switch (index) {
+      case 0:
+        return _buildQueueTab(goldColor, cardBg);
+      case 1:
+        return _buildTimecardTab(goldColor, cardBg);
+      case 2:
+        return _buildLeavesTab(goldColor, cardBg);
+      case 3:
+        return _buildPayrollTab(goldColor, cardBg);
+      case 4:
+        return _buildBankSetupTab(goldColor, cardBg);
+      case 5:
+        return _buildClientsTab(goldColor, cardBg);
+      default:
+        return _buildQueueTab(goldColor, cardBg);
+    }
   }
 
   // --- TAB 1: MY APPOINTMENTS QUEUE & WALK-IN DESK ---

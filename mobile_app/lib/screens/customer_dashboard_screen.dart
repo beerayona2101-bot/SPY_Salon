@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'login_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({super.key});
@@ -31,6 +32,30 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
   Future<void> _loadCustomerData() async {
     setState(() => _isLoading = true);
     final storedUser = await ApiService.getStoredUser();
+
+    if (!mounted) return;
+
+    if (storedUser == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
     final appointmentsList = await ApiService.getCustomerAppointments(userParam: storedUser);
 
     if (mounted) {
@@ -63,7 +88,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Reschedule Appointment 🗓️', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE0A96D))),
+                  const Text('Reschedule Appointment ≡ƒùô∩╕Å', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFFE0A96D))),
                   IconButton(icon: const Icon(Icons.close, color: Colors.white54), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
@@ -735,7 +760,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
                               const SizedBox(width: 4),
                               Text('$date at $time', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                               const Spacer(),
-                              Text('₹$price', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 15)),
+                              Text('Γé╣$price', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 15)),
                             ],
                           ),
                           if (status != 'completed' && status != 'cancelled') ...[

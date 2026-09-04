@@ -742,19 +742,308 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildMainAppDrawer(Color goldColor) {
+    final user = _currentUser;
+
+    bool isAdmin = false;
+    bool isStaff = false;
+    bool isCustomer = false;
+
+    if (user != null) {
+      final role = (user['role'] ?? 'customer').toString().toLowerCase();
+      isAdmin = role == 'admin' || role == 'manager';
+      isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+      isCustomer = !isAdmin && !isStaff;
+    }
+
+    return Drawer(
+      backgroundColor: const Color(0xFF13100E),
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color(0xFF191512),
+              border: Border(bottom: BorderSide(color: Color(0xFFE0A96D), width: 0.5)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: goldColor, width: 1.5),
+                        color: Colors.white,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, stack) => const Center(
+                            child: Text('S', style: TextStyle(color: Color(0xFF2B0C15), fontWeight: FontWeight.bold, fontSize: 18)),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'SPY SALON',
+                            style: TextStyle(
+                              color: Color(0xFFF6F2EB),
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.6,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Luxury Studio & Spa',
+                            style: TextStyle(color: Color(0xFFE0A96D), fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (user != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: goldColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: goldColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person, color: Color(0xFFE0A96D), size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (user['name'] ?? user['username'] ?? 'User').toString(),
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                (user['email'] ?? user['phone'] ?? '').toString(),
+                                style: const TextStyle(color: Colors.white60, fontSize: 10),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.home, color: Color(0xFFE0A96D)),
+                  title: const Text('Home Page', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () => Navigator.pop(context),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.calendar_month, color: Color(0xFFE0A96D)),
+                  title: const Text('Book Appointment', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showBookingModal();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.dry_cleaning_rounded, color: Color(0xFFE0A96D)),
+                  title: const Text('Services Catalog', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () => Navigator.pop(context),
+                ),
+                if (user != null) ...[
+                  const Divider(color: Colors.white10),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                    child: Text('MY DASHBOARD', style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                  if (isAdmin)
+                    ListTile(
+                      leading: const Icon(Icons.admin_panel_settings, color: Color(0xFFE0A96D)),
+                      title: const Text('Admin Dashboard', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+                        );
+                      },
+                    ),
+                  if (isStaff)
+                    ListTile(
+                      leading: const Icon(Icons.badge, color: Color(0xFFE0A96D)),
+                      title: const Text('Staff Dashboard', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+                        );
+                      },
+                    ),
+                  if (isCustomer)
+                    ListTile(
+                      leading: const Icon(Icons.person_pin, color: Color(0xFFE0A96D)),
+                      title: const Text('Customer Dashboard', style: TextStyle(color: Colors.white, fontSize: 14)),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _navigateToUserDashboard();
+                      },
+                    ),
+                ],
+                const Divider(color: Colors.white10),
+                const Padding(
+                  padding: EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                  child: Text('SETTINGS', style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.settings, color: Color(0xFFE0A96D)),
+                  title: const Text('Backend Server Settings', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showIpConfigDialog();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.refresh, color: Color(0xFFE0A96D)),
+                  title: const Text('Refresh Connection', style: TextStyle(color: Colors.white, fontSize: 14)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _checkBackendAndLoadData();
+                  },
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white10),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: user != null
+                ? SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.redAccent),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (dialogCtx) => AlertDialog(
+                            backgroundColor: const Color(0xFF191512),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: const BorderSide(color: Color(0xFFE0A96D), width: 0.8),
+                            ),
+                            title: const Row(
+                              children: [
+                                Icon(Icons.logout, color: Colors.redAccent, size: 22),
+                                SizedBox(width: 10),
+                                Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            content: const Text('Are you sure you want to sign out?', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(dialogCtx, false),
+                                child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.redAccent,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                onPressed: () => Navigator.pop(dialogCtx, true),
+                                child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          await ApiService.logout();
+                          if (mounted) setState(() => _currentUser = null);
+                        }
+                      },
+                      icon: const Icon(Icons.logout, color: Colors.redAccent, size: 18),
+                      label: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                    ),
+                  )
+                : SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: goldColor,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => LoginScreen(
+                              onLoginSuccess: () async {
+                                await _loadUserSession();
+                                _navigateToUserDashboard();
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.login, color: Color(0xFF13100E), size: 18),
+                      label: const Text('Sign In', style: TextStyle(color: Color(0xFF13100E), fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
 
     return Scaffold(
+      drawer: _buildMainAppDrawer(goldColor),
       appBar: AppBar(
         backgroundColor: const Color(0xFF191512),
         elevation: 0,
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: const Icon(Icons.menu, color: goldColor, size: 24),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+            tooltip: 'Open Navigation Menu',
+          ),
+        ),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(color: goldColor, width: 1.5),
@@ -765,47 +1054,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   'assets/images/logo.png',
                   fit: BoxFit.cover,
                   errorBuilder: (ctx, err, stack) => const Center(
-                    child: Text('S', style: TextStyle(color: Color(0xFF2B0C15), fontWeight: FontWeight.bold, fontSize: 18)),
+                    child: Text('S', style: TextStyle(color: Color(0xFF2B0C15), fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             const Text(
               'SPY SALON',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1.8,
-                fontSize: 17,
+                letterSpacing: 1.4,
+                fontSize: 16,
                 color: Color(0xFFF6F2EB),
               ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings_outlined, color: goldColor, size: 22),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
-              );
-            },
-            tooltip: 'Admin Dashboard',
-          ),
           if (_currentUser != null) ...[
             Padding(
-              padding: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.only(right: 12),
               child: PopupMenuButton<String>(
                 color: const Color(0xFF191512),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: goldColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: goldColor.withValues(alpha: 0.4)),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.account_circle, color: goldColor, size: 18),
                       const SizedBox(width: 4),
@@ -820,8 +1100,43 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (value == 'dashboard') {
                     _navigateToUserDashboard();
                   } else if (value == 'logout') {
-                    await ApiService.logout();
-                    setState(() => _currentUser = null);
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (dialogCtx) => AlertDialog(
+                        backgroundColor: const Color(0xFF191512),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFE0A96D), width: 0.8),
+                        ),
+                        title: const Row(
+                          children: [
+                            Icon(Icons.logout, color: Colors.redAccent, size: 22),
+                            SizedBox(width: 10),
+                            Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        content: const Text('Are you sure you want to sign out?', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx, false),
+                            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () => Navigator.pop(dialogCtx, true),
+                            child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await ApiService.logout();
+                      if (mounted) setState(() => _currentUser = null);
+                    }
                   }
                 },
                 itemBuilder: (ctx) {
@@ -872,34 +1187,27 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ] else ...[
-            TextButton.icon(
-              icon: const Icon(Icons.login, size: 16, color: goldColor),
-              label: const Text('Sign In', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (ctx) => LoginScreen(
-                      onLoginSuccess: () async {
-                        await _loadUserSession();
-                        _navigateToUserDashboard();
-                      },
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: TextButton.icon(
+                icon: const Icon(Icons.login, size: 16, color: goldColor),
+                label: const Text('Sign In', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => LoginScreen(
+                        onLoginSuccess: () async {
+                          await _loadUserSession();
+                          _navigateToUserDashboard();
+                        },
+                      ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           ],
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: goldColor, size: 20),
-            onPressed: _showIpConfigDialog,
-            tooltip: 'Configure Backend URL',
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
-            onPressed: _checkBackendAndLoadData,
-            tooltip: 'Refresh Connection',
-          ),
         ],
       ),
       body: SingleChildScrollView(
