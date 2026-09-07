@@ -100,8 +100,7 @@ export const PAGE_ROUTES = {
   REGISTER: '/register'
 };
 
-let isRefreshing = false;
-let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+let activeRefreshPromise: Promise<string | null> | null = null;
 
 function handleLogoutRedirect() {
   if (typeof window !== 'undefined') {
@@ -121,6 +120,80 @@ function handleLogoutRedirect() {
       window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
     }
   }
+}
+
+/**
+ * Single-Flight Token Refresh Mechanism
+ * Prevents multiple simultaneous /auth/refresh HTTP requests.
+ * Concurrent API calls or auth hooks await the single active refresh promise.
+ */
+export async function refreshTokenSingleFlight(): Promise<string | null> {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    const baseUrl = getApiBaseUrl();
+    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('spy_refresh_token') : null;
+
+    if (!refreshToken) {
+      console.warn('[Auth] Refresh token not found in storage.');
+      return null;
+    }
+
+    try {
+      const refreshRes = await fetch(`${baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken })
+      });
+
+      // Handle Server Reboots or Gateway Errors (500, 502, 503, 504)
+      if (refreshRes.status >= 500) {
+        console.warn(`[Auth] Server unavailable during refresh (HTTP ${refreshRes.status}). Retaining session.`);
+        return null;
+      }
+
+      let refreshData: any = {};
+      try {
+        refreshData = await refreshRes.json();
+      } catch (jsonErr) {}
+
+      if (refreshRes.ok && refreshData.success && refreshData.token) {
+        const newToken = refreshData.token;
+        const newRefreshToken = refreshData.refreshToken || refreshToken;
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('spy_token', newToken);
+          localStorage.setItem('spy_refresh_token', newRefreshToken);
+          if (refreshData.user) {
+            localStorage.setItem('spy_user', JSON.stringify(refreshData.user));
+          }
+
+          window.dispatchEvent(new CustomEvent('auth:token_refreshed', { 
+            detail: { token: newToken, refreshToken: newRefreshToken, user: refreshData.user } 
+          }));
+        }
+
+        console.log('[Auth] Single-flight token refresh succeeded.');
+        return newToken;
+      } else if (refreshRes.status === 401 || refreshRes.status === 403) {
+        console.warn('[Auth] Refresh token expired or revoked by server. Invalidation triggered.');
+        handleLogoutRedirect();
+        return null;
+      } else {
+        console.warn(`[Auth] Refresh response returned HTTP ${refreshRes.status}. Retaining stored session.`);
+        return null;
+      }
+    } catch (err: any) {
+      console.warn('[Auth] Refresh network request failed (server restarting/offline). Retaining session:', err?.message || err);
+      return null;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
 }
 
 // Common Fetch Wrapper
@@ -170,97 +243,12 @@ export async function apiFetch(
   const isRefreshRequest = url.includes('/auth/refresh') || url.includes('/auth/login') || url.includes('/auth/register');
 
   if (response.status === 401 && !isRefreshRequest) {
-    console.warn('[Auth] Access token expired. Attempting refresh...');
+    console.warn('[Auth] Access token expired (401). Triggering single-flight refresh...');
 
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        refreshQueue.push({ resolve, reject });
-      }).then(async (newToken) => {
-        headers['Authorization'] = `Bearer ${newToken}`;
-        return fetch(url, { ...options, headers });
-      }).catch((err) => {
-        throw err;
-      });
-    }
-
-    isRefreshing = true;
-    const refreshToken = typeof window !== 'undefined' ? localStorage.getItem('spy_refresh_token') : null;
-
-    if (!refreshToken) {
-      isRefreshing = false;
-      console.warn('[Auth] Refresh token not found in storage. Retaining current session.');
-      return response;
-    }
-
-    try {
-      const refreshRes = await fetch(`${baseUrl}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken })
-      });
-
-      // Handle HTTP Server Reboots or Temporary Gateway Unavailable (502, 503, 504)
-      if (refreshRes.status >= 500) {
-        console.warn('[Auth] Server is restarting or unavailable (HTTP ' + refreshRes.status + '). Retaining session credentials.');
-        isRefreshing = false;
-        refreshQueue.forEach(req => req.reject(new Error('Server unavailable during restart')));
-        refreshQueue = [];
-        return response;
-      }
-
-      let refreshData: any = {};
-      try {
-        refreshData = await refreshRes.json();
-      } catch (jsonErr) {}
-
-      if (refreshRes.ok && refreshData.success && refreshData.token) {
-        const newToken = refreshData.token;
-        const newRefreshToken = refreshData.refreshToken || refreshToken;
-
-        localStorage.setItem('spy_token', newToken);
-        localStorage.setItem('spy_refresh_token', newRefreshToken);
-        if (refreshData.user) {
-          localStorage.setItem('spy_user', JSON.stringify(refreshData.user));
-        }
-
-        console.log('[Auth] Token refresh successful. Retrying original request.');
-
-        // Dispatch a custom event to notify Contexts of the new credentials
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('auth:token_refreshed', { 
-            detail: { token: newToken, user: refreshData.user } 
-          }));
-        }
-
-        refreshQueue.forEach(req => req.resolve(newToken));
-        refreshQueue = [];
-        isRefreshing = false;
-
-        headers['Authorization'] = `Bearer ${newToken}`;
-        return fetch(url, { ...options, headers });
-      } else if (refreshRes.status === 401 || refreshRes.status === 403) {
-        // Refresh token is expired or revoked -> Clear stale session and redirect to login
-        console.warn('[Auth] Refresh token expired or revoked. Clearing stale session and redirecting to login.');
-        isRefreshing = false;
-        refreshQueue.forEach(req => req.reject(new Error('Session expired')));
-        refreshQueue = [];
-        handleLogoutRedirect();
-        return response;
-      } else {
-        console.warn('[Auth] Refresh response rejected or failed (HTTP ' + refreshRes.status + '). Retaining stored session.');
-        isRefreshing = false;
-        refreshQueue.forEach(req => req.reject(new Error('Refresh returned status ' + refreshRes.status)));
-        refreshQueue = [];
-        return response;
-      }
-    } catch (err: any) {
-      // Network Error (e.g. Failed to fetch, ECONNREFUSED, Server restarting/offline)
-      console.warn('[Auth] Refresh network request failed (server restarting or offline). Retaining session credentials:', err?.message || err);
-      isRefreshing = false;
-      refreshQueue.forEach(req => req.reject(err));
-      refreshQueue = [];
-      // DO NOT call handleLogoutRedirect() on network error during server restart!
-      return response;
+    const newToken = await refreshTokenSingleFlight();
+    if (newToken) {
+      headers['Authorization'] = `Bearer ${newToken}`;
+      return fetch(url, { ...options, headers });
     }
   }
 

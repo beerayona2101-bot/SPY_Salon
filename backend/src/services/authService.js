@@ -330,7 +330,7 @@ class AuthService {
     };
   }
 
-  // Refresh Session Token Handler (Enforces Token Rotation and security verification)
+  // Refresh Session Token Handler (Enforces Token Rotation with 30s Grace Period for Concurrent Requests)
   async refreshToken(token, reqMeta = {}) {
     if (!token) {
       throw ApiError.unauthorized('Refresh token is required');
@@ -346,8 +346,39 @@ class AuthService {
         $or: [{ token }, { tokenHash }]
       });
 
-      if (!tokenRecord || tokenRecord.isRevoked || tokenRecord.revokedAt || new Date() > tokenRecord.expiresAt) {
-        throw ApiError.unauthorized('Invalid, expired, or revoked refresh token');
+      if (!tokenRecord) {
+        throw ApiError.unauthorized('Invalid refresh token');
+      }
+
+      // Check for 30-second Grace Window for recently rotated tokens (handles concurrent request bursts)
+      if (tokenRecord.isRevoked || tokenRecord.revokedAt) {
+        const revokedTime = tokenRecord.revokedAt ? new Date(tokenRecord.revokedAt).getTime() : 0;
+        const isWithinGracePeriod = (Date.now() - revokedTime) < 30000; // 30 seconds grace window
+
+        if (isWithinGracePeriod && tokenRecord.replacedByToken) {
+          const user = await User.findById(decoded.id);
+          if (user && user.status !== 'Inactive') {
+            const activeReplacement = await RefreshToken.findOne({
+              $or: [
+                { token: tokenRecord.replacedByToken },
+                { tokenHash: this.hashToken(tokenRecord.replacedByToken) }
+              ],
+              isRevoked: { $ne: true }
+            });
+
+            const activeRefToken = activeReplacement ? activeReplacement.token : tokenRecord.replacedByToken;
+            const newAccessToken = this.generateAccessToken(user);
+            user.password = undefined;
+            console.log(`[authService] Token refresh hit 30s grace window for user ${user.email}. Returning active replacement token.`);
+            return { token: newAccessToken, refreshToken: activeRefToken, user };
+          }
+        }
+
+        throw ApiError.unauthorized('Refresh token has expired or been revoked');
+      }
+
+      if (new Date() > tokenRecord.expiresAt) {
+        throw ApiError.unauthorized('Refresh token expired');
       }
 
       // 3. Find User

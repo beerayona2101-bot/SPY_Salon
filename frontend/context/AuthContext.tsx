@@ -67,7 +67,7 @@ interface AuthContextType {
   updateProfileUser: (updatedData: Partial<UserProfile>) => void;
 }
 
-import { apiFetch, API_BASE_URL } from '@/lib/api';
+import { apiFetch, API_BASE_URL, refreshTokenSingleFlight } from '@/lib/api';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -123,35 +123,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(parsedUser);
 
             if (isTokenExpired(storedToken) && storedRefreshToken) {
-              console.log('[AuthContext] Access token expired on startup. Attempting background refresh...');
-              try {
-                const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ refreshToken: storedRefreshToken })
-                });
-
-                if (res.ok) {
-                  let data: any = {};
-                  try { data = await res.json(); } catch (e) {}
-
-                  if (data.success && data.token) {
-                    const newToken = data.token;
-                    const newRefreshToken = data.refreshToken || storedRefreshToken;
-                    const newUser = data.user || parsedUser;
-
-                    setToken(newToken);
-                    setRefreshToken(newRefreshToken);
-                    setUser(newUser);
-
-                    localStorage.setItem('spy_token', newToken);
-                    localStorage.setItem('spy_refresh_token', newRefreshToken);
-                    localStorage.setItem('spy_user', JSON.stringify(newUser));
-                    console.log('[AuthContext] Access token refreshed successfully during startup.');
-                  }
+              console.log('[AuthContext] Access token expired on startup. Triggering single-flight refresh...');
+              const newToken = await refreshTokenSingleFlight();
+              if (newToken) {
+                setToken(newToken);
+                const updatedUserStr = localStorage.getItem('spy_user');
+                const updatedRefStr = localStorage.getItem('spy_refresh_token');
+                if (updatedRefStr) setRefreshToken(updatedRefStr);
+                if (updatedUserStr) {
+                  try { setUser(JSON.parse(updatedUserStr)); } catch (e) {}
                 }
-              } catch (e) {
-                console.warn('[AuthContext] Startup background refresh failed. Retaining current session:', e);
               }
             }
           }

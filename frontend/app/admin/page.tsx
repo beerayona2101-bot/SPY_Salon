@@ -277,6 +277,7 @@ function AdminDashboardContent() {
   const [calMonthView, setCalMonthView] = useState<Date>(new Date());
   const [calSearchQuery, setCalSearchQuery] = useState<string>('');
   const [calStatusFilter, setCalStatusFilter] = useState<string>('All');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState<boolean>(false);
 
   // Security Authorization Guard
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
@@ -772,19 +773,16 @@ function AdminDashboardContent() {
       fetchAdminData();
     });
 
-    socket.on('appointment:status_changed', (data: any) => {
-      fetchAdminData();
-    });
-
-    socket.on('appointment:rescheduled', (data: any) => {
-      fetchAdminData();
-    });
-
-    socket.on('appointment:cancelled', (data: any) => {
-      fetchAdminData();
-    });
-
+    socket.on('appointment:created', handleRealtimeSync);
+    socket.on('appointment:new', handleRealtimeSync);
+    socket.on('appointment:status_changed', handleRealtimeSync);
+    socket.on('appointment:rescheduled', handleRealtimeSync);
+    socket.on('appointment:cancelled', handleRealtimeSync);
+    socket.on('appointment:accepted', handleRealtimeSync);
+    socket.on('appointment:rejected', handleRealtimeSync);
     socket.on('booking_created', handleRealtimeSync);
+    socket.on('booking_updated', handleRealtimeSync);
+    socket.on('booking:status_changed', handleRealtimeSync);
 
     socket.on('new_enquiry', (newEnq: any) => {
       if (newEnq) {
@@ -1472,13 +1470,6 @@ function AdminDashboardContent() {
   };
 
   const handleUpdateAppStatus = async (id: string, newStatus: string) => {
-    if (newStatus === 'Completed') {
-      const app = appointments.find(a => a._id === id);
-      if (app && !hasAppointmentStarted(app.appointmentDate, app.appointmentTime)) {
-        showToast(`Cannot mark appointment as Completed before its scheduled time (${app.appointmentDate} ${app.appointmentTime}).`, 'error');
-        return;
-      }
-    }
     try {
       const res = await apiFetch(`${API_BASE_URL}/admin/appointments/${id}`, {
         method: 'PUT',
@@ -1490,8 +1481,10 @@ function AdminDashboardContent() {
         showToast(data.message || 'Failed to update status.', 'error');
         return;
       }
-      const updated = data.data;
+      const updated = data.data || {};
       setAppointments(prev => prev.map(a => a._id === id ? { ...a, ...updated, status: newStatus } : a));
+      showToast(`Appointment status updated to ${newStatus}`, 'success');
+      await fetchAdminData();
     } catch (err: any) {
       showToast(err.message || 'Error updating appointment status.', 'error');
     }
@@ -1710,6 +1703,49 @@ function AdminDashboardContent() {
     const matchS = statusFilter === 'All' || e.status === statusFilter;
     return matchQ && matchS;
   });
+
+  // Calendar Selected Date Computed Properties
+  const selectedApps = getAppointmentsForDate(selectedCalDate);
+  const selectedDateObj = new Date(selectedCalDate);
+  const formattedSelectedDate = isNaN(selectedDateObj.getTime())
+    ? selectedCalDate
+    : selectedDateObj.toLocaleDateString('en-GB', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+  const selectedDateRevenue = selectedApps.reduce((acc, app) => {
+    if (app.price) return acc + Number(app.price);
+    if (app.totalAmount) return acc + Number(app.totalAmount);
+    return acc;
+  }, 0);
+
+  const confirmedCount = selectedApps.filter(a => a.status === 'Confirmed').length;
+  const inProgressCount = selectedApps.filter(a => a.status === 'In Progress').length;
+  const completedCount = selectedApps.filter(a => a.status === 'Completed').length;
+  const cancelledCount = selectedApps.filter(a => a.status === 'Cancelled').length;
+
+  const staffOnLeave = leaves ? leaves.filter(l => {
+    if (l.status !== 'Approved') return false;
+    if (!l.startDate || !l.endDate) return false;
+    const sDate = String(l.startDate).split('T')[0];
+    const eDate = String(l.endDate).split('T')[0];
+    return selectedCalDate >= sDate && selectedCalDate <= eDate;
+  }) : [];
+
+  const filteredApps = selectedApps.filter(app => {
+    const matchesSearch = !calSearchQuery || 
+      (app.customerName && app.customerName.toLowerCase().includes(calSearchQuery.toLowerCase())) ||
+      (app.customerPhone && app.customerPhone.includes(calSearchQuery)) ||
+      (app.specialistName && app.specialistName.toLowerCase().includes(calSearchQuery.toLowerCase())) ||
+      (app.service && app.service.toLowerCase().includes(calSearchQuery.toLowerCase()));
+    
+    const matchesStatus = calStatusFilter === 'All' || app.status === calStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
 
   const handleUpdateEnquiryStatus = async (id: string, status: string, notes?: string) => {
     setIsUpdatingEnquiry(true);
@@ -2634,493 +2670,202 @@ function AdminDashboardContent() {
           {/* TAB 2: SCHEDULE CALENDAR & DAILY TIMELINES */}
           {activeTab === 'calendar' && (() => {
             const calendarDays = getCalendarDays();
-            const selectedApps = getAppointmentsForDate(selectedCalDate);
-            const selectedDateObj = new Date(selectedCalDate);
-            const formattedSelectedDate = selectedDateObj.toLocaleDateString('en-GB', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            });
-
             const monthNameYear = calMonthView.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-
-            // Calculate metrics for selected date
-            const selectedDateRevenue = selectedApps.reduce((acc, app) => {
-              if (app.price) return acc + Number(app.price);
-              if (app.totalAmount) return acc + Number(app.totalAmount);
-              return acc;
-            }, 0);
-
-            const confirmedCount = selectedApps.filter(a => a.status === 'Confirmed').length;
-            const inProgressCount = selectedApps.filter(a => a.status === 'In Progress').length;
-            const completedCount = selectedApps.filter(a => a.status === 'Completed').length;
-            const cancelledCount = selectedApps.filter(a => a.status === 'Cancelled').length;
-
-            // Check staff on leave for this date (strictly Approved status and valid date bounds)
-            const staffOnLeave = leaves ? leaves.filter(l => {
-              if (l.status !== 'Approved') return false;
-              if (!l.startDate || !l.endDate) return false;
-              const sDate = String(l.startDate).split('T')[0];
-              const eDate = String(l.endDate).split('T')[0];
-              return selectedCalDate >= sDate && selectedCalDate <= eDate;
-            }) : [];
-
-            // Filter appointments by search & status
-            const filteredApps = selectedApps.filter(app => {
-              const matchesSearch = !calSearchQuery || 
-                app.customerName?.toLowerCase().includes(calSearchQuery.toLowerCase()) ||
-                app.customerPhone?.includes(calSearchQuery) ||
-                app.specialistName?.toLowerCase().includes(calSearchQuery.toLowerCase()) ||
-                app.service?.toLowerCase().includes(calSearchQuery.toLowerCase());
-              
-              const matchesStatus = calStatusFilter === 'All' || app.status === calStatusFilter;
-              return matchesSearch && matchesStatus;
-            });
 
             return (
               <div className="space-y-6 animate-fadeIn text-left">
                 
-                {/* HEADER & QUICK ACTIONS */}
+                {/* CALENDAR HEADER & QUICK BANNER */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-rosegold-500/30">
                   <div className="space-y-1">
                     <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 text-xs font-bold uppercase tracking-wider">
                       <CalendarDays className="w-3.5 h-3.5" />
                       <span>Executive Schedule Calendar</span>
                     </div>
-                    <h2 className="text-2xl font-bold font-serif text-white">Daily Appointment Schedules</h2>
-                    <p className="text-xs text-gray-400">Click any date on the calendar grid to inspect date details, staff availability, and time-slotted client bookings in the right sidebar.</p>
+                    <h2 className="text-2xl font-bold font-serif text-white">Schedule Calendar Overview</h2>
+                    <p className="text-xs text-gray-400">Click any date cell on the calendar grid to open full daily appointment details, staff availability, and booking timelines in a popup modal.</p>
                   </div>
 
                   <div className="flex items-center space-x-3 shrink-0">
-                    {selectedCalDate < new Date().toISOString().split('T')[0] ? (
-                      <span className="px-5 py-3 rounded-full bg-gray-500/10 border border-gray-500/30 text-gray-400 font-bold text-xs inline-flex items-center space-x-2 cursor-not-allowed">
-                        <span>🔒 Past Date (Bookings Closed)</span>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
-                          setModalType('addApp');
-                        }}
-                        className="px-5 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Book Appointment ({selectedCalDate})</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        const today = new Date();
+                        setCalMonthView(today);
+                        setSelectedCalDate(today.toISOString().split('T')[0]);
+                        setIsScheduleModalOpen(true);
+                      }}
+                      className="px-5 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-2 cursor-pointer"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>Jump to Today's Schedule</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* 2-COLUMN LAYOUT: CALENDAR GRID ON LEFT (7 COLS), SELECTED DAY RIGHT SIDEBAR (5 COLS) */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* FULL-WIDTH MONTHLY CALENDAR GRID */}
+                <div className="glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/30 space-y-6 shadow-2xl">
                   
-                  {/* LEFT COLUMN: INTERACTIVE MONTH CALENDAR GRID (LG: 7 COLS) */}
-                  <div className="lg:col-span-7 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4 h-fit self-start">
-                    
-                    {/* MONTH CONTROLS */}
-                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="w-5 h-5 text-rosegold-400" />
-                        <h3 className="text-lg font-serif font-bold text-white uppercase tracking-wide">
+                  {/* MONTH CONTROLS BAR */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-5">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2.5 rounded-2xl bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl sm:text-2xl font-serif font-bold text-white uppercase tracking-wider">
                           {monthNameYear}
                         </h3>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => {
-                            const newM = new Date(calMonthView);
-                            newM.setMonth(newM.getMonth() - 1);
-                            setCalMonthView(newM);
-                          }}
-                          className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
-                          title="Previous Month"
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            const today = new Date();
-                            setCalMonthView(today);
-                            setSelectedCalDate(today.toISOString().split('T')[0]);
-                          }}
-                          className="px-3 py-1.5 rounded-xl bg-dark-800 border border-rosegold-500/30 text-rosegold-400 font-bold text-xs hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
-                        >
-                          Today
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            const newM = new Date(calMonthView);
-                            newM.setMonth(newM.getMonth() + 1);
-                            setCalMonthView(newM);
-                          }}
-                          className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
-                          title="Next Month"
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                        <span className="text-xs text-gray-400">Click any date to inspect appointment popup</span>
                       </div>
                     </div>
 
-                    {/* DAY OF WEEK HEADERS */}
-                    <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-rosegold-400 uppercase tracking-wider py-1 border-b border-white/5">
-                      <span>Mon</span>
-                      <span>Tue</span>
-                      <span>Wed</span>
-                      <span>Thu</span>
-                      <span>Fri</span>
-                      <span>Sat</span>
-                      <span>Sun</span>
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <button
+                        onClick={() => {
+                          const newM = new Date(calMonthView);
+                          newM.setMonth(newM.getMonth() - 1);
+                          setCalMonthView(newM);
+                        }}
+                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                        title="Previous Month"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const today = new Date();
+                          setCalMonthView(today);
+                          setSelectedCalDate(today.toISOString().split('T')[0]);
+                        }}
+                        className="px-4 py-2 rounded-2xl bg-dark-800 border border-rosegold-500/30 text-rosegold-400 font-bold text-xs hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
+                      >
+                        Today
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          const newM = new Date(calMonthView);
+                          newM.setMonth(newM.getMonth() + 1);
+                          setCalMonthView(newM);
+                        }}
+                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                        title="Next Month"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
                     </div>
+                  </div>
 
-                    {/* CALENDAR DAY CELLS */}
-                    <div className="grid grid-cols-7 gap-1.5 pt-1">
-                      {calendarDays.map((day, idx) => {
-                        const isSelected = selectedCalDate === day.dateStr;
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const isToday = day.dateStr === todayStr;
-                        const isPast = day.dateStr < todayStr;
-                        const dayApps = getAppointmentsForDate(day.dateStr);
-                        const approvedLeavesOnDay = leaves ? leaves.filter(l => {
-                          if (l.status !== 'Approved') return false;
-                          if (!l.startDate || !l.endDate) return false;
-                          const sDate = String(l.startDate).split('T')[0];
-                          const eDate = String(l.endDate).split('T')[0];
-                          return day.dateStr >= sDate && day.dateStr <= eDate;
-                        }) : [];
+                  {/* DAY OF WEEK HEADERS */}
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold text-rosegold-400 uppercase tracking-widest py-2 border-b border-white/5 bg-dark-900/60 rounded-2xl p-2">
+                    <span>Monday</span>
+                    <span>Tuesday</span>
+                    <span>Wednesday</span>
+                    <span>Thursday</span>
+                    <span>Friday</span>
+                    <span>Saturday</span>
+                    <span>Sunday</span>
+                  </div>
 
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedCalDate(day.dateStr)}
-                            className={`min-h-[76px] sm:min-h-[86px] p-2 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border ${
-                              isSelected
-                                ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-md z-10'
-                                : approvedLeavesOnDay.length > 0
-                                ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
-                                : isToday
-                                ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 light:border-green-600 text-white light:text-dark-900 font-bold shadow-md'
-                                : day.isCurrentMonth
-                                ? 'bg-dark-800/80 light:bg-cream/40 border-white/5 light:border-champagne/60 text-gray-200 light:text-dark-900'
-                                : 'bg-dark-900/40 light:bg-gray-100/60 border-transparent text-gray-600 light:text-gray-400'
-                            } ${isPast && !isSelected ? 'opacity-70' : ''}`}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span className={`text-xs sm:text-sm font-bold ${
-                                isSelected ? 'text-dark-900 font-extrabold' : isToday ? 'text-green-400 light:text-green-700 font-bold' : 'text-gray-300 light:text-dark-900'
-                              }`}>
-                                {day.dayNumber}
-                              </span>
+                  {/* CALENDAR DAY CELLS */}
+                  <div className="grid grid-cols-7 gap-2 sm:gap-3 pt-1">
+                    {calendarDays.map((day, idx) => {
+                      const isSelected = selectedCalDate === day.dateStr;
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const isToday = day.dateStr === todayStr;
+                      const isPast = day.dateStr < todayStr;
+                      const dayApps = getAppointmentsForDate(day.dateStr);
+                      const approvedLeavesOnDay = leaves ? leaves.filter(l => {
+                        if (l.status !== 'Approved') return false;
+                        if (!l.startDate || !l.endDate) return false;
+                        const sDate = String(l.startDate).split('T')[0];
+                        const eDate = String(l.endDate).split('T')[0];
+                        return day.dateStr >= sDate && day.dateStr <= eDate;
+                      }) : [];
 
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setSelectedCalDate(day.dateStr);
+                            setIsScheduleModalOpen(true);
+                          }}
+                          className={`min-h-[90px] sm:min-h-[110px] p-3 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border group hover:border-rosegold-400/80 hover:scale-[1.02] ${
+                            isSelected
+                              ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-lg z-10'
+                              : approvedLeavesOnDay.length > 0
+                              ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
+                              : isToday
+                              ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 text-white font-bold shadow-md'
+                              : day.isCurrentMonth
+                              ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800'
+                              : 'bg-dark-900/40 border-transparent text-gray-600'
+                          } ${isPast && !isSelected ? 'opacity-75' : ''}`}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className={`text-sm sm:text-base font-extrabold ${
+                              isSelected ? 'text-dark-900' : isToday ? 'text-green-400 font-bold' : 'text-gray-200'
+                            }`}>
+                              {day.dayNumber}
+                            </span>
+
+                            <div className="flex items-center space-x-1">
                               {approvedLeavesOnDay.length > 0 && (
-                                <span className="text-[10px]" title={`Staff Leave: ${approvedLeavesOnDay.map(l => l.employeeName).join(', ')}`}>
+                                <span className="text-xs" title={`Staff Leave: ${approvedLeavesOnDay.map(l => l.employeeName).join(', ')}`}>
                                   🟣
                                 </span>
                               )}
 
                               {dayApps.length > 0 && (
-                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold shadow-sm ${
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold shadow-sm ${
                                   isSelected
                                     ? 'bg-white !text-black font-extrabold shadow-md'
-                                    : 'bg-rosegold-500/20 text-rosegold-400 light:!text-black border border-rosegold-500/40 font-extrabold'
+                                    : 'bg-rosegold-500/20 text-rosegold-400 border border-rosegold-500/40 font-extrabold'
                                 }`}>
-                                  {dayApps.length}
+                                  {dayApps.length} {dayApps.length === 1 ? 'booking' : 'bookings'}
                                 </span>
                               )}
                             </div>
-
-                             {/* APPOINTMENT PREVIEWS WITH TIME, SERVICE & CUSTOMER NAME */}
-                            {dayApps.length > 0 && (
-                              <div className="space-y-1 mt-1">
-                                {dayApps.slice(0, 2).map((app, aIdx) => (
-                                  <div
-                                    key={aIdx}
-                                    className="text-[10px] font-medium leading-tight truncate flex items-center space-x-1"
-                                    title={`${app.appointmentTime || '10:30 AM'} - ${app.service} (${app.customerName || 'Client'})`}
-                                  >
-                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-dark-900' : 'bg-rosegold-400 light:bg-rosegold-600'}`} />
-                                    <span className={`font-mono font-bold shrink-0 ${isSelected ? 'text-dark-900' : 'text-rosegold-300 light:text-dark-900'}`}>
-                                      {app.appointmentTime || '10:30 AM'}
-                                    </span>
-                                    <span className={`truncate ${isSelected ? 'text-dark-900/80 font-medium' : 'text-gray-300 light:text-gray-700'}`}>
-                                      {app.service}
-                                    </span>
-                                  </div>
-                                ))}
-                                {dayApps.length > 2 && (
-                                  <span className={`text-[9px] font-bold block pt-0.5 ${isSelected ? 'text-dark-900 font-extrabold' : 'text-rosegold-400 light:text-rosegold-700'}`}>
-                                    +{dayApps.length - 2} more
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* RIGHT COLUMN: INTERACTIVE SIDEBAR FOR CLICKED DATE (LG: 5 COLS) */}
-                  <div className="lg:col-span-5 glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-5 h-fit max-h-[820px] overflow-y-auto custom-scrollbar self-start shadow-2xl">
-                    
-                    <div className="space-y-4">
-                      {/* DATE HEADER & DIRECT ADD BUTTON */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-                        <div>
-                          <span className="text-[10px] text-rosegold-400 font-bold uppercase tracking-wider block">Selected Date Sidebar</span>
-                          <h3 className="text-xl font-serif font-bold text-white">{formattedSelectedDate}</h3>
-                        </div>
-
-                        {selectedCalDate < new Date().toISOString().split('T')[0] ? (
-                          <span className="px-3.5 py-2 rounded-2xl bg-gray-500/10 border border-gray-500/30 text-gray-400 text-xs font-bold inline-flex items-center space-x-1.5 self-start sm:self-auto cursor-not-allowed">
-                            <span>🔒 Past Date</span>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
-                              setModalType('addApp');
-                            }}
-                            className="px-3.5 py-2 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all inline-flex items-center space-x-1.5 self-start sm:self-auto cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Appointment</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* DATE METRICS SUMMARY GRID */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
-                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Total Bookings</span>
-                          <span className="text-base font-bold text-white block">{selectedApps.length}</span>
-                        </div>
-                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
-                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Est. Revenue</span>
-                          <span className="text-base font-bold text-rosegold-400 block">₹{selectedDateRevenue.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
-                          <span className="text-[9px] text-green-400 uppercase font-semibold block">Confirmed / Done</span>
-                          <span className="text-base font-bold text-green-400 block">{confirmedCount + completedCount}</span>
-                        </div>
-                        <div className="p-2.5 rounded-2xl bg-dark-900/90 border border-white/5 space-y-0.5">
-                          <span className="text-[9px] text-amber-400 uppercase font-semibold block">In Progress</span>
-                          <span className="text-base font-bold text-amber-400 block">{inProgressCount}</span>
-                        </div>
-                      </div>
-
-                      {/* STAFF ON LEAVE / AVAILABILITY BANNER */}
-                      {staffOnLeave.length > 0 ? (
-                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center space-x-2 text-xs text-amber-300">
-                          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-                          <div>
-                            <span className="font-bold block">Staff Leave Notice ({formattedSelectedDate})</span>
-                            <span className="text-[11px] text-amber-200">
-                              {staffOnLeave.map(l => l.employeeName || 'Specialist').join(', ')} on approved leave.
-                            </span>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="p-2.5 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center space-x-2 text-xs text-green-400">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0" />
-                          <span className="text-[11px] font-semibold">All Salon Specialists Available for Booking</span>
-                        </div>
-                      )}
 
-                      {/* SEARCH & STATUS FILTER BAR */}
-                      <div className="space-y-2.5">
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                          <input
-                            type="text"
-                            placeholder="Search client, specialist, service..."
-                            value={calSearchQuery}
-                            onChange={(e) => setCalSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-900 text-white text-xs border border-white/10 focus:outline-none focus:border-rosegold-500 placeholder-gray-500"
-                          />
-                          {calSearchQuery && (
-                            <button
-                              onClick={() => setCalSearchQuery('')}
-                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
-                            >
-                              ✕
-                            </button>
-                          )}
-                        </div>
-
-                        {/* STATUS FILTER PILLS */}
-                        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 custom-scrollbar text-[10px]">
-                          {['All', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'].map((st) => (
-                            <button
-                              key={st}
-                              onClick={() => setCalStatusFilter(st)}
-                              className={`px-2.5 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer ${
-                                calStatusFilter === st
-                                  ? 'rosegold-gradient-bg text-dark-900 shadow-sm'
-                                  : 'bg-dark-900 text-gray-400 hover:text-white border border-white/5'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* SCHEDULE TIMELINE CARDS FOR SELECTED DATE */}
-                      {filteredApps.length === 0 ? (
-                        <div className="py-10 text-center space-y-3 bg-dark-850/60 rounded-2xl border border-white/5 p-6">
-                          <div className="w-12 h-12 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400 mx-auto">
-                            <Calendar className="w-6 h-6" />
-                          </div>
-                          <h4 className="text-white font-serif font-bold text-base">No Appointments Found</h4>
-                          <p className="text-xs text-gray-400 max-w-xs mx-auto">
-                            {calSearchQuery || calStatusFilter !== 'All' 
-                              ? `No appointments match filters for ${formattedSelectedDate}.`
-                              : `There are no appointments registered for ${formattedSelectedDate}.`}
-                          </p>
-                          <button
-                            onClick={() => {
-                              setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
-                              setModalType('addApp');
-                            }}
-                            className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md hover:scale-105 transition-transform inline-flex items-center space-x-1.5 cursor-pointer"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Add Appointment for Date</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 custom-scrollbar">
-                          {filteredApps.map((app) => (
-                            <div 
-                              key={app._id}
-                              className="p-3.5 rounded-2xl bg-dark-900/90 border border-rosegold-500/25 space-y-2.5 hover:border-rosegold-400 transition-all text-xs"
-                            >
-                              {/* CARD HEADER */}
-                              <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                                <div className="flex items-center space-x-2">
-                                  <Clock className="w-3.5 h-3.5 text-rosegold-400 shrink-0" />
-                                  <span className="text-rosegold-300 font-extrabold text-xs">
-                                    {app.appointmentTime || app.bookingTimeFormatted || '11:00 AM'}
-                                  </span>
-                                  <span className="text-gray-500 text-[10px]">({app.bookingId || 'APP-' + app._id?.slice(-4)})</span>
-                                </div>
-
-                                <select
-                                  value={app.status}
-                                  onChange={(e) => handleUpdateAppStatus(app._id, e.target.value)}
-                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold border focus:outline-none cursor-pointer ${
-                                    app.status === 'Completed'
-                                      ? 'bg-green-500/20 text-green-300 border-green-500/40'
-                                      : app.status === 'In Progress'
-                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                                      : app.status === 'Cancelled' || app.status === 'Staff_Rejected'
-                                      ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                                      : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                                  }`}
+                          {/* APPOINTMENT PREVIEWS */}
+                          {dayApps.length > 0 ? (
+                            <div className="space-y-1 mt-2">
+                              {dayApps.slice(0, 2).map((app, aIdx) => (
+                                <div
+                                  key={aIdx}
+                                  className="text-xs font-medium leading-tight truncate flex items-center space-x-1.5 p-1 rounded-lg bg-dark-900/40 group-hover:bg-dark-900/60"
+                                  title={`${app.appointmentTime || '10:30 AM'} - ${app.service} (${app.customerName || 'Client'})`}
                                 >
-                                  {(() => {
-                                    const allowed = (() => {
-                                      switch (app.status) {
-                                        case 'Pending':
-                                          return ['Pending', 'Confirmed', 'In Progress', 'Cancelled'];
-                                        case 'Staff_Accepted':
-                                        case 'Confirmed':
-                                          return ['Confirmed', 'In Progress', 'Rescheduled', 'Cancelled'];
-                                        case 'In Progress':
-                                          return ['In Progress', 'Completed', 'Cancelled'];
-                                        case 'Completed':
-                                          return ['Completed'];
-                                        case 'Cancelled':
-                                        case 'Staff_Rejected':
-                                          return ['Cancelled'];
-                                        case 'Rescheduled':
-                                        case 'Reschedule Requested':
-                                          return ['Rescheduled', 'Confirmed', 'Cancelled'];
-                                        default:
-                                          return [app.status, 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
-                                      }
-                                    })();
-
-                                    const optLabels: Record<string, string> = {
-                                      'Pending': 'Pending ⏳',
-                                      'Confirmed': 'Confirmed 🟢',
-                                      'In Progress': 'In Progress ⏳',
-                                      'Completed': 'Completed ✅',
-                                      'Rescheduled': 'Rescheduled 🔄',
-                                      'Cancelled': 'Cancelled 🔴',
-                                      'Staff_Accepted': 'Staff Accepted 🟢',
-                                      'Staff_Rejected': 'Staff Rejected 🔴',
-                                      'Reschedule Requested': 'Reschedule Requested 🔄'
-                                    };
-
-                                    return allowed.map(st => (
-                                      <option key={st} value={st}>
-                                        {optLabels[st] || st}
-                                      </option>
-                                    ));
-                                  })()}
-                                </select>
-                              </div>
-
-                              {/* CLIENT & SPECIALIST DETAILS */}
-                              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                <div className="bg-dark-800 p-2.5 rounded-xl border border-white/5 space-y-1">
-                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Client Details</span>
-                                  <strong className="text-white font-bold block truncate">{app.customerName}</strong>
-                                  <div className="flex items-center justify-between pt-0.5">
-                                    <span className="text-gray-400 text-[10px] truncate">{app.customerPhone}</span>
-                                    <div className="flex items-center space-x-1 shrink-0">
-                                      <a
-                                        href={`tel:${app.customerPhone}`}
-                                        className="p-1 rounded-md bg-rosegold-500/10 text-rosegold-400 hover:bg-rosegold-500 hover:text-dark-900 transition-colors"
-                                        title="Call Customer"
-                                      >
-                                        <Phone className="w-3 h-3" />
-                                      </a>
-                                      <a
-                                        href={`https://wa.me/${app.customerPhone?.replace(/[^0-9]/g, '')}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-1 rounded-md bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-dark-900 transition-colors"
-                                        title="WhatsApp Customer"
-                                      >
-                                        <MessageCircle className="w-3 h-3" />
-                                      </a>
-                                    </div>
-                                  </div>
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-dark-900' : 'bg-rosegold-400'}`} />
+                                  <span className={`font-mono font-bold shrink-0 ${isSelected ? 'text-dark-900' : 'text-rosegold-300'}`}>
+                                    {app.appointmentTime || '10:30 AM'}
+                                  </span>
+                                  <span className={`truncate ${isSelected ? 'text-dark-900/90 font-medium' : 'text-gray-300'}`}>
+                                    {app.service}
+                                  </span>
                                 </div>
-
-                                <div className="bg-dark-800 p-2.5 rounded-xl border border-white/5 space-y-1">
-                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Assigned Specialist</span>
-                                  <strong className="text-rosegold-300 font-bold block truncate">{app.specialistName}</strong>
-                                  <span className="text-gray-400 text-[10px] block truncate">{app.branch || 'Jubilee Hills Flagship'}</span>
-                                </div>
-                              </div>
-
-                              {/* TREATMENT SERVICE & PAYMENT STATUS */}
-                              <div className="flex items-center justify-between bg-dark-800/80 p-2.5 rounded-xl border border-white/5">
-                                <div>
-                                  <span className="text-gray-400 text-[9px] uppercase font-semibold block">Treatment Service</span>
-                                  <span className="text-white font-bold text-xs">{app.service}</span>
-                                </div>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                                  app.paymentStatus === 'Paid' ? 'bg-green-500/20 text-green-300' : 'bg-amber-500/20 text-amber-300'
-                                }`}>
-                                  {app.paymentStatus === 'Paid' ? 'Paid ✅' : 'Pending ⏳'}
+                              ))}
+                              {dayApps.length > 2 && (
+                                <span className={`text-[11px] font-bold block pt-0.5 px-1 ${isSelected ? 'text-dark-900 font-extrabold' : 'text-rosegold-400'}`}>
+                                  +{dayApps.length - 2} more appointments →
                                 </span>
-                              </div>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                          ) : (
+                            <div className="mt-auto pt-2">
+                              <span className="text-[10px] text-gray-500 group-hover:text-rosegold-400/70 transition-colors block">
+                                No bookings
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-
                 </div>
+
               </div>
             );
           })()}
@@ -8240,6 +7985,327 @@ function AdminDashboardContent() {
             ) : (
               <div className="py-8 text-center text-xs text-gray-400">Leave request details unavailable.</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* DAILY SCHEDULE POPUP MODAL (ROOT PORTAL LEVEL FOR FULL SCREEN COVERAGE) */}
+      {isScheduleModalOpen && (
+        <div 
+          className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn"
+          onClick={() => setIsScheduleModalOpen(false)}
+        >
+          <div 
+            className="bg-[#181524] light:bg-white text-white light:text-dark-900 w-full max-w-4xl max-h-[90vh] rounded-3xl border-2 border-rosegold-500/50 light:border-rosegold-500/60 shadow-[0_25px_90px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* MODAL HEADER */}
+            <div className="p-6 border-b border-rosegold-500/20 light:border-rosegold-500/30 flex items-center justify-between bg-[#1f1a2e] light:bg-[#FAF7F2]">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-2xl bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 light:text-rosegold-700">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-xs !text-rosegold-400 light:!text-rosegold-700 font-extrabold uppercase tracking-wider block">Daily Schedule Popup</span>
+                  <h3 className="text-xl sm:text-2xl font-serif font-bold !text-white light:!text-dark-900">{formattedSelectedDate}</h3>
+                </div>
+              </div>
+
+              {/* CLOSE BUTTON */}
+              <button
+                onClick={() => setIsScheduleModalOpen(false)}
+                className="p-2.5 rounded-full bg-dark-800 light:bg-gray-200 border border-white/10 light:border-gray-300 text-gray-300 light:text-dark-900 hover:text-white light:hover:text-black hover:bg-dark-700 light:hover:bg-gray-300 transition-all cursor-pointer shadow-md"
+                title="Close Schedule Popup"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* MODAL BODY */}
+            <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1 bg-[#12101b] light:bg-[#FFFDF9]">
+              
+              {/* DATE METRICS SUMMARY GRID */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 space-y-0.5 shadow-md">
+                  <span className="text-[10px] text-gray-400 light:text-gray-600 uppercase font-semibold block">Total Bookings</span>
+                  <span className="text-xl font-extrabold !text-white light:!text-dark-900 block">{selectedApps.length}</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 space-y-0.5 shadow-md">
+                  <span className="text-[10px] text-gray-400 light:text-gray-600 uppercase font-semibold block">Est. Revenue</span>
+                  <span className="text-xl font-extrabold !text-rosegold-400 light:!text-rosegold-700 block">₹{selectedDateRevenue.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 space-y-0.5 shadow-md">
+                  <span className="text-[10px] text-green-400 light:text-green-700 uppercase font-semibold block">Confirmed / Completed</span>
+                  <span className="text-xl font-extrabold !text-green-400 light:!text-green-700 block">{confirmedCount + completedCount}</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 space-y-0.5 shadow-md">
+                  <span className="text-[10px] text-amber-400 light:text-amber-700 uppercase font-semibold block">In Progress</span>
+                  <span className="text-xl font-extrabold !text-amber-400 light:!text-amber-700 block">{inProgressCount}</span>
+                </div>
+              </div>
+
+              {/* STAFF ON LEAVE / AVAILABILITY BANNER */}
+              {staffOnLeave.length > 0 ? (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 light:bg-amber-50 border border-amber-500/30 light:border-amber-300 flex items-center space-x-3 text-xs text-amber-300 light:text-amber-900">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-400 light:text-amber-700" />
+                  <div>
+                    <span className="font-bold block">Staff Leave Notice ({formattedSelectedDate})</span>
+                    <span className="text-[11px] text-amber-200 light:text-amber-800">
+                      {staffOnLeave.map(l => l.employeeName || 'Specialist').join(', ')} on approved leave today.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-2xl bg-green-500/10 light:bg-green-50 border border-green-500/20 light:border-green-300 flex items-center space-x-2 text-xs text-green-400 light:text-green-800">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400 light:text-green-700 shrink-0" />
+                  <span className="text-[11px] font-semibold">All Salon Specialists Available for Booking</span>
+                </div>
+              )}
+
+              {/* SEARCH & STATUS FILTER BAR */}
+              <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-3.5 h-3.5 text-gray-400 light:text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search client, specialist, service..."
+                    value={calSearchQuery}
+                    onChange={(e) => setCalSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-900 light:bg-gray-100 !text-white light:!text-dark-900 text-xs border border-white/10 light:border-gray-300 focus:outline-none focus:border-rosegold-500 placeholder-gray-500 light:placeholder-gray-500 font-medium"
+                  />
+                  {calSearchQuery && (
+                    <button
+                      onClick={() => setCalSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 light:text-gray-600 hover:text-white light:hover:text-black text-xs cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* STATUS FILTER PILLS */}
+                <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 custom-scrollbar text-xs">
+                  {['All', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setCalStatusFilter(st)}
+                      className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer text-xs ${
+                        calStatusFilter === st
+                          ? 'rosegold-gradient-bg !text-dark-900 light:!text-white shadow-sm font-extrabold'
+                          : 'bg-dark-900 light:bg-gray-100 text-gray-300 light:text-dark-900 hover:text-white border border-white/5 light:border-gray-300 font-bold'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* SCHEDULE TIMELINE LIST / CARDS FOR SELECTED DATE */}
+              {filteredApps.length === 0 ? (
+                <div className="py-12 text-center space-y-3 bg-[#1c182a] light:bg-white rounded-3xl border border-white/10 light:border-rosegold-500/30 p-6">
+                  <div className="w-12 h-12 rounded-full bg-rosegold-500/10 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400 light:text-rosegold-700 mx-auto">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <h4 className="!text-white light:!text-dark-900 font-serif font-bold text-lg">No Appointments Found</h4>
+                  <p className="text-xs text-gray-400 light:text-gray-600 max-w-sm mx-auto">
+                    {calSearchQuery || calStatusFilter !== 'All' 
+                      ? `No appointments match filters for ${formattedSelectedDate}.`
+                      : `There are no appointments registered for ${formattedSelectedDate}.`}
+                  </p>
+                  {selectedCalDate >= new Date().toISOString().split('T')[0] && (
+                    <button
+                      onClick={() => {
+                        setIsScheduleModalOpen(false);
+                        setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
+                        setModalType('addApp');
+                      }}
+                      className="px-5 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 light:text-white font-extrabold text-xs shadow-md hover:scale-105 transition-transform inline-flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Appointment for {selectedCalDate}</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-rosegold-400 light:text-rosegold-700 uppercase tracking-wider">
+                      {filteredApps.length} {filteredApps.length === 1 ? 'Booking' : 'Bookings'} Scheduled
+                    </span>
+                    <span className="text-[11px] text-gray-400 light:text-gray-600">Daily Timeline</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {filteredApps.map((app) => (
+                      <div 
+                        key={app._id}
+                        className="p-4 sm:p-5 rounded-2xl bg-[#1c182a] light:bg-white border border-rosegold-500/30 light:border-rosegold-500/40 hover:border-rosegold-400 transition-all shadow-lg space-y-3"
+                      >
+                        {/* TOP CARD BAR */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 light:border-gray-200 pb-3">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="p-2.5 rounded-xl bg-rosegold-500/10 border border-rosegold-500/30 text-rosegold-400 light:text-rosegold-700 shrink-0">
+                              <Clock className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <span className="text-base font-mono font-extrabold !text-rosegold-300 light:!text-rosegold-800 block">
+                                {app.appointmentTime || app.bookingTimeFormatted || '11:00 AM'}
+                              </span>
+                              <span className="text-[11px] text-gray-400 light:text-gray-600 font-mono">
+                                Booking ID: {app.bookingId || 'APP-' + app._id?.slice(-4)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-2 self-start sm:self-auto">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold ${
+                              app.paymentStatus === 'Paid' ? 'bg-green-500/20 light:bg-green-100 text-green-400 light:text-green-800 border border-green-500/40 light:border-green-300' : 'bg-amber-500/20 light:bg-amber-100 text-amber-400 light:text-amber-800 border border-amber-500/40 light:border-amber-300'
+                            }`}>
+                              {app.paymentStatus === 'Paid' ? 'Paid ✅' : 'Payment Pending ⏳'}
+                            </span>
+
+                            <select
+                              value={app.status}
+                              onChange={(e) => handleUpdateAppStatus(app._id, e.target.value)}
+                              className={`px-3 py-1 rounded-full text-xs font-bold border focus:outline-none cursor-pointer bg-dark-900 light:bg-white text-white light:text-dark-900 border-white/20 light:border-gray-300 shadow-sm ${
+                                app.status === 'Completed'
+                                  ? 'bg-green-500/20 light:bg-green-100 text-green-300 light:text-green-800 border-green-500/40 light:border-green-300'
+                                  : app.status === 'In Progress'
+                                  ? 'bg-amber-500/20 light:bg-amber-100 text-amber-300 light:text-amber-800 border-amber-500/40 light:border-amber-300'
+                                  : app.status === 'Cancelled' || app.status === 'Staff_Rejected'
+                                  ? 'bg-red-500/20 light:bg-red-100 text-red-300 light:text-red-800 border-red-500/40 light:border-red-300'
+                                  : 'bg-purple-500/20 light:bg-purple-100 text-purple-300 light:text-purple-800 border-purple-500/40 light:border-purple-300'
+                              }`}
+                            >
+                              {(() => {
+                                const allowed = (() => {
+                                  switch (app.status) {
+                                    case 'Pending':
+                                      return ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+                                    case 'Staff_Accepted':
+                                    case 'Confirmed':
+                                      return ['Confirmed', 'In Progress', 'Rescheduled', 'Completed', 'Cancelled'];
+                                    case 'In Progress':
+                                      return ['In Progress', 'Completed', 'Cancelled'];
+                                    case 'Completed':
+                                      return ['Completed'];
+                                    case 'Cancelled':
+                                    case 'Staff_Rejected':
+                                      return ['Cancelled'];
+                                    case 'Rescheduled':
+                                    case 'Reschedule Requested':
+                                      return ['Rescheduled', 'Confirmed', 'Completed', 'Cancelled'];
+                                    default:
+                                      return [app.status, 'Confirmed', 'In Progress', 'Completed', 'Cancelled'];
+                                  }
+                                })();
+
+                                const optLabels: Record<string, string> = {
+                                  'Pending': 'Pending ⏳',
+                                  'Confirmed': 'Confirmed 🟢',
+                                  'In Progress': 'In Progress ✂️',
+                                  'Completed': 'Completed ✅',
+                                  'Rescheduled': 'Rescheduled 🗓️',
+                                  'Cancelled': 'Cancelled 🔴',
+                                  'Staff_Accepted': 'Staff Accepted 🟢',
+                                  'Staff_Rejected': 'Staff Rejected 🔴',
+                                  'Reschedule Requested': 'Reschedule Requested ⚠️'
+                                };
+
+                                return allowed.map(st => (
+                                  <option key={st} value={st} className="bg-[#181524] light:bg-white text-white light:text-dark-900 font-bold">
+                                    {optLabels[st] || st}
+                                  </option>
+                                ));
+                              })()}
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* MAIN CONTENT GRID INSIDE CARD */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                          {/* CLIENT INFO */}
+                          <div className="bg-dark-900 light:bg-[#FAF7F2] p-3 rounded-xl border border-white/10 light:border-rosegold-500/20 space-y-1.5">
+                            <span className="text-gray-400 light:text-gray-600 text-[9px] uppercase font-bold tracking-wider block">Client Details</span>
+                            <strong className="!text-white light:!text-dark-900 text-xs font-bold block">{app.customerName}</strong>
+                            <div className="flex items-center justify-between pt-0.5">
+                              <span className="text-gray-300 light:text-gray-700 font-mono text-[11px]">{app.customerPhone}</span>
+                              <div className="flex items-center space-x-1">
+                                <a
+                                  href={`tel:${app.customerPhone}`}
+                                  className="p-1 rounded-md bg-rosegold-500/10 light:bg-rosegold-500/20 text-rosegold-400 light:text-rosegold-700 hover:bg-rosegold-500 hover:text-dark-900 transition-colors"
+                                  title="Call Customer"
+                                >
+                                  <Phone className="w-3 h-3" />
+                                </a>
+                                <a
+                                  href={`https://wa.me/${app.customerPhone?.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 rounded-md bg-green-500/10 light:bg-green-500/20 text-green-400 light:text-green-700 hover:bg-green-500 hover:text-dark-900 transition-colors"
+                                  title="WhatsApp Customer"
+                                >
+                                  <MessageCircle className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* SPECIALIST & LOCATION */}
+                          <div className="bg-dark-900 light:bg-[#FAF7F2] p-3 rounded-xl border border-white/10 light:border-rosegold-500/20 space-y-1.5">
+                            <span className="text-gray-400 light:text-gray-600 text-[9px] uppercase font-bold tracking-wider block">Assigned Specialist</span>
+                            <strong className="!text-rosegold-300 light:!text-rosegold-800 text-xs font-bold block">{app.specialistName}</strong>
+                            <span className="text-gray-400 light:text-gray-600 text-[11px] block">{app.branch || 'Jubilee Hills Flagship'}</span>
+                          </div>
+
+                          {/* SERVICE & AMOUNT */}
+                          <div className="bg-dark-900 light:bg-[#FAF7F2] p-3 rounded-xl border border-white/10 light:border-rosegold-500/20 space-y-1.5">
+                            <span className="text-gray-400 light:text-gray-600 text-[9px] uppercase font-bold tracking-wider block">Treatment Service</span>
+                            <strong className="!text-white light:!text-dark-900 text-xs font-bold block">{app.service}</strong>
+                            <span className="!text-rosegold-400 light:!text-rosegold-800 text-[11px] font-bold block">
+                              Price: ₹{(app.price || app.totalAmount || 0).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* MODAL FOOTER WITH CLOSE BUTTON */}
+            <div className="p-4 sm:p-5 border-t border-rosegold-500/20 light:border-rosegold-500/30 bg-[#1f1a2e] light:bg-[#FAF7F2] flex items-center justify-between">
+              <span className="text-xs text-gray-400 light:text-gray-700 hidden sm:inline">
+                Schedule for <strong className="!text-white light:!text-dark-900 font-bold">{formattedSelectedDate}</strong>
+              </span>
+
+              <div className="flex items-center space-x-3 w-full sm:w-auto justify-end">
+                <button
+                  onClick={() => setIsScheduleModalOpen(false)}
+                  className="px-5 py-2.5 rounded-full bg-dark-800 light:bg-gray-200 border border-white/20 light:border-gray-300 text-gray-300 light:text-dark-900 font-bold text-xs hover:text-white light:hover:text-black transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+
+                {selectedCalDate >= new Date().toISOString().split('T')[0] && (
+                  <button
+                    onClick={() => {
+                      setIsScheduleModalOpen(false);
+                      setAppForm(prev => ({ ...prev, appointmentDate: selectedCalDate }));
+                      setModalType('addApp');
+                    }}
+                    className="px-5 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 light:text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-transform flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Book Appointment ({selectedCalDate})</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
