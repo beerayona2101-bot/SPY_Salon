@@ -8,11 +8,20 @@ const ApiError = require('../utils/apiError');
  */
 const dispatchNotification = async (reqApp, notifData) => {
   try {
-    // Prevent duplicate notifications for same bookingId & target recipient
-    if (notifData.bookingId && (notifData.userId || notifData.email)) {
-      const query = { bookingId: notifData.bookingId };
+    // Universal Idempotency: Prevent duplicate notifications for same event reference & recipient
+    const refEventId = notifData.bookingId || notifData.leaveRequestId || notifData.reviewId || notifData.enquiryId || notifData.appointmentId;
+    if (refEventId) {
+      const queryOr = [];
+      if (notifData.bookingId) queryOr.push({ bookingId: notifData.bookingId });
+      if (notifData.leaveRequestId) queryOr.push({ leaveRequestId: notifData.leaveRequestId });
+      if (notifData.reviewId) queryOr.push({ reviewId: notifData.reviewId });
+      if (notifData.enquiryId) queryOr.push({ enquiryId: notifData.enquiryId });
+      if (notifData.appointmentId) queryOr.push({ appointmentId: notifData.appointmentId });
+
+      const query = { $or: queryOr };
       if (notifData.userId) query.userId = String(notifData.userId);
       else if (notifData.email) query.email = String(notifData.email).toLowerCase().trim();
+      else if (notifData.role) query.role = notifData.role;
 
       const existing = await Notification.findOne(query);
       if (existing) {
@@ -35,7 +44,9 @@ const dispatchNotification = async (reqApp, notifData) => {
       link: notifData.link || '',
       bookingId: notifData.bookingId || null,
       appointmentId: notifData.appointmentId || null,
-      leaveRequestId: notifData.leaveRequestId || null
+      leaveRequestId: notifData.leaveRequestId || null,
+      reviewId: notifData.reviewId || null,
+      enquiryId: notifData.enquiryId || null
     };
 
     const savedNotif = await Notification.create(payload);
@@ -78,11 +89,14 @@ exports.getNotifications = async (req, res, next) => {
     if (role === 'admin') {
       query = { $or: [{ role: 'admin' }, { role: 'all' }] };
     } else if (role === 'employee') {
+      const empConditions = [];
+      if (userId) empConditions.push({ userId: String(userId) });
+      if (cleanEmail) empConditions.push({ email: cleanEmail });
+
       query = {
         $or: [
-          ...(userId ? [{ userId: String(userId) }] : []),
-          ...(cleanEmail ? [{ email: cleanEmail }] : []),
-          { role: 'employee' }
+          ...(empConditions.length > 0 ? empConditions : []),
+          { role: 'employee', userId: null, email: null }
         ]
       };
     } else if (isGuest) {
@@ -107,7 +121,7 @@ exports.getNotifications = async (req, res, next) => {
     
     const limitNum = Math.min(parseInt(req.query.limit) || 25, 50);
     const list = await Notification.find(query)
-      .select('notificationId userId email role title message type icon priority isRead link bookingId appointmentId createdAt')
+      .select('notificationId userId email role title message type icon priority isRead link bookingId appointmentId leaveRequestId reviewId enquiryId createdAt')
       .sort({ createdAt: -1 })
       .limit(limitNum)
       .lean();
@@ -129,10 +143,13 @@ exports.getUnreadCount = async (req, res, next) => {
     if (role === 'admin') {
       query.$or = [{ role: 'admin' }, { role: 'all' }];
     } else if (role === 'employee') {
+      const empConditions = [];
+      if (userId) empConditions.push({ userId: String(userId) });
+      if (cleanEmail) empConditions.push({ email: cleanEmail });
+
       query.$or = [
-        ...(userId ? [{ userId: String(userId) }] : []),
-        ...(cleanEmail ? [{ email: cleanEmail }] : []),
-        { role: 'employee' }
+        ...(empConditions.length > 0 ? empConditions : []),
+        { role: 'employee', userId: null, email: null }
       ];
     } else if (isGuest) {
       query.role = 'public';
@@ -212,7 +229,7 @@ exports.markAllAsRead = async (req, res, next) => {
     } else if (role === 'employee') {
       query.$or = [
         ...(targetConditions.length > 0 ? targetConditions : []),
-        { role: 'employee' }
+        { role: 'employee', userId: null, email: null }
       ];
     } else if (targetConditions.length > 0) {
       query.$or = [...targetConditions, { role: 'all' }];
@@ -278,7 +295,7 @@ exports.clearAllNotifications = async (req, res, next) => {
     } else if (role === 'employee') {
       query.$or = [
         ...(targetConditions.length > 0 ? targetConditions : []),
-        { role: 'employee' }
+        { role: 'employee', userId: null, email: null }
       ];
     } else if (targetConditions.length > 0) {
       query.$or = [...targetConditions, { role: 'all' }];

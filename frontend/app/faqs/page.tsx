@@ -1,17 +1,71 @@
-﻿'use client';
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, Sparkles } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
+import { useSocket } from '@/context/SocketContext';
+
+const DEFAULT_FAQS = [
+  { id: '1', q: 'How do I book an online appointment at SPY Salon?', a: 'You can book in under 30 seconds using our online booking wizard on this website. Simply pick your outlet, select your treatment, date, and time slot.' },
+  { id: '2', q: 'What safety and hygiene measures are followed?', a: 'All our tools undergo hospital-grade UV sterilization after every client. We use single-use towels and disposable aprons.' },
+  { id: '3', q: 'Can I reschedule or cancel my appointment?', a: 'Yes, you can reschedule or cancel up to 2 hours prior to your slot duration by calling our hotline or via SMS link.' },
+  { id: '4', q: 'Do you offer bridal and group booking packages?', a: 'Absolutely! We offer customized pre-bridal care, HD makeup, and private spa lounge reservations for group celebrations.' }
+];
 
 export default function FAQsPage() {
   const [openIdx, setOpenIdx] = useState<number | null>(0);
+  const [faqs, setFaqs] = useState<any[]>(DEFAULT_FAQS);
+  const { socket } = useSocket();
 
-  const faqs = [
-    { q: 'How do I book an online appointment at SPY Salon?', a: 'You can book in under 30 seconds using our online booking wizard on this website. Simply pick your outlet, select your treatment, date, and time slot.' },
-    { q: 'What safety and hygiene measures are followed?', a: 'All our tools undergo hospital-grade UV sterilization after every client. We use single-use towels and disposable aprons.' },
-    { q: 'Can I reschedule or cancel my appointment?', a: 'Yes, you can reschedule or cancel up to 2 hours prior to your slot duration by calling our hotline or via SMS link.' },
-    { q: 'Do you offer bridal and group booking packages?', a: 'Absolutely! We offer customized pre-bridal care, HD makeup, and private spa lounge reservations for group celebrations.' }
-  ];
+  useEffect(() => {
+    const loadFaqs = async () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('spy_landing_settings');
+        if (stored) {
+          try {
+            const p = JSON.parse(stored);
+            if (Array.isArray(p.faqItems) && p.faqItems.length > 0) {
+              setFaqs(p.faqItems.map((f: any) => ({ q: f.question || f.q, a: f.answer || f.a })));
+            }
+          } catch (e) {}
+        }
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/landing-settings`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data && Array.isArray(json.data.faqItems) && json.data.faqItems.length > 0) {
+            setFaqs(json.data.faqItems.map((f: any) => ({ q: f.question || f.q, a: f.answer || f.a })));
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('spy_landing_settings', JSON.stringify(json.data));
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    loadFaqs();
+    window.addEventListener('storage', loadFaqs);
+
+    if (socket) {
+      socket.on('landing_settings_updated', (p: any) => {
+        if (p && Array.isArray(p.faqItems) && p.faqItems.length > 0) {
+          setFaqs(p.faqItems.map((f: any) => ({ q: f.question || f.q, a: f.answer || f.a })));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('spy_landing_settings', JSON.stringify(p));
+          }
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener('storage', loadFaqs);
+      if (socket) {
+        socket.off('landing_settings_updated');
+      }
+    };
+  }, [socket]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

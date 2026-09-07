@@ -170,12 +170,14 @@ exports.requestReschedule = async (req, res, next) => {
     await appointment.save();
 
     // Create Admin In-app Alert Notification
-    await Notification.create({
-      recipientRole: 'admin',
+    const notificationController = require('./notificationController');
+    await notificationController.dispatchNotification(req.app, {
+      role: 'admin',
       title: 'Reschedule Requested 📅',
       message: `Client ${appointment.customerName} requested to reschedule #${appointment.bookingId} to ${newDate} at ${newTime}.`,
       type: 'booking',
-      branchId: appointment.branchId
+      bookingId: appointment.bookingId,
+      appointmentId: appointment._id.toString()
     });
 
     // Audit Log Entry
@@ -227,12 +229,14 @@ exports.cancelAppointment = async (req, res, next) => {
     await appointment.save();
 
     // Notify admins
-    await Notification.create({
-      recipientRole: 'admin',
+    const notificationController = require('./notificationController');
+    await notificationController.dispatchNotification(req.app, {
+      role: 'admin',
       title: 'Appointment Cancelled 🔴',
       message: `Booking #${appointment.bookingId} (${appointment.service}) was cancelled by client.`,
       type: 'booking',
-      branchId: appointment.branchId
+      bookingId: appointment.bookingId,
+      appointmentId: appointment._id.toString()
     });
 
     // Audit log
@@ -275,22 +279,26 @@ exports.getUserMembership = async (req, res, next) => {
 exports.getUserNotifications = async (req, res, next) => {
   try {
     const userId = req.user._id.toString();
+    const email = req.user.email ? req.user.email.toLowerCase().trim() : '';
 
     // Query notifications meant for this customer
     let list = await Notification.find({
       $or: [
-        { recipientUserId: userId },
-        { recipientUserId: req.user.email }
+        { userId: userId },
+        { email: email },
+        { recipientUserId: userId }
       ]
     }).sort({ createdAt: -1 });
 
     // Welcome Notification: Created automatically if empty
     if (list.length === 0) {
       const welcome = await Notification.create({
-        recipientUserId: userId,
+        role: 'user',
+        userId: userId,
+        email: email,
         title: 'Welcome to SPY Salon 🌸',
         message: 'Book hair & skin appointments online with instant specialist selection.',
-        type: 'info'
+        type: 'system'
       });
       list = [welcome];
     }
@@ -306,10 +314,10 @@ exports.markNotificationRead = async (req, res, next) => {
     const { notificationId } = req.body;
     const userId = req.user._id.toString();
 
-    const query = { recipientUserId: userId };
+    const query = { $or: [{ userId }, { recipientUserId: userId }] };
     if (notificationId) query._id = notificationId;
 
-    await Notification.updateMany(query, { read: true, readAt: new Date().toISOString() });
+    await Notification.updateMany(query, { isRead: true, read: true });
 
     broadcastEvent('notification:read', { notificationId, userId });
     return ApiResponse.success(res, null, 'Notification marked as read');
@@ -321,7 +329,7 @@ exports.markNotificationRead = async (req, res, next) => {
 exports.clearUserNotifications = async (req, res, next) => {
   try {
     const userId = req.user._id.toString();
-    await Notification.deleteMany({ recipientUserId: userId });
+    await Notification.deleteMany({ $or: [{ userId }, { recipientUserId: userId }] });
 
     broadcastEvent('notification:cleared', { userId });
     return ApiResponse.success(res, null, 'All notifications cleared.');

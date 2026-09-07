@@ -711,14 +711,21 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="h-56 rounded-2xl overflow-hidden border border-white/10 relative">
-            <CinematicImage
-              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80"
-              alt="SPY Salon Luxury Interior"
-              className="w-full h-full object-cover"
-              duration={16}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-transparent to-transparent z-10" />
+          <div className="h-56 rounded-2xl overflow-hidden border border-rosegold-500/30 relative bg-dark-850 flex items-center justify-center p-4">
+            {homeSettings.galleryItems && homeSettings.galleryItems.length > 0 && homeSettings.galleryItems[0].url ? (
+              <CinematicImage
+                src={homeSettings.galleryItems[0].url}
+                alt="SPY Salon Flagship Studio"
+                className="w-full h-full object-cover"
+                duration={16}
+              />
+            ) : (
+              <div className="text-center space-y-2">
+                <img src="/logo-transparent.png?v=3" alt="SPY Salon Logo" className="w-20 h-20 mx-auto object-contain animate-pulse" />
+                <p className="text-xs text-rosegold-300 font-serif font-bold">Jubilee Hills VIP Suite</p>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-transparent to-transparent z-10 pointer-events-none" />
             <span className="absolute bottom-3 left-3 bg-dark-900/90 text-rosegold-400 text-[10px] font-bold px-3 py-1 rounded-full border border-rosegold-500/30 z-10">
               Jubilee Hills Flagship
             </span>

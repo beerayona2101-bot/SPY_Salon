@@ -137,46 +137,35 @@ class GuestBookingService {
       // 4. WHATSAPP & REALTIME ADMIN NOTIFICATIONS & SOCKET BROADCAST
       setImmediate(async () => {
         try {
-          // Dispatch Admin Notification to MongoDB
-          await Notification.create({
+          const notificationController = require('../controllers/notificationController');
+          const bookingId = appointment?.bookingId || null;
+          const appointmentId = appointment?._id?.toString() || null;
+
+          // Dispatch Admin Notification
+          await notificationController.dispatchNotification(null, {
             role: 'admin',
             title: 'New Guest Booking Received 🛎️',
-            message: `New ${isNewAccountCreated ? 'guest (auto-registered)' : 'returning'} customer booking #${appointment?.bookingId} for ${service} by ${customerName} (${cleanPhone}). Date: ${appointmentDate} at ${appointmentTime}.`,
+            message: `New ${isNewAccountCreated ? 'guest (auto-registered)' : 'returning'} customer booking #${bookingId || ''} for ${service} by ${customerName} (${cleanPhone}). Date: ${appointmentDate} at ${appointmentTime}.`,
             type: 'booking',
-            branchId: appointment?.branchId || null
-          }).catch(() => {});
+            bookingId,
+            appointmentId
+          });
 
-          // Dispatch Customer Confirmed & Time Alert Notifications
-          if (customerUser || cleanEmail || cleanPhone) {
-            const customerUserId = customerUser ? customerUser._id.toString() : null;
+          // Dispatch Customer Confirmed Notification
+          if (customer || cleanEmail || cleanPhone) {
+            const customerUserId = customer ? customer._id.toString() : null;
 
-            // 1. Customer Confirmed Notification
-            await Notification.create({
+            await notificationController.dispatchNotification(null, {
               userId: customerUserId,
               email: cleanEmail,
               role: 'user',
               title: 'Appointment Confirmed! 🎉',
-              message: `Dear ${customerName}, your appointment for ${service} (#${appointment?.bookingId || ''}) on ${appointmentDate} at ${appointmentTime} has been successfully booked.`,
+              message: `Dear ${customerName}, your appointment for ${service} (#${bookingId || ''}) on ${appointmentDate} at ${appointmentTime} has been successfully booked.`,
               type: 'appointment',
               link: '/appointments',
-              bookingId: appointment?.bookingId || null,
-              appointmentId: appointment?._id?.toString() || null,
-              branchId: appointment?.branchId || null
-            }).catch(() => {});
-
-            // 2. Customer Time Alert Notification
-            await Notification.create({
-              userId: customerUserId,
-              email: cleanEmail,
-              role: 'user',
-              title: 'Upcoming Appointment Alert ⏰',
-              message: `Time Alert: Your ${service} appointment is scheduled for ${appointmentDate} at ${appointmentTime} at ${branch || 'SPY Salon Jubilee Hills'}.`,
-              type: 'appointment',
-              link: '/appointments',
-              bookingId: appointment?.bookingId || null,
-              appointmentId: appointment?._id?.toString() || null,
-              branchId: appointment?.branchId || null
-            }).catch(() => {});
+              bookingId,
+              appointmentId
+            });
           }
 
           // Broadcast Realtime Socket Events to Admin Dashboards

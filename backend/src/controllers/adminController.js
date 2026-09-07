@@ -20,8 +20,38 @@ const Notification = require('../models/Notification');
 const Enquiry = require('../models/Enquiry');
 const LandingSettings = require('../models/LandingSettings');
 const ActivityLog = require('../models/ActivityLog');
+const Offer = require('../models/Offer');
 const { sendEnquiryResolutionEmail } = require('../services/emailService');
 const { broadcastEvent } = require('../utils/socket');
+
+const DEFAULT_GALLERY_ITEMS = [
+  { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: '' },
+  { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: '' },
+  { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: '' },
+  { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: '' },
+  { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: '' },
+  { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: '' }
+];
+
+const DEFAULT_FAQ_ITEMS = [
+  { id: '1', question: 'How do I book an online appointment at SPY Salon?', answer: 'You can book in under 30 seconds using our online booking wizard on this website. Simply pick your outlet, select your treatment, date, and time slot.' },
+  { id: '2', question: 'What safety and hygiene measures are followed?', answer: 'All our tools undergo hospital-grade UV sterilization after every client. We use single-use towels and disposable aprons.' },
+  { id: '3', question: 'Can I reschedule or cancel my appointment?', answer: 'Yes, you can reschedule or cancel up to 2 hours prior to your slot duration by calling our hotline or via SMS link.' },
+  { id: '4', question: 'Do you offer bridal and group booking packages?', answer: 'Absolutely! We offer customized pre-bridal care, HD makeup, and private spa lounge reservations for group celebrations.' }
+];
+
+const DEFAULT_WEBSITE_LINKS = [
+  { id: '1', label: 'Popular Services', url: '/services', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '2', label: 'Pricing & Packages', url: '/pricing', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '3', label: 'Offers & Coupons', url: '/offers', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '4', label: 'Lookbook & Gallery', url: '/gallery', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '5', label: 'About Our Stylists', url: '/about', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '6', label: 'Frequently Asked Questions', url: '/faqs', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '7', label: 'VIP Membership', url: '/membership', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '8', label: 'Career Opportunities', url: '/careers', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '9', label: 'Privacy Policy', url: '/privacy', isExternal: false, isActive: true, category: 'Legal' },
+  { id: '10', label: 'Terms & Conditions', url: '/terms', isExternal: false, isActive: true, category: 'Legal' }
+];
 
 exports.getAdminLandingSettings = async (req, res, next) => {
   try {
@@ -30,7 +60,13 @@ exports.getAdminLandingSettings = async (req, res, next) => {
       settings = await LandingSettings.create({ 
         key: 'main_landing_settings',
         heroTitle: 'Hairs make perfectly',
-        heroSubtitle: 'Style come from the hair style'
+        heroSubtitle: 'Style come from the hair style',
+        contactTitle: 'Contact Us & Outlets',
+        contactDescription: 'Have questions about our luxury treatments or wish to book a private VIP session? Our team is available 7 days a week.',
+        googleMapsUrl: 'https://maps.google.com/?q=SPY+Salon+Jubilee+Hills',
+        galleryItems: DEFAULT_GALLERY_ITEMS,
+        faqItems: DEFAULT_FAQ_ITEMS,
+        websiteLinks: DEFAULT_WEBSITE_LINKS
       });
     } else {
       let updated = false;
@@ -40,6 +76,37 @@ exports.getAdminLandingSettings = async (req, res, next) => {
       }
       if (!settings.heroSubtitle) {
         settings.heroSubtitle = 'Style come from the hair style';
+        updated = true;
+      }
+      if (!settings.contactTitle) {
+        settings.contactTitle = 'Contact Us & Outlets';
+        updated = true;
+      }
+      if (!settings.contactDescription) {
+        settings.contactDescription = 'Have questions about our luxury treatments or wish to book a private VIP session? Our team is available 7 days a week.';
+        updated = true;
+      }
+      if (!settings.googleMapsUrl) {
+        settings.googleMapsUrl = 'https://maps.google.com/?q=SPY+Salon+Jubilee+Hills';
+        updated = true;
+      }
+      if (settings.galleryItems === undefined) {
+        settings.galleryItems = DEFAULT_GALLERY_ITEMS;
+        updated = true;
+      } else if (Array.isArray(settings.galleryItems)) {
+        for (let i = 0; i < settings.galleryItems.length; i++) {
+          if (settings.galleryItems[i].url && settings.galleryItems[i].url.includes('unsplash.com')) {
+            settings.galleryItems[i].url = '';
+            updated = true;
+          }
+        }
+      }
+      if (settings.faqItems === undefined) {
+        settings.faqItems = DEFAULT_FAQ_ITEMS;
+        updated = true;
+      }
+      if (settings.websiteLinks === undefined || !Array.isArray(settings.websiteLinks) || settings.websiteLinks.length === 0) {
+        settings.websiteLinks = DEFAULT_WEBSITE_LINKS;
         updated = true;
       }
       if (updated) {
@@ -52,6 +119,8 @@ exports.getAdminLandingSettings = async (req, res, next) => {
   }
 };
 
+const { clearAllCache } = require('../middlewares/cacheMiddleware');
+
 exports.updateLandingSettings = async (req, res, next) => {
   try {
     let settings = await LandingSettings.findOneAndUpdate(
@@ -59,6 +128,9 @@ exports.updateLandingSettings = async (req, res, next) => {
       { $set: req.body },
       { new: true, upsert: true }
     );
+
+    // Invalidate response cache so public GET endpoints return updated data immediately
+    clearAllCache();
 
     // Broadcast Socket.IO real-time event to all connected clients & browsers
     const io = req.app.get('io');
@@ -489,6 +561,23 @@ const processLeaveDecision = async (req, res, targetStatus, rejectionReasonInput
       throw ApiError.notFound('Leave request not found');
     }
     throw ApiError.badRequest(`Leave request has already been processed (Current status: ${existingLeave.status}).`);
+  }
+
+  // Resolve original Admin leave notifications so decision actions do not repeat
+  try {
+    const Notification = require('../models/Notification');
+    await Notification.updateMany(
+      { leaveRequestId: updatedLeave._id.toString(), role: 'admin' },
+      { 
+        $set: { 
+          isRead: true, 
+          title: `Leave Request ${targetStatus} (${updatedLeave.employeeName})`,
+          message: `Leave request from ${updatedLeave.startDate} to ${updatedLeave.endDate} for ${updatedLeave.employeeName} has been ${targetStatus.toLowerCase()}.`
+        } 
+      }
+    );
+  } catch (resolveErr) {
+    console.warn('[AdminController] Leave notification resolution notice:', resolveErr.message);
   }
 
   // Target notification strictly to the original staff member
@@ -942,22 +1031,45 @@ exports.updateEnquiryStatus = async (req, res, next) => {
       throw ApiError.notFound('Enquiry record not found');
     }
 
+    // Auto-resolve / mark read any existing admin notifications for this enquiry
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.updateMany(
+        {
+          $or: [
+            { enquiryId: updatedRecord.enquiryId },
+            { enquiryId: updatedRecord._id.toString() },
+            { link: { $regex: updatedRecord.enquiryId || '', $options: 'i' } }
+          ]
+        },
+        { isRead: true }
+      );
+    } catch (nErr) {
+      console.error('[AdminController] Error auto-marking enquiry notification as read:', nErr);
+    }
+
     // Broadcast real-time Socket.io update
     const io = req.app.get('io');
     if (io) {
       io.emit('enquiry_updated', updatedRecord);
+      io.emit('notification_updated', { enquiryId: updatedRecord.enquiryId, isRead: true });
     }
 
     // Non-blocking background resolutions
     setImmediate(() => {
-      // Dispatch notification
-      Notification.create({
-        title: `Inquiry #${updatedRecord.enquiryId} Status: ${updatedRecord.status}`,
-        message: `Your inquiry ${updatedRecord.enquiryId} status has been updated to "${updatedRecord.status}".`,
-        recipientRole: 'customer',
-        recipientUserId: null,
-        type: 'enquiry'
-      }).catch(err => console.error('[NotificationController] Error dispatching enquiry notification:', err.message));
+      // Dispatch targeted customer notification (role: 'user', NOT role: 'all')
+      if (updatedRecord.email || updatedRecord.customerId) {
+        const notificationController = require('./notificationController');
+        notificationController.dispatchNotification(req.app, {
+          role: 'user',
+          userId: updatedRecord.customerId ? String(updatedRecord.customerId) : null,
+          email: updatedRecord.email ? String(updatedRecord.email).toLowerCase().trim() : null,
+          title: `Inquiry #${updatedRecord.enquiryId} Status: ${updatedRecord.status}`,
+          message: `Your inquiry ${updatedRecord.enquiryId} status has been updated to "${updatedRecord.status}".`,
+          type: 'enquiry',
+          enquiryId: updatedRecord.enquiryId
+        }).catch(err => console.error('[NotificationController] Error dispatching enquiry notification:', err.message));
+      }
 
       if (status === 'Closed' || status === 'Resolved') {
         sendEnquiryResolutionEmail({
@@ -971,7 +1083,39 @@ exports.updateEnquiryStatus = async (req, res, next) => {
       }
     });
 
-    return ApiResponse.success(res, updatedRecord, `Enquiry status updated to ${updatedRecord.status || 'Updated'}`);
+    return ApiResponse.success(res, updatedRecord, 'Enquiry status updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.markEnquiryViewed = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { enquiryId: id };
+    const record = await Enquiry.findOne(query);
+    if (!record) {
+      throw ApiError.notFound('Enquiry record not found');
+    }
+
+    const Notification = require('../models/Notification');
+    await Notification.updateMany(
+      {
+        $or: [
+          { enquiryId: record.enquiryId },
+          { enquiryId: record._id.toString() },
+          { link: { $regex: record.enquiryId || '', $options: 'i' } }
+        ]
+      },
+      { isRead: true }
+    );
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('notification_updated', { enquiryId: record.enquiryId, isRead: true });
+    }
+
+    return ApiResponse.success(res, { enquiryId: record.enquiryId, isRead: true }, 'Enquiry notification marked as viewed');
   } catch (error) {
     next(error);
   }
@@ -990,6 +1134,102 @@ exports.deleteEnquiry = async (req, res, next) => {
     }
 
     return ApiResponse.success(res, null, 'Enquiry record deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ================= OFFERS & COUPONS MANAGEMENT =================
+const DEFAULT_PROMO_OFFERS = [
+  { _id: 'o1', title: 'WELCOME LUXURY 20', code: 'SPYFIRST20', discountPercentage: 20, description: 'Get flat 20% off on your first salon service booking.', validUntil: new Date('2026-12-31'), isActive: true },
+  { _id: 'o2', title: 'GOLD FACIAL SPECIAL', code: 'GOLDFACIAL', discountPercentage: 25, description: 'Save 25% on all 24K Gold & Diamond Skin Care treatments.', validUntil: new Date('2026-12-31'), isActive: true },
+  { _id: 'o3', title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: new Date('2026-12-31'), isActive: true }
+];
+
+exports.getAdminOffers = async (req, res, next) => {
+  try {
+    let offers = await Offer.find().sort({ createdAt: -1 });
+    if (!offers || offers.length === 0) {
+      // Seed initial default offers into DB if empty
+      offers = await Offer.insertMany([
+        { title: 'WELCOME LUXURY 20', code: 'SPYFIRST20', discountPercentage: 20, description: 'Get flat 20% off on your first salon service booking.', validUntil: new Date('2026-12-31'), isActive: true },
+        { title: 'GOLD FACIAL SPECIAL', code: 'GOLDFACIAL', discountPercentage: 25, description: 'Save 25% on all 24K Gold & Diamond Skin Care treatments.', validUntil: new Date('2026-12-31'), isActive: true },
+        { title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: new Date('2026-12-31'), isActive: true }
+      ]);
+    }
+    return ApiResponse.success(res, offers, 'Offers & coupons retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.createOffer = async (req, res, next) => {
+  try {
+    const { title, code, discountPercentage, description, validUntil, applicableServices, isActive } = req.body;
+    if (!title || !code || discountPercentage === undefined) {
+      throw ApiError.badRequest('Title, coupon code, and discount percentage are required');
+    }
+
+    const existingCode = await Offer.findOne({ code: code.toUpperCase() });
+    if (existingCode) {
+      throw ApiError.badRequest(`Coupon code "${code}" already exists`);
+    }
+
+    const offer = await Offer.create({
+      title,
+      code: code.toUpperCase(),
+      discountPercentage: Number(discountPercentage),
+      description: description || '',
+      validUntil: validUntil ? new Date(validUntil) : new Date('2026-12-31'),
+      applicableServices: applicableServices || [],
+      isActive: isActive !== undefined ? Boolean(isActive) : true
+    });
+
+    const io = req.app.get('io');
+    if (io) io.emit('offers_updated', offer);
+    broadcastEvent('offers_updated', offer);
+
+    return ApiResponse.success(res, offer, 'New offer promo code created successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateOffer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    if (updateData.code) {
+      updateData.code = updateData.code.toUpperCase();
+    }
+    if (updateData.validUntil) {
+      updateData.validUntil = new Date(updateData.validUntil);
+    }
+
+    const offer = await Offer.findByIdAndUpdate(id, updateData, { new: true });
+    if (!offer) {
+      throw ApiError.notFound('Offer record not found');
+    }
+
+    const io = req.app.get('io');
+    if (io) io.emit('offers_updated', offer);
+    broadcastEvent('offers_updated', offer);
+
+    return ApiResponse.success(res, offer, 'Offer promo code updated successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteOffer = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    await Offer.findByIdAndDelete(id);
+
+    const io = req.app.get('io');
+    if (io) io.emit('offer_deleted', { id });
+
+    return ApiResponse.success(res, null, 'Offer promo code deleted successfully');
   } catch (error) {
     next(error);
   }

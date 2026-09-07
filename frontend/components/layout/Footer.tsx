@@ -1,12 +1,109 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { MapPin, Phone, Mail, Clock, Instagram, Facebook, Youtube, Heart, Sparkles } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/api';
+import { useSocket } from '@/context/SocketContext';
 
 export default function Footer() {
   const pathname = usePathname();
+  const { socket } = useSocket();
+  const [socialLinks, setSocialLinks] = useState({
+    instagramUrl: 'https://instagram.com/spysalon',
+    facebookUrl: 'https://facebook.com/spysalon',
+    youtubeUrl: 'https://youtube.com/@spysalon'
+  });
+
+  const [contactInfo, setContactInfo] = useState({
+    studioAddress: 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033',
+    hotlinePhone: '+91 94906 44434',
+    supportEmail: 'concierge@spysalon.com',
+    openingHours: 'Mon - Sun: 09:00 AM - 09:00 PM'
+  });
+
+  const DEFAULT_WEBSITE_LINKS = [
+    { id: '1', label: 'Popular Services', url: '/services', isActive: true },
+    { id: '2', label: 'Pricing & Packages', url: '/pricing', isActive: true },
+    { id: '3', label: 'Offers & Coupons', url: '/offers', isActive: true },
+    { id: '4', label: 'Lookbook & Gallery', url: '/gallery', isActive: true },
+    { id: '5', label: 'About Our Stylists', url: '/about', isActive: true },
+    { id: '6', label: 'Frequently Asked Questions', url: '/faqs', isActive: true },
+    { id: '7', label: 'VIP Membership', url: '/membership', isActive: true },
+    { id: '8', label: 'Career Opportunities', url: '/careers', isActive: true },
+    { id: '9', label: 'Privacy Policy', url: '/privacy', isActive: true },
+    { id: '10', label: 'Terms & Conditions', url: '/terms', isActive: true }
+  ];
+
+  const [websiteLinks, setWebsiteLinks] = useState<any[]>(DEFAULT_WEBSITE_LINKS);
+
+  useEffect(() => {
+    const parseFooterData = (p: any) => {
+      setSocialLinks({
+        instagramUrl: p.instagramUrl || 'https://instagram.com/spysalon',
+        facebookUrl: p.facebookUrl || 'https://facebook.com/spysalon',
+        youtubeUrl: p.youtubeUrl || 'https://youtube.com/@spysalon'
+      });
+      setContactInfo({
+        studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033',
+        hotlinePhone: p.hotlinePhone || '+91 94906 44434',
+        supportEmail: p.supportEmail || 'concierge@spysalon.com',
+        openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM'
+      });
+      if (Array.isArray(p.websiteLinks) && p.websiteLinks.length > 0) {
+        setWebsiteLinks(p.websiteLinks);
+      } else {
+        setWebsiteLinks(DEFAULT_WEBSITE_LINKS);
+      }
+    };
+
+    const loadSocialSettings = async () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('spy_landing_settings');
+        if (stored) {
+          try {
+            const p = JSON.parse(stored);
+            parseFooterData(p);
+          } catch (e) {}
+        }
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/landing-settings`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            parseFooterData(json.data);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('spy_landing_settings', JSON.stringify(json.data));
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    loadSocialSettings();
+    window.addEventListener('storage', loadSocialSettings);
+
+    if (socket) {
+      socket.on('landing_settings_updated', (p: any) => {
+        if (p) {
+          parseFooterData(p);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('spy_landing_settings', JSON.stringify(p));
+          }
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener('storage', loadSocialSettings);
+      if (socket) {
+        socket.off('landing_settings_updated');
+      }
+    };
+  }, [socket]);
 
   // Show footer ONLY on the home page ('/')
   if (pathname !== '/') {
@@ -36,13 +133,31 @@ export default function Footer() {
               India's premier luxury salon & spa studio. Delivering bespoke hair transformations, 24K gold skin rituals, and soothing aromatics.
             </p>
             <div className="flex space-x-3 pt-2">
-              <a href="#" className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors">
+              <a 
+                href={socialLinks.instagramUrl || '#'} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                title="Follow SPY Salon on Instagram"
+                className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors"
+              >
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="#" className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors">
+              <a 
+                href={socialLinks.facebookUrl || '#'} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                title="Follow SPY Salon on Facebook"
+                className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors"
+              >
                 <Facebook className="w-4 h-4" />
               </a>
-              <a href="#" className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors">
+              <a 
+                href={socialLinks.youtubeUrl || '#'} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                title="Subscribe to SPY Salon on YouTube"
+                className="w-9 h-9 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center text-rosegold-400 hover:text-white hover:border-rosegold-500 transition-colors"
+              >
                 <Youtube className="w-4 h-4" />
               </a>
             </div>
@@ -52,13 +167,15 @@ export default function Footer() {
           <div>
             <h4 className="font-serif text-lg font-bold text-white mb-4 border-b border-rosegold-500/30 pb-2 inline-block">Quick Links</h4>
             <ul className="space-y-2.5 text-xs sm:text-sm font-medium text-gray-300">
-              <li><Link href="/services" className="hover:text-rosegold-400 transition-colors">Popular Services</Link></li>
-              <li><Link href="/pricing" className="hover:text-rosegold-400 transition-colors">Pricing & Packages</Link></li>
-              <li><Link href="/offers" className="hover:text-rosegold-400 transition-colors">Offers & Coupons</Link></li>
-              <li><Link href="/gallery" className="hover:text-rosegold-400 transition-colors">Lookbook & Gallery</Link></li>
-              <li><Link href="/about" className="hover:text-rosegold-400 transition-colors">About Our Stylists</Link></li>
-              <li><Link href="/careers" className="hover:text-rosegold-400 transition-colors">Careers & Hiring</Link></li>
-              <li><Link href="/faqs" className="hover:text-rosegold-400 transition-colors">Frequently Asked Questions</Link></li>
+              {websiteLinks
+                .filter((l: any) => l.isActive !== false)
+                .map((link: any) => (
+                  <li key={link.id || link.url}>
+                    <Link href={link.url || '#'} className="hover:text-rosegold-400 transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
             </ul>
           </div>
 
@@ -69,8 +186,8 @@ export default function Footer() {
               <div className="flex items-start space-x-3">
                 <Clock className="w-5 h-5 text-rosegold-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-white font-bold">Monday – Sunday</p>
-                  <p className="text-xs text-gray-300 font-medium">09:00 AM – 09:00 PM</p>
+                  <p className="text-white font-bold">Hours & Availability</p>
+                  <p className="text-xs text-gray-300 font-medium">{contactInfo.openingHours}</p>
                 </div>
               </div>
               <div className="p-3 rounded-xl bg-dark-800/90 text-xs text-gray-200 border border-rosegold-500/30 font-medium">
@@ -88,15 +205,15 @@ export default function Footer() {
             <ul className="space-y-3 text-xs sm:text-sm font-medium text-gray-300">
               <li className="flex items-start space-x-3">
                 <MapPin className="w-5 h-5 text-rosegold-400 shrink-0 mt-0.5" />
-                <span className="text-gray-300">Road No. 36, Jubilee Hills, Hyderabad, Telangana 500033</span>
+                <span className="text-gray-300">{contactInfo.studioAddress}</span>
               </li>
               <li className="flex items-center space-x-3">
                 <Phone className="w-5 h-5 text-rosegold-400 shrink-0" />
-                <a href="tel:+919876543210" className="text-gray-300 hover:text-rosegold-400 transition-colors">+91 98765 43210 / +91 98765 43211</a>
+                <a href={`tel:${contactInfo.hotlinePhone}`} className="text-gray-300 hover:text-rosegold-400 transition-colors">{contactInfo.hotlinePhone}</a>
               </li>
               <li className="flex items-center space-x-3">
                 <Mail className="w-5 h-5 text-rosegold-400 shrink-0" />
-                <span className="text-gray-300">support@spysalon.com</span>
+                <span className="text-gray-300">{contactInfo.supportEmail}</span>
               </li>
             </ul>
           </div>

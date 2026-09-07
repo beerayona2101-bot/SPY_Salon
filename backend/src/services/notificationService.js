@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SPY Salon Enterprise Notification Service
  * Orchestrates multi-channel notifications:
  * - Email Notifications (via emailService)
@@ -59,7 +59,8 @@ const handleEnquiryNotifications = async ({ enquiryRecord, app }) => {
       type: 'enquiry',
       priority: 'high',
       icon: 'bell',
-      link: `/admin?tab=enquiries&id=${enquiryRecord.enquiryId}`
+      link: `/admin?tab=enquiries&id=${enquiryRecord.enquiryId}`,
+      enquiryId: enquiryRecord.enquiryId
     });
     console.log(`[NotificationService] Admin dashboard notification dispatched for #${enquiryRecord.enquiryId}`);
   } catch (dashErr) {
@@ -76,7 +77,8 @@ const handleEnquiryNotifications = async ({ enquiryRecord, app }) => {
         message: `Your inquiry ${enquiryRecord.enquiryId} has been successfully received. Initial Status: "New". Our concierge team will review it shortly.`,
         type: 'enquiry',
         priority: 'normal',
-        icon: 'bell'
+        icon: 'bell',
+        enquiryId: enquiryRecord.enquiryId
       });
     } catch (uErr) {
       console.warn(`[NotificationService] Customer user notification error:`, uErr.message);

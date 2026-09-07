@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -86,6 +87,9 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan('dev'));
+
+// Static Uploads Folder Route
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Global Rate Limiter
 app.use(rateLimiter({ windowMs: 15 * 60 * 1000, max: 50000 }));

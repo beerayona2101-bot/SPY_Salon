@@ -22,6 +22,56 @@ export default function ContactPage() {
   const [submittedData, setSubmittedData] = useState<{ enquiryId: string; name: string; email: string; whatsappAdminLink?: string } | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [contactInfo, setContactInfo] = useState({
+    title: 'Contact Us & Locations',
+    description: 'Have questions or special requests? Reach out to our concierge team.',
+    hotlinePhone: '+91 94906 44434',
+    supportEmail: 'concierge@spysalon.com',
+    openingHours: 'Mon - Sun: 09:00 AM - 09:00 PM',
+    studioAddress: 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad 500033'
+  });
+
+  React.useEffect(() => {
+    const loadContactInfo = async () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('spy_landing_settings');
+        if (stored) {
+          try {
+            const p = JSON.parse(stored);
+            setContactInfo({
+              title: p.contactTitle || 'Contact Us & Locations',
+              description: p.contactDescription || 'Have questions or special requests? Reach out to our concierge team.',
+              hotlinePhone: p.hotlinePhone || '+91 94906 44434',
+              supportEmail: p.supportEmail || 'concierge@spysalon.com',
+              openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM',
+              studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad 500033'
+            });
+          } catch (e) {}
+        }
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/landing-settings`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const p = json.data;
+            setContactInfo({
+              title: p.contactTitle || 'Contact Us & Locations',
+              description: p.contactDescription || 'Have questions or special requests? Reach out to our concierge team.',
+              hotlinePhone: p.hotlinePhone || '+91 94906 44434',
+              supportEmail: p.supportEmail || 'concierge@spysalon.com',
+              openingHours: p.openingHours || 'Mon - Sun: 09:00 AM - 09:00 PM',
+              studioAddress: p.studioAddress || 'Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad 500033'
+            });
+          }
+        }
+      } catch (e) {}
+    };
+
+    loadContactInfo();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -63,7 +113,6 @@ export default function ContactPage() {
         setSubmitted(true);
         setFormData({ name: '', email: '', phone: '', message: '' });
 
-        // Directly open Admin WhatsApp chat with default pre-filled message in a new window
         try {
           window.open(adminWaUrl, '_blank');
         } catch (openErr) {
@@ -92,8 +141,8 @@ export default function ContactPage() {
           <Sparkles className="w-3.5 h-3.5 animate-pulse" />
           <span>Concierge & Support</span>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold font-serif text-white">Contact Us & Locations</h1>
-        <p className="text-gray-400 text-sm max-w-xl mx-auto">Have questions or special requests? Reach out to our concierge team.</p>
+        <h1 className="text-4xl sm:text-5xl font-bold font-serif text-white">{contactInfo.title}</h1>
+        <p className="text-gray-400 text-sm max-w-xl mx-auto">{contactInfo.description}</p>
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

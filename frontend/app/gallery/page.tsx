@@ -7,33 +7,105 @@ import { Sparkles, X, Maximize2 } from 'lucide-react';
 import LazyImage from '@/components/ui/LazyImage';
 import { GallerySkeleton } from '@/components/common/Skeleton';
 
+import { API_BASE_URL, formatImageUrl } from '@/lib/api';
+import { useSocket } from '@/context/SocketContext';
+
+const DEFAULT_IMAGES = [
+  { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: '' },
+  { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: '' },
+  { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: '' },
+  { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: '' },
+  { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: '' },
+  { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: '' }
+];
+
 function GalleryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { socket } = useSocket();
 
   const activeFilterFromUrl = searchParams?.get('cat') || searchParams?.get('category');
   const activeFilter = activeFilterFromUrl || 'All';
   const imgFromUrl = searchParams?.get('img');
 
   const [selectedImage, setSelectedImage] = useState<any | null>(null);
+  const [images, setImages] = useState<any[]>(DEFAULT_IMAGES);
 
-  const categories = ['All', 'Hair', 'Facials', 'Bridal', 'Interiors'];
-
-  const images = [
-    { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=600&q=80' },
-    { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80' },
-    { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80' },
-    { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80' },
-    { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=600&q=80' },
-    { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?auto=format&fit=crop&w=600&q=80' }
-  ];
+  const sanitizeItems = (items: any[]) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((item: any) => ({
+      ...item,
+      url: (item.url && item.url.includes('unsplash.com')) ? '' : formatImageUrl(item.url || '')
+    }));
+  };
 
   useEffect(() => {
-    if (imgFromUrl) {
-      const match = images.find(i => i.id === imgFromUrl);
+    const loadGallery = async () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('spy_landing_settings');
+        if (stored) {
+          try {
+            const p = JSON.parse(stored);
+            if (Array.isArray(p.galleryItems)) {
+              setImages(sanitizeItems(p.galleryItems));
+            }
+          } catch (e) {}
+        }
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/landing-settings`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data && Array.isArray(json.data.galleryItems)) {
+            const cleanItems = sanitizeItems(json.data.galleryItems);
+            setImages(cleanItems);
+            if (typeof window !== 'undefined') {
+              json.data.galleryItems = cleanItems;
+              localStorage.setItem('spy_landing_settings', JSON.stringify(json.data));
+            }
+          }
+        }
+      } catch (e) {}
+    };
+
+    loadGallery();
+    window.addEventListener('storage', loadGallery);
+
+    if (socket) {
+      socket.on('landing_settings_updated', (p: any) => {
+        if (p && Array.isArray(p.galleryItems)) {
+          const cleanItems = sanitizeItems(p.galleryItems);
+          setImages(cleanItems);
+          if (typeof window !== 'undefined') {
+            p.galleryItems = cleanItems;
+            localStorage.setItem('spy_landing_settings', JSON.stringify(p));
+          }
+        }
+      });
+    }
+
+    return () => {
+      window.removeEventListener('storage', loadGallery);
+      if (socket) {
+        socket.off('landing_settings_updated');
+      }
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (imgFromUrl && images.length > 0) {
+      const match = images.find(i => String(i.id) === String(imgFromUrl));
       if (match) setSelectedImage(match);
     }
-  }, [imgFromUrl]);
+  }, [imgFromUrl, images]);
+
+  // Extract unique categories
+  const categoriesSet = new Set(['All', 'Hair', 'Facials', 'Bridal', 'Interiors']);
+  images.forEach(img => {
+    if (img.category) categoriesSet.add(img.category);
+  });
+  const categories = Array.from(categoriesSet);
 
   const handleCategoryChange = (cat: string) => {
     if (cat === 'All') {
@@ -79,40 +151,55 @@ function GalleryContent() {
         ))}
       </div>
 
-      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <AnimatePresence>
-          {filtered.map((item, idx) => (
-            <motion.div
-              key={item.title}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.35, delay: idx * 0.05 }}
-              whileHover={{ y: -4 }}
-              onClick={() => setSelectedImage(item)}
-              className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-rosegold-500/20 hover:border-rosegold-500/60 shadow-lg relative transform-gpu"
-            >
-              <div className="relative h-64 overflow-hidden">
-                <img 
-                  src={item.url} 
-                  alt={item.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-80" />
-                
-                <div className="absolute top-3 right-3 p-2 rounded-full bg-dark-900/60 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity text-rosegold-400">
-                  <Maximize2 className="w-4 h-4" />
-                </div>
+      {filtered.length === 0 ? (
+        <div className="glass-card p-12 rounded-3xl border border-rosegold-500/20 text-center space-y-3 max-w-lg mx-auto">
+          <Sparkles className="w-8 h-8 text-rosegold-400 mx-auto opacity-60" />
+          <h3 className="text-white font-serif font-bold text-lg">No Showcase Photos Published</h3>
+          <p className="text-xs text-gray-400">Photos added in the Admin Dashboard (Footer Page Settings › Lookbook & Gallery) will appear here live.</p>
+        </div>
+      ) : (
+        <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence>
+            {filtered.map((item, idx) => (
+              <motion.div
+                key={item.id || item.title || idx}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.35, delay: idx * 0.05 }}
+                whileHover={{ y: -4 }}
+                onClick={() => setSelectedImage(item)}
+                className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-rosegold-500/20 hover:border-rosegold-500/60 shadow-lg relative transform-gpu"
+              >
+                <div className="relative h-64 overflow-hidden bg-dark-850">
+                  {item.url ? (
+                    <img 
+                      src={formatImageUrl(item.url)} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center space-y-2 border border-rosegold-500/20">
+                      <img src="/logo-transparent.png?v=3" alt="SPY Salon Logo" className="w-16 h-16 object-contain opacity-80 animate-pulse" />
+                      <span className="text-[11px] text-rosegold-300 font-serif font-bold">{item.title || 'SPY Salon Showcase'}</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-transparent to-transparent opacity-80" />
+                  
+                  <div className="absolute top-3 right-3 p-2 rounded-full bg-dark-900/60 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity text-rosegold-400">
+                    <Maximize2 className="w-4 h-4" />
+                  </div>
 
-                <div className="absolute bottom-4 left-4 right-4">
-                  <span className="text-rosegold-400 font-bold text-[11px] uppercase tracking-wider block">{item.category}</span>
-                  <h3 className="text-white font-serif font-bold text-lg">{item.title}</h3>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <span className="text-rosegold-400 font-bold text-[11px] uppercase tracking-wider block">{item.category}</span>
+                    <h3 className="text-white font-serif font-bold text-lg">{item.title}</h3>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </motion.div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
+      )}
 
       {/* Lightbox Modal */}
       <AnimatePresence>
@@ -141,7 +228,7 @@ function GalleryContent() {
 
               <div className="relative max-h-[75vh] w-full overflow-hidden">
                 <img
-                  src={selectedImage.url}
+                  src={formatImageUrl(selectedImage.url)}
                   alt={selectedImage.title}
                   className="w-full h-full object-contain max-h-[75vh] mx-auto"
                 />

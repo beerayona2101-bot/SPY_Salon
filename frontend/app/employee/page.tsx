@@ -494,10 +494,24 @@ function EmployeeDashboardContent() {
   const STATUS_OPTIONS_CONFIG: Record<string, { value: string; label: string }[]> = {
     'Pending': [
       { value: 'Pending', label: 'Pending 🟡' },
+      { value: 'Staff_Accepted', label: 'Accept Appointment 🟢' },
+      { value: 'Staff_Rejected', label: 'Decline / Reassign ❌' },
       { value: 'Confirmed', label: 'Confirmed 🟢' },
       { value: 'In Progress', label: 'In Progress ✂️' },
       { value: 'Completed', label: 'Completed ✅' },
       { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Staff_Accepted': [
+      { value: 'Staff_Accepted', label: 'Accepted 🟢' },
+      { value: 'Confirmed', label: 'Confirmed 🟢' },
+      { value: 'In Progress', label: 'In Progress ✂️' },
+      { value: 'Completed', label: 'Completed ✅' },
+      { value: 'Reschedule Requested', label: 'Reschedule Requested ⚠️' },
+      { value: 'Cancelled', label: 'Cancelled ❌' }
+    ],
+    'Staff_Rejected': [
+      { value: 'Staff_Rejected', label: 'Reassigned ❌' },
+      { value: 'Pending', label: 'Pending 🟡' }
     ],
     'Confirmed': [
       { value: 'Confirmed', label: 'Confirmed 🟢' },

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -7,10 +7,10 @@ import { API_BASE_URL } from '@/lib/api';
 
 export default function AboutPage() {
   const [team, setTeam] = useState<any[]>([
-    { name: 'Ananya Sharma', title: 'Creative Art Director & Hair Stylist', exp: '12+ Years Exp', img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80' },
-    { name: 'Rahul Verma', title: 'Master Grooming & Beard Specialist', exp: '9+ Years Exp', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80' },
-    { name: 'Priya Reddy', title: 'Senior Aesthetician & Skin Specialist', exp: '10+ Years Exp', img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80' },
-    { name: 'Meera Kapoor', title: 'Lead Nail Artist & Couture Designer', exp: '7+ Years Exp', img: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?auto=format&fit=crop&w=400&q=80' }
+    { name: 'Ananya Sharma', title: 'Creative Art Director & Hair Stylist', exp: '12+ Years Exp', img: '' },
+    { name: 'Rahul Verma', title: 'Master Grooming & Beard Specialist', exp: '9+ Years Exp', img: '' },
+    { name: 'Priya Reddy', title: 'Senior Aesthetician & Skin Specialist', exp: '10+ Years Exp', img: '' },
+    { name: 'Meera Kapoor', title: 'Lead Nail Artist & Couture Designer', exp: '7+ Years Exp', img: '' }
   ]);
 
   useEffect(() => {

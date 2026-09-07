@@ -11,9 +11,39 @@ const Enquiry = require('../models/Enquiry');
 const LandingSettings = require('../models/LandingSettings');
 const ActivityLog = require('../models/ActivityLog');
 const Transaction = require('../models/Transaction');
+const Offer = require('../models/Offer');
 const enquiryService = require('../services/enquiryService');
 const guestBookingService = require('../services/guestBookingService');
 const { isPastDateTimeKolkata, getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
+
+const DEFAULT_GALLERY_ITEMS = [
+  { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: '' },
+  { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: '' },
+  { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: '' },
+  { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: '' },
+  { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: '' },
+  { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: '' }
+];
+
+const DEFAULT_FAQ_ITEMS = [
+  { id: '1', question: 'How do I book an online appointment at SPY Salon?', answer: 'You can book in under 30 seconds using our online booking wizard on this website. Simply pick your outlet, select your treatment, date, and time slot.' },
+  { id: '2', question: 'What safety and hygiene measures are followed?', answer: 'All our tools undergo hospital-grade UV sterilization after every client. We use single-use towels and disposable aprons.' },
+  { id: '3', question: 'Can I reschedule or cancel my appointment?', answer: 'Yes, you can reschedule or cancel up to 2 hours prior to your slot duration by calling our hotline or via SMS link.' },
+  { id: '4', question: 'Do you offer bridal and group booking packages?', answer: 'Absolutely! We offer customized pre-bridal care, HD makeup, and private spa lounge reservations for group celebrations.' }
+];
+
+const DEFAULT_WEBSITE_LINKS = [
+  { id: '1', label: 'Popular Services', url: '/services', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '2', label: 'Pricing & Packages', url: '/pricing', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '3', label: 'Offers & Coupons', url: '/offers', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '4', label: 'Lookbook & Gallery', url: '/gallery', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '5', label: 'About Our Stylists', url: '/about', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '6', label: 'Frequently Asked Questions', url: '/faqs', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '7', label: 'VIP Membership', url: '/membership', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '8', label: 'Career Opportunities', url: '/careers', isExternal: false, isActive: true, category: 'Quick Link' },
+  { id: '9', label: 'Privacy Policy', url: '/privacy', isExternal: false, isActive: true, category: 'Legal' },
+  { id: '10', label: 'Terms & Conditions', url: '/terms', isExternal: false, isActive: true, category: 'Legal' }
+];
 
 // Get Landing Page Settings
 exports.getLandingSettings = async (req, res) => {
@@ -23,7 +53,10 @@ exports.getLandingSettings = async (req, res) => {
       settings = await LandingSettings.create({ 
         key: 'main_landing_settings',
         heroTitle: 'Hairs make perfectly',
-        heroSubtitle: 'Style come from the hair style'
+        heroSubtitle: 'Style come from the hair style',
+        galleryItems: DEFAULT_GALLERY_ITEMS,
+        faqItems: DEFAULT_FAQ_ITEMS,
+        websiteLinks: DEFAULT_WEBSITE_LINKS
       });
     } else {
       let updated = false;
@@ -33,6 +66,25 @@ exports.getLandingSettings = async (req, res) => {
       }
       if (!settings.heroSubtitle) {
         settings.heroSubtitle = 'Style come from the hair style';
+        updated = true;
+      }
+      if (settings.galleryItems === undefined) {
+        settings.galleryItems = DEFAULT_GALLERY_ITEMS;
+        updated = true;
+      } else if (Array.isArray(settings.galleryItems)) {
+        for (let i = 0; i < settings.galleryItems.length; i++) {
+          if (settings.galleryItems[i].url && settings.galleryItems[i].url.includes('unsplash.com')) {
+            settings.galleryItems[i].url = '';
+            updated = true;
+          }
+        }
+      }
+      if (settings.faqItems === undefined) {
+        settings.faqItems = DEFAULT_FAQ_ITEMS;
+        updated = true;
+      }
+      if (settings.websiteLinks === undefined || !Array.isArray(settings.websiteLinks) || settings.websiteLinks.length === 0) {
+        settings.websiteLinks = DEFAULT_WEBSITE_LINKS;
         updated = true;
       }
       if (updated) {
@@ -71,31 +123,43 @@ const verifySpecialistAvailability = async (specialist, date, timeSlot) => {
   if (!specialist) return { available: true };
   if (specialist.status === 'Inactive') return { available: false, reason: 'Specialist account is currently inactive.' };
   
-  // 1. Check leave
-  const leaveConflict = await Leave.findOne({
-    $or: [
-      { employeeName: new RegExp(specialist.name, 'i') },
-      ...(specialist._id ? [{ employeeId: specialist._id }] : [])
-    ],
+  const specIdStr = specialist._id ? specialist._id.toString() : null;
+  const specEmpId = specialist.employeeId ? String(specialist.employeeId) : null;
+  const specEmail = specialist.email ? String(specialist.email).toLowerCase().trim() : null;
+  const specName = specialist.name ? String(specialist.name).trim() : '';
+
+  // 1. Check approved leave overlaying requested date (support YYYY-MM-DD date range checks)
+  const leaveQuery = {
+    status: 'Approved',
     startDate: { $lte: date },
     endDate: { $gte: date },
-    status: 'Approved'
-  });
+    $or: [
+      ...(specName ? [{ employeeName: new RegExp(specName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }] : []),
+      ...(specIdStr ? [{ employeeId: specIdStr }] : []),
+      ...(specEmpId ? [{ employeeId: specEmpId }] : []),
+      ...(specEmail ? [{ employeeEmail: specEmail }] : [])
+    ]
+  };
+
+  const leaveConflict = await Leave.findOne(leaveQuery);
   if (leaveConflict) {
-    return { available: false, reason: `Specialist is on approved leave from ${leaveConflict.startDate} to ${leaveConflict.endDate}.` };
+    return { 
+      available: false, 
+      reason: `This staff member is unavailable on the selected date (${date}) because they are on approved leave (${leaveConflict.startDate} to ${leaveConflict.endDate}). Please select another staff member or another date.` 
+    };
   }
 
-  // 2. Check overlapping booked appointment
-  const cleanSpecName = (specialist.name || '').split(/\s+/)[0];
-  if (cleanSpecName) {
+  // 2. Check overlapping booked appointment (exclude Cancelled and Staff_Rejected)
+  const cleanSpecFirst = specName.split('(')[0].trim().split(/\s+/)[0];
+  if (cleanSpecFirst) {
     const appointmentConflict = await Appointment.findOne({
-      specialistName: { $regex: new RegExp(cleanSpecName, 'i') },
+      specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
       appointmentDate: date,
       appointmentTime: timeSlot,
-      status: { $nin: ['Cancelled'] }
+      status: { $nin: ['Cancelled', 'Staff_Rejected'] }
     });
     if (appointmentConflict) {
-      return { available: false, reason: 'Specialist already has an appointment booked at this exact date and time slot.' };
+      return { available: false, reason: 'Specialist already has an appointment booked at this date and time slot.' };
     }
   }
 
@@ -202,6 +266,22 @@ exports.submitReview = async (req, res) => {
       comment
     });
 
+    // Create ONE idempotent notification for Admin
+    try {
+      const notificationController = require('./notificationController');
+      await notificationController.dispatchNotification(req.app, {
+        role: 'admin',
+        title: `⭐ New Review Received (${rating} Stars)`,
+        message: `${customerName} posted a ${rating}-star review for ${serviceName || 'SPY Salon'}: "${comment.substring(0, 60)}..."`,
+        type: 'review',
+        priority: 'normal',
+        reviewId: newReview._id.toString(),
+        link: '/admin?tab=reviews'
+      });
+    } catch (notifErr) {
+      console.error('[PublicController] Review notification error:', notifErr.message);
+    }
+
     return res.status(201).json({ success: true, message: 'Thank you for your review!', data: newReview });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -221,11 +301,14 @@ exports.getBranches = async (req, res) => {
 // Get Offers
 exports.getOffers = async (req, res) => {
   try {
-    const offers = [
-      { id: 'o1', title: 'WELCOME LUXURY 20', code: 'SPYFIRST20', discountPercentage: 20, description: 'Get flat 20% off on your first salon service booking.', validUntil: '2026-12-31' },
-      { id: 'o2', title: 'GOLD FACIAL SPECIAL', code: 'GOLDFACIAL', discountPercentage: 25, description: 'Save 25% on all 24K Gold & Diamond Skin Care treatments.', validUntil: '2026-12-31' },
-      { id: 'o3', title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: '2026-12-31' }
-    ];
+    let offers = await Offer.find({ isActive: true }).sort({ createdAt: -1 });
+    if (!offers || offers.length === 0) {
+      offers = [
+        { id: 'o1', title: 'WELCOME LUXURY 20', code: 'SPYFIRST20', discountPercentage: 20, description: 'Get flat 20% off on your first salon service booking.', validUntil: '2026-12-31' },
+        { id: 'o2', title: 'GOLD FACIAL SPECIAL', code: 'GOLDFACIAL', discountPercentage: 25, description: 'Save 25% on all 24K Gold & Diamond Skin Care treatments.', validUntil: '2026-12-31' },
+        { id: 'o3', title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: '2026-12-31' }
+      ];
+    }
     return res.status(200).json({ success: true, count: offers.length, data: offers });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

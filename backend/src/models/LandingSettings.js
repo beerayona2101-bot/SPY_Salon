@@ -49,7 +49,38 @@ const LandingSettingsSchema = new mongoose.Schema({
   stat3Value: { type: String, default: 'Jubilee Hills', trim: true },
   stat3Label: { type: String, default: 'Luxury Studio', trim: true },
   stat4Value: { type: String, default: '4.9 ⭐', trim: true },
-  stat4Label: { type: String, default: 'Google Rating', trim: true }
+  stat4Label: { type: String, default: 'Google Rating', trim: true },
+  instagramUrl: { type: String, default: 'https://instagram.com/spysalon', trim: true },
+  facebookUrl: { type: String, default: 'https://facebook.com/spysalon', trim: true },
+  youtubeUrl: { type: String, default: 'https://youtube.com/@spysalon', trim: true },
+  contactTitle: { type: String, default: 'Contact Us & Outlets', trim: true },
+  contactDescription: { type: String, default: 'Have questions about our luxury treatments or wish to book a private VIP session? Our team is available 7 days a week.', trim: true },
+  googleMapsUrl: { type: String, default: 'https://maps.google.com/?q=SPY+Salon+Jubilee+Hills', trim: true },
+  websiteLinks: [
+    {
+      id: { type: String },
+      label: { type: String, trim: true },
+      url: { type: String, trim: true },
+      isExternal: { type: Boolean, default: false },
+      isActive: { type: Boolean, default: true },
+      category: { type: String, default: 'Footer Quick Link', trim: true }
+    }
+  ],
+  galleryItems: [
+    {
+      id: { type: String },
+      title: { type: String, trim: true },
+      category: { type: String, trim: true },
+      url: { type: String, trim: true }
+    }
+  ],
+  faqItems: [
+    {
+      id: { type: String },
+      question: { type: String, trim: true },
+      answer: { type: String, trim: true }
+    }
+  ]
 }, { timestamps: true });
 
 module.exports = mongoose.model('LandingSettings', LandingSettingsSchema);

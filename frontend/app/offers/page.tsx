@@ -4,32 +4,49 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Check, Clock, Sparkles } from 'lucide-react';
 
+import { API_BASE_URL } from '@/lib/api';
+
 export default function OffersPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-  const offers = [
+  const [offers, setOffers] = useState<any[]>([
     {
       code: 'SPYFIRST20',
       title: 'Flat 20% Off - First Salon Visit',
-      discount: '20% OFF',
-      desc: 'Valid on all individual hair, skin, and spa treatments for new customers.',
-      validity: 'Valid till Dec 31, 2026'
+      discountPercentage: 20,
+      description: 'Valid on all individual hair, skin, and spa treatments for new customers.',
+      validUntil: '2026-12-31'
     },
     {
       code: 'GOLDFACIAL',
       title: '24K Gold Facial Special',
-      discount: '25% OFF',
-      desc: 'Save 25% on 24K Gold & Diamond skin rejuvenation rituals.',
-      validity: 'Valid till Dec 31, 2026'
+      discountPercentage: 25,
+      description: 'Save 25% on 24K Gold & Diamond skin rejuvenation rituals.',
+      validUntil: '2026-12-31'
     },
     {
       code: 'SPAWEEKEND',
       title: 'Weekend Spa Relaxation Deal',
-      discount: '15% OFF',
-      desc: 'Special weekend discount on Aromatherapy & Deep Tissue Spa packages.',
-      validity: 'Valid till Dec 31, 2026'
+      discountPercentage: 15,
+      description: 'Special weekend discount on Aromatherapy & Deep Tissue Spa packages.',
+      validUntil: '2026-12-31'
     }
-  ];
+  ]);
+
+  React.useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/offers`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+            setOffers(json.data);
+          }
+        }
+      } catch (e) {}
+    };
+
+    fetchOffers();
+  }, []);
 
   const handleCopy = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -66,16 +83,16 @@ export default function OffersPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="rosegold-gradient-bg text-dark-900 font-bold px-3 py-1 rounded-full text-xs shadow-sm">
-                  {offer.discount}
+                  {offer.discountPercentage || offer.discount || 20}% OFF
                 </span>
-                <span className="flex items-center space-x-1 text-[11px] text-gray-400">
+                <span className="flex items-center space-x-1 text-[11px] text-gray-400 font-mono">
                   <Clock className="w-3 h-3 text-rosegold-400" />
-                  <span>{offer.validity}</span>
+                  <span>Valid till {offer.validUntil ? new Date(offer.validUntil).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Dec 31, 2026'}</span>
                 </span>
               </div>
 
               <h3 className="text-white font-serif text-xl font-bold">{offer.title}</h3>
-              <p className="text-xs text-gray-300 leading-relaxed">{offer.desc}</p>
+              <p className="text-xs text-gray-300 leading-relaxed">{offer.description || offer.desc}</p>
             </div>
 
             <div className="pt-3 border-t border-white/10 flex items-center justify-between gap-3">

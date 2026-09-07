@@ -61,6 +61,24 @@ export function getAppBaseUrl(): string {
   return 'http://localhost:3000';
 }
 
+export function formatImageUrl(url: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/uploads/')) {
+    const origin = getCleanOrigin();
+    return `${origin}${trimmed}`;
+  }
+  if (trimmed.startsWith('uploads/')) {
+    const origin = getCleanOrigin();
+    return `${origin}/${trimmed}`;
+  }
+  return trimmed;
+}
+
 // Static & Dynamic Exports for full backward compatibility
 export const SINGLE_BASE_URL = getCleanOrigin();
 export const CLEAN_ORIGIN = getCleanOrigin();

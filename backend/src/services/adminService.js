@@ -802,15 +802,16 @@ class AdminService {
     }
 
     const ALLOWED_TRANSITIONS = {
-      'Pending': ['Pending', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'],
+      'Pending': ['Pending', 'Confirmed', 'Staff_Accepted', 'Staff_Rejected', 'In Progress', 'Completed', 'Cancelled'],
       'Confirmed': ['Confirmed', 'In Progress', 'Completed', 'Reschedule Requested', 'Cancelled', 'No Show'],
-      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Completed', 'Cancelled'],
+      'Staff_Accepted': ['Staff_Accepted', 'Confirmed', 'In Progress', 'Completed', 'Reschedule Requested', 'Cancelled', 'No Show'],
+      'Staff_Rejected': ['Staff_Rejected', 'Pending', 'Cancelled'],
+      'Reschedule Requested': ['Reschedule Requested', 'Rescheduled', 'Confirmed', 'Completed', 'Cancelled'],
       'Rescheduled': ['Rescheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled'],
       'In Progress': ['In Progress', 'Completed', 'Cancelled'],
       'Completed': ['Completed'],
       'Cancelled': ['Cancelled'],
-      'No Show': ['No Show'],
-      'Staff_Accepted': ['Confirmed', 'In Progress', 'Completed', 'Reschedule Requested', 'Cancelled', 'No Show']
+      'No Show': ['No Show']
     };
 
     const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];
@@ -922,9 +923,11 @@ class AdminService {
       await Notification.create({
         title: 'Reschedule Request Approved ✅',
         message: `Your appointment #${appointment.bookingId} has been rescheduled to ${newDate} at ${newTime}.`,
-        recipientRole: 'customer',
-        recipientUserId: appointment.customerId || null,
-        type: 'booking'
+        role: 'user',
+        userId: appointment.customerId ? String(appointment.customerId) : null,
+        email: appointment.customerEmail ? String(appointment.customerEmail).toLowerCase().trim() : null,
+        type: 'booking',
+        bookingId: appointment.bookingId
       });
 
       await this.createActivityLog({
@@ -957,9 +960,11 @@ class AdminService {
       await Notification.create({
         title: 'Reschedule Request Rejected ❌',
         message: `Your reschedule request for #${appointment.bookingId} could not be accommodated. ${rejectionReason || ''}`,
-        recipientRole: 'customer',
-        recipientUserId: appointment.customerId || null,
-        type: 'booking'
+        role: 'user',
+        userId: appointment.customerId ? String(appointment.customerId) : null,
+        email: appointment.customerEmail ? String(appointment.customerEmail).toLowerCase().trim() : null,
+        type: 'booking',
+        bookingId: appointment.bookingId
       });
 
       await this.createActivityLog({

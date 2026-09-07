@@ -43,6 +43,7 @@ import {
   XCircle,
   Star,
   Wand2,
+  RotateCcw,
   Sparkles,
   DollarSign,
   CreditCard,
@@ -252,7 +253,8 @@ function AdminDashboardContent() {
   }, []);
   
   const tabFromUrl = searchParams?.get('tab');
-  const validTabs = ['analytics', 'calendar', 'memberships', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries', 'landing-settings'];
+  const subTabFromUrl = searchParams?.get('subTab') || searchParams?.get('section');
+  const validTabs = ['analytics', 'calendar', 'memberships', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries', 'landing-settings', 'home-settings', 'footer-settings'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'analytics';
 
   const handleTabChange = (newTab: string) => {
@@ -405,6 +407,7 @@ function AdminDashboardContent() {
         msg: 'Leave request APPROVED successfully! Notification sent to staff member.'
       }));
       setLeaves(prev => prev.map(l => l._id === json.data._id ? json.data : l));
+      setNotifications(prev => prev.map(n => n.leaveRequestId === json.data._id ? { ...n, isRead: true, read: true, title: `Leave Request Approved (${json.data.employeeName})` } : n));
     } catch (err: any) {
       setLeaveActionModal(prev => ({ ...prev, loading: false, msg: err.message || 'Network error.' }));
     }
@@ -433,6 +436,7 @@ function AdminDashboardContent() {
         msg: 'Leave request REJECTED successfully. Notification sent to staff member.'
       }));
       setLeaves(prev => prev.map(l => l._id === json.data._id ? json.data : l));
+      setNotifications(prev => prev.map(n => n.leaveRequestId === json.data._id ? { ...n, isRead: true, read: true, title: `Leave Request Rejected (${json.data.employeeName})` } : n));
     } catch (err: any) {
       setLeaveActionModal(prev => ({ ...prev, loading: false, msg: err.message || 'Network error.' }));
     }
@@ -455,6 +459,55 @@ function AdminDashboardContent() {
   const [stat3Label, setStat3Label] = useState("Luxury Studio");
   const [stat4Value, setStat4Value] = useState("4.9 ⭐");
   const [stat4Label, setStat4Label] = useState("Google Rating");
+  const [landingInstagramUrl, setLandingInstagramUrl] = useState("https://instagram.com/spysalon");
+  const [landingFacebookUrl, setLandingFacebookUrl] = useState("https://facebook.com/spysalon");
+  const [landingYoutubeUrl, setLandingYoutubeUrl] = useState("https://youtube.com/@spysalon");
+
+  const [landingGalleryItems, setLandingGalleryItems] = useState<any[]>([
+    { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: '' },
+    { id: '2', title: '24K Gold Ritual Treatment', category: 'Facials', url: '' },
+    { id: '3', title: 'Royal HD Bridal Glam', category: 'Bridal', url: '' },
+    { id: '4', title: 'Jubilee Hills VIP Suite', category: 'Interiors', url: '' },
+    { id: '5', title: 'Keratin Gloss Finish', category: 'Hair', url: '' },
+    { id: '6', title: 'Aroma Hydro Therapy', category: 'Facials', url: '' }
+  ]);
+
+  const [landingFaqItems, setLandingFaqItems] = useState<any[]>([
+    { id: '1', question: 'How do I book an online appointment at SPY Salon?', answer: 'You can book in under 30 seconds using our online booking wizard on this website. Simply pick your outlet, select your treatment, date, and time slot.' },
+    { id: '2', question: 'What safety and hygiene measures are followed?', answer: 'All our tools undergo hospital-grade UV sterilization after every client. We use single-use towels and disposable aprons.' },
+    { id: '3', question: 'Can I reschedule or cancel my appointment?', answer: 'Yes, you can reschedule or cancel up to 2 hours prior to your slot duration by calling our hotline or via SMS link.' },
+    { id: '4', question: 'Do you offer bridal and group booking packages?', answer: 'Absolutely! We offer customized pre-bridal care, HD makeup, and private spa lounge reservations for group celebrations.' }
+  ]);
+
+  // Contact Page Specific Settings State
+  const [contactTitle, setContactTitle] = useState("Contact Us & Outlets");
+  const [contactDescription, setContactDescription] = useState("Have questions about our luxury treatments or wish to book a private VIP session? Our team is available 7 days a week.");
+  const [googleMapsUrl, setGoogleMapsUrl] = useState("https://maps.google.com/?q=SPY+Salon+Jubilee+Hills");
+
+  const DEFAULT_WEBSITE_LINKS = [
+    { id: '1', label: 'Popular Services', url: '/services', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '2', label: 'Pricing & Packages', url: '/pricing', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '3', label: 'Offers & Coupons', url: '/offers', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '4', label: 'Lookbook & Gallery', url: '/gallery', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '5', label: 'About Our Stylists', url: '/about', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '6', label: 'Frequently Asked Questions', url: '/faqs', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '7', label: 'VIP Membership', url: '/membership', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '8', label: 'Career Opportunities', url: '/careers', isExternal: false, isActive: true, category: 'Quick Link' },
+    { id: '9', label: 'Privacy Policy', url: '/privacy', isExternal: false, isActive: true, category: 'Legal' },
+    { id: '10', label: 'Terms & Conditions', url: '/terms', isExternal: false, isActive: true, category: 'Legal' }
+  ];
+
+  // Website Footer Links State
+  const [websiteLinks, setWebsiteLinks] = useState<any[]>(DEFAULT_WEBSITE_LINKS);
+
+  // Offers & Coupons State
+  const [offersList, setOffersList] = useState<any[]>([
+    { _id: 'o1', title: 'WELCOME LUXURY 20', code: 'SPYFIRST20', discountPercentage: 20, description: 'Get flat 20% off on your first salon service booking.', validUntil: '2026-12-31', isActive: true },
+    { _id: 'o2', title: 'GOLD FACIAL SPECIAL', code: 'GOLDFACIAL', discountPercentage: 25, description: 'Save 25% on all 24K Gold & Diamond Skin Care treatments.', validUntil: '2026-12-31', isActive: true },
+    { _id: 'o3', title: 'SPA WEEKEND RELAX', code: 'SPAWEEKEND', discountPercentage: 15, description: 'Special 15% discount on Aromatherapy & Deep Tissue Massage packages.', validUntil: '2026-12-31', isActive: true }
+  ]);
+
+  const [websiteSubTab, setWebsiteSubTab] = useState<string>('all');
   const [landingSettingsSavedMsg, setLandingSettingsSavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -472,6 +525,9 @@ function AdminDashboardContent() {
           if (parsed.supportEmail) setLandingSupportEmail(parsed.supportEmail);
           if (parsed.openingHours) setLandingOpeningHours(parsed.openingHours);
           if (parsed.studioAddress) setLandingStudioAddress(parsed.studioAddress);
+          if (parsed.contactTitle) setContactTitle(parsed.contactTitle);
+          if (parsed.contactDescription) setContactDescription(parsed.contactDescription);
+          if (parsed.googleMapsUrl) setGoogleMapsUrl(parsed.googleMapsUrl);
           if (parsed.stat1Value) setStat1Value(parsed.stat1Value);
           if (parsed.stat1Label) setStat1Label(parsed.stat1Label);
           if (parsed.stat2Value) setStat2Value(parsed.stat2Value);
@@ -480,35 +536,35 @@ function AdminDashboardContent() {
           if (parsed.stat3Label) setStat3Label(parsed.stat3Label);
           if (parsed.stat4Value) setStat4Value(parsed.stat4Value);
           if (parsed.stat4Label) setStat4Label(parsed.stat4Label);
+          if (parsed.instagramUrl) setLandingInstagramUrl(parsed.instagramUrl);
+          if (parsed.facebookUrl) setLandingFacebookUrl(parsed.facebookUrl);
+          if (parsed.youtubeUrl) setLandingYoutubeUrl(parsed.youtubeUrl);
+          if (Array.isArray(parsed.websiteLinks) && parsed.websiteLinks.length > 0) {
+            setWebsiteLinks(parsed.websiteLinks);
+          } else {
+            setWebsiteLinks(DEFAULT_WEBSITE_LINKS);
+          }
+          if (Array.isArray(parsed.galleryItems)) {
+            const sanitized = parsed.galleryItems.map((item: any) => ({
+              ...item,
+              url: (item.url && item.url.includes('unsplash.com')) ? '' : (item.url || '')
+            }));
+            setLandingGalleryItems(sanitized);
+            parsed.galleryItems = sanitized;
+          }
+          if (Array.isArray(parsed.faqItems)) setLandingFaqItems(parsed.faqItems);
           localStorage.setItem('spy_landing_settings', JSON.stringify(parsed));
-          return;
         }
       } catch (e) {}
 
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('spy_landing_settings');
-        if (stored) {
-          try {
-            const parsed = JSON.parse(stored);
-            if (parsed.heroTitle) setLandingHeroTitle(parsed.heroTitle);
-            if (parsed.heroSubtitle) setLandingHeroSubtitle(parsed.heroSubtitle);
-            if (parsed.announcement) setLandingAnnouncement(parsed.announcement);
-            if (parsed.announcementActive !== undefined) setLandingAnnouncementActive(parsed.announcementActive);
-            if (parsed.hotlinePhone) setLandingHotlinePhone(parsed.hotlinePhone);
-            if (parsed.supportEmail) setLandingSupportEmail(parsed.supportEmail);
-            if (parsed.openingHours) setLandingOpeningHours(parsed.openingHours);
-            if (parsed.studioAddress) setLandingStudioAddress(parsed.studioAddress);
-            if (parsed.stat1Value) setStat1Value(parsed.stat1Value);
-            if (parsed.stat1Label) setStat1Label(parsed.stat1Label);
-            if (parsed.stat2Value) setStat2Value(parsed.stat2Value);
-            if (parsed.stat2Label) setStat2Label(parsed.stat2Label);
-            if (parsed.stat3Value) setStat3Value(parsed.stat3Value);
-            if (parsed.stat3Label) setStat3Label(parsed.stat3Label);
-            if (parsed.stat4Value) setStat4Value(parsed.stat4Value);
-            if (parsed.stat4Label) setStat4Label(parsed.stat4Label);
-          } catch (e) {}
+      // Also load offers & coupons from API
+      try {
+        const offRes = await apiFetch(`${API_BASE_URL}/admin/offers`);
+        const offJson = await offRes.json();
+        if (offRes.ok && offJson.success && Array.isArray(offJson.data)) {
+          setOffersList(offJson.data);
         }
-      }
+      } catch (e) {}
     }
 
     loadLandingSettingsFromBackend();
@@ -750,6 +806,16 @@ function AdminDashboardContent() {
         setEnquiries(prev => prev.filter(e => e._id !== data.id && e.enquiryId !== data.id));
       }
     });
+    socket.on('notification_updated', (data: any) => {
+      if (data?.enquiryId) {
+        setNotifications(prev => prev.map(n => (n.enquiryId === data.enquiryId || n.link?.includes(data.enquiryId)) ? { ...n, isRead: true, read: true } : n));
+      }
+    });
+    socket.on('notification:new', (newNotif: any) => {
+      if (newNotif && (newNotif.notificationId || newNotif._id)) {
+        setNotifications(prev => [newNotif, ...prev.filter(n => (n.notificationId || n._id) !== (newNotif.notificationId || newNotif._id))]);
+      }
+    });
 
     return () => {
       socket.off('service:created', handleRealtimeSync);
@@ -767,6 +833,8 @@ function AdminDashboardContent() {
       socket.off('enquiry_created');
       socket.off('enquiry_updated');
       socket.off('enquiry_deleted');
+      socket.off('notification_updated');
+      socket.off('notification:new');
     };
   }, [socket]);
 
@@ -1657,6 +1725,9 @@ function AdminDashboardContent() {
         if (selectedEnquiry && (selectedEnquiry._id === id || selectedEnquiry.enquiryId === id)) {
           setSelectedEnquiry(data.data);
         }
+        // Mark associated admin notification as read locally
+        setNotifications(prev => prev.map(n => (n.enquiryId === id || n.enquiryId === data.data.enquiryId || n.link?.includes(id)) ? { ...n, read: true, isRead: true } : n));
+        showToast(`Enquiry ${data.data.enquiryId || id} status updated to ${status}!`, 'success');
       }
     } catch (err) {
       console.error('Error updating enquiry:', err);
@@ -1778,7 +1849,8 @@ function AdminDashboardContent() {
       label: 'Website Management',
       icon: Sliders,
       children: [
-        { id: 'landing-settings', label: 'Home Page Settings', icon: Sliders }
+        { id: 'home-settings', label: 'Home Page Settings', icon: Sliders },
+        { id: 'footer-settings', label: 'Footer Page Settings', icon: Globe }
       ]
     },
     {
@@ -5579,10 +5651,15 @@ function AdminDashboardContent() {
                                   }}
                                 />
                                 <button
-                                  onClick={() => {
+                                  onClick={async () => {
                                     setSelectedEnquiry(enq);
                                     setEnquiryAdminNotes(enq.adminNotes || '');
                                     setIsEnquiryModalOpen(true);
+                                    const enqId = enq.enquiryId || enq._id;
+                                    setNotifications(prev => prev.map(n => (n.enquiryId === enqId || n.link?.includes(enqId)) ? { ...n, read: true, isRead: true } : n));
+                                    try {
+                                      await apiFetch(`${API_BASE_URL}/admin/enquiries/${enqId}/view`, { method: 'PATCH' });
+                                    } catch (e) {}
                                   }}
                                   className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
                                 >
@@ -5607,94 +5684,46 @@ function AdminDashboardContent() {
             </div>
           )}
 
-          {/* TAB: LANDING PAGE & WEBSITE SETTINGS */}
-          {activeTab === 'landing-settings' && (
+          {/* TAB 1: HOME PAGE SETTINGS */}
+          {(activeTab === 'home-settings' || activeTab === 'landing-settings') && (
             <div className="space-y-6 animate-fadeIn text-left">
+              
+              {/* Dynamic Breadcrumbs Navigation Bar */}
+              <nav className="flex items-center space-x-2 text-xs text-gray-400 bg-dark-850 p-3 rounded-2xl border border-white/10 overflow-x-auto font-medium">
+                <button onClick={() => handleTabChange('analytics')} className="hover:text-rosegold-400 transition-colors flex items-center space-x-1 shrink-0">
+                  <Home className="w-3.5 h-3.5" />
+                  <span>Admin Dashboard</span>
+                </button>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <span className="text-gray-300 font-bold shrink-0">Website Management</span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <span className="text-rosegold-400 font-bold shrink-0">Home Page Settings</span>
+                {websiteSubTab !== 'all' && (
+                  <>
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    <span className="text-white font-bold shrink-0 uppercase">{websiteSubTab}</span>
+                  </>
+                )}
+              </nav>
+
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div>
                   <div className="flex items-center space-x-2.5">
                     <div className="w-8 h-8 rounded-xl bg-rosegold-500/15 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400">
-                      <Globe className="w-4 h-4" />
+                      <Sliders className="w-4 h-4" />
                     </div>
-                    <h2 className="text-2xl font-bold font-serif text-white">Home Page & Website Settings</h2>
+                    <h2 className="text-2xl font-bold font-serif text-white">Home Page Settings</h2>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Configure public website hero headline, announcement banner, hotline contacts, and operating hours in real-time.</p>
+                  <p className="text-xs text-gray-400 mt-1">Manage home page hero banner, headline, announcement ticker, statistics counter badges, and social media links.</p>
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setLandingHeroTitle("Unveil Your Radiant Beauty");
-                      setLandingHeroSubtitle("“Beauty is not created—it is unveiled from within.”");
-                      setLandingAnnouncement("✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages! Use Code: LUXURY25");
-                      setLandingAnnouncementActive(true);
-                      setLandingHotlinePhone("+91 94906 44434");
-                      setLandingSupportEmail("concierge@spysalon.com");
-                      setLandingOpeningHours("Mon - Sun: 09:00 AM - 09:00 PM");
-                      setLandingStudioAddress("Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033");
-                      setStat1Value("25,000+");
-                      setStat1Label("Satisfied Clients");
-                      setStat2Value("45+");
-                      setStat2Label("Master Stylists");
-                      setStat3Value("Jubilee Hills");
-                      setStat3Label("Luxury Studio");
-                      setStat4Value("4.9 ⭐");
-                      setStat4Label("Google Rating");
-                      const settingsObj = {
-                        heroTitle: "Unveil Your Radiant Beauty",
-                        heroSubtitle: "“Beauty is not created—it is unveiled from within.”",
-                        announcement: "✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages! Use Code: LUXURY25",
-                        announcementActive: true,
-                        hotlinePhone: "+91 94906 44434",
-                        supportEmail: "concierge@spysalon.com",
-                        openingHours: "Mon - Sun: 09:00 AM - 09:00 PM",
-                        studioAddress: "Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad, Telangana 500033",
-                        stat1Value: "25,000+", stat1Label: "Satisfied Clients",
-                        stat2Value: "45+", stat2Label: "Master Stylists",
-                        stat3Value: "Jubilee Hills", stat3Label: "Luxury Studio",
-                        stat4Value: "4.9 ⭐", stat4Label: "Google Rating",
-                        updatedAt: new Date().toISOString()
-                      };
-                      localStorage.setItem('spy_landing_settings', JSON.stringify(settingsObj));
-                      window.dispatchEvent(new Event('storage'));
-                      try {
-                        apiFetch(`${API_BASE_URL}/admin/landing-settings`, {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(settingsObj)
-                        });
-                      } catch (e) {}
-                      setLandingSettingsSavedMsg("Reset to default configuration & applied live!");
-                      setTimeout(() => setLandingSettingsSavedMsg(null), 3000);
-                    }}
-                    className="px-4 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-gray-300 border border-white/10 font-bold text-xs cursor-pointer transition-all"
-                  >
-                    Reset Defaults
-                  </button>
                   <button
                     onClick={async () => {
                       if (!landingHeroTitle.trim()) {
                         showToast("Main Hero Headline cannot be left blank.", 'error');
                         return;
                       }
-                      if (!landingHeroSubtitle.trim()) {
-                        showToast("Sub-Headline Description cannot be left blank.", 'error');
-                        return;
-                      }
-                      if (landingAnnouncementActive && !landingAnnouncement.trim()) {
-                        showToast("Announcement Ticker Text cannot be left blank when active.", 'error');
-                        return;
-                      }
-                      if (landingSupportEmail.trim() && !landingSupportEmail.includes('@')) {
-                        showToast("Please enter a valid support email address (e.g. concierge@spysalon.com).", 'error');
-                        return;
-                      }
-                      const cleanPhoneDigits = landingHotlinePhone.replace(/[^0-9]/g, '');
-                      if (landingHotlinePhone.trim() && cleanPhoneDigits.length < 10) {
-                        showToast("Hotline Phone number must contain at least 10 valid digits.", 'error');
-                        return;
-                      }
-
                       const settingsObj = {
                         heroTitle: landingHeroTitle,
                         heroSubtitle: landingHeroSubtitle,
@@ -5704,15 +5733,23 @@ function AdminDashboardContent() {
                         supportEmail: landingSupportEmail,
                         openingHours: landingOpeningHours,
                         studioAddress: landingStudioAddress,
+                        contactTitle,
+                        contactDescription,
+                        googleMapsUrl,
                         stat1Value, stat1Label,
                         stat2Value, stat2Label,
                         stat3Value, stat3Label,
                         stat4Value, stat4Label,
+                        instagramUrl: landingInstagramUrl,
+                        facebookUrl: landingFacebookUrl,
+                        youtubeUrl: landingYoutubeUrl,
+                        websiteLinks,
+                        galleryItems: landingGalleryItems,
+                        faqItems: landingFaqItems,
                         updatedAt: new Date().toISOString()
                       };
                       localStorage.setItem('spy_landing_settings', JSON.stringify(settingsObj));
                       window.dispatchEvent(new Event('storage'));
-
                       try {
                         await apiFetch(`${API_BASE_URL}/admin/landing-settings`, {
                           method: 'PUT',
@@ -5722,11 +5759,13 @@ function AdminDashboardContent() {
                       } catch (e) {}
 
                       setLandingSettingsSavedMsg("Home Page Settings Saved & Live on Website!");
+                      showToast("Home Page Settings saved successfully!", 'success');
                       setTimeout(() => setLandingSettingsSavedMsg(null), 3000);
                     }}
-                    className="px-5 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
+                    className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer flex items-center space-x-1.5"
                   >
-                    Save Home Page Settings →
+                    <Check className="w-4 h-4" />
+                    <span>Save Home Page Settings</span>
                   </button>
                 </div>
               </div>
@@ -5849,60 +5888,679 @@ function AdminDashboardContent() {
                   </div>
                 </div>
 
-                {/* 4. CONTACT HOTLINE, OPERATING HOURS & ADDRESS */}
-                <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4 lg:col-span-2">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                {/* 4. CONTACT PAGE EDIT MODULE */}
+                <div className="glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-4 lg:col-span-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
                     <div className="flex items-center space-x-2">
                       <Phone className="w-4 h-4 text-rosegold-400" />
-                      <h3 className="font-serif font-bold text-base text-white">Concierge Hotline, Address & Working Hours</h3>
+                      <h3 className="font-serif font-bold text-base text-white">Contact Page Edit (`/contact`)</h3>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-mono">Footer & Contact Card Info</span>
+                    <span className="text-[10px] text-rosegold-400 font-mono bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/30">
+                      Public Contact Details
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                  <div className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1">Contact Page Title *</label>
+                        <input
+                          type="text"
+                          value={contactTitle}
+                          onChange={(e) => setContactTitle(e.target.value)}
+                          placeholder="Contact Us & Locations"
+                          className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1">Concierge Hotline Phone *</label>
+                        <input
+                          type="text"
+                          value={landingHotlinePhone}
+                          onChange={(e) => setLandingHotlinePhone(e.target.value)}
+                          placeholder="+91 94906 44434"
+                          className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="text-gray-300 font-bold block mb-1.5">Concierge Phone Hotline</label>
-                      <input
-                        type="text"
-                        value={landingHotlinePhone}
-                        onChange={(e) => setLandingHotlinePhone(e.target.value)}
-                        placeholder="+91 94906 44434"
-                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none transition-all"
+                      <label className="text-gray-300 font-bold block mb-1">Contact Page Description *</label>
+                      <textarea
+                        rows={2}
+                        value={contactDescription}
+                        onChange={(e) => setContactDescription(e.target.value)}
+                        placeholder="Have questions about our luxury treatments or wish to book a private VIP session?"
+                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1">Support Email ID *</label>
+                        <input
+                          type="email"
+                          value={landingSupportEmail}
+                          onChange={(e) => setLandingSupportEmail(e.target.value)}
+                          placeholder="concierge@spysalon.com"
+                          className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1">Studio Operating Hours *</label>
+                        <input
+                          type="text"
+                          value={landingOpeningHours}
+                          onChange={(e) => setLandingOpeningHours(e.target.value)}
+                          placeholder="Mon - Sun: 09:00 AM - 09:00 PM"
+                          className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-gray-300 font-bold block mb-1">Physical Studio Address *</label>
+                      <textarea
+                        rows={2}
+                        value={landingStudioAddress}
+                        onChange={(e) => setLandingStudioAddress(e.target.value)}
+                        placeholder="Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad 500033"
+                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none resize-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-gray-300 font-bold block mb-1.5">Support Email</label>
+                      <label className="text-gray-300 font-bold block mb-1">Google Maps / Location Link</label>
                       <input
-                        type="email"
-                        value={landingSupportEmail}
-                        onChange={(e) => setLandingSupportEmail(e.target.value)}
-                        placeholder="concierge@spysalon.com"
-                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none transition-all"
+                        type="url"
+                        value={googleMapsUrl}
+                        onChange={(e) => setGoogleMapsUrl(e.target.value)}
+                        placeholder="https://maps.google.com/?q=SPY+Salon+Jubilee+Hills"
+                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none font-mono"
                       />
                     </div>
 
-                    <div>
-                      <label className="text-gray-300 font-bold block mb-1.5">Salon Operating Hours</label>
-                      <input
-                        type="text"
-                        value={landingOpeningHours}
-                        onChange={(e) => setLandingOpeningHours(e.target.value)}
-                        placeholder="Mon - Sun: 09:00 AM - 09:00 PM"
-                        className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none transition-all"
-                      />
+                    <div className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1 text-[11px]">Instagram Profile Link</label>
+                        <input
+                          type="url"
+                          value={landingInstagramUrl}
+                          onChange={(e) => setLandingInstagramUrl(e.target.value)}
+                          placeholder="https://instagram.com/spysalon"
+                          className="w-full p-2.5 rounded-xl bg-dark-900 border border-white/10 text-white font-mono text-[11px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1 text-[11px]">Facebook Page Link</label>
+                        <input
+                          type="url"
+                          value={landingFacebookUrl}
+                          onChange={(e) => setLandingFacebookUrl(e.target.value)}
+                          placeholder="https://facebook.com/spysalon"
+                          className="w-full p-2.5 rounded-xl bg-dark-900 border border-white/10 text-white font-mono text-[11px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-gray-300 font-bold block mb-1 text-[11px]">YouTube Channel Link</label>
+                        <input
+                          type="url"
+                          value={landingYoutubeUrl}
+                          onChange={(e) => setLandingYoutubeUrl(e.target.value)}
+                          placeholder="https://youtube.com/@spysalon"
+                          className="w-full p-2.5 rounded-xl bg-dark-900 border border-white/10 text-white font-mono text-[11px]"
+                        />
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div className="pt-2 text-xs">
-                    <label className="text-gray-300 font-bold block mb-1.5">Studio Physical Address</label>
-                    <input
-                      type="text"
-                      value={landingStudioAddress}
-                      onChange={(e) => setLandingStudioAddress(e.target.value)}
-                      placeholder="Road No. 36, Opposite Metro Pillar 1650, Jubilee Hills, Hyderabad..."
-                      className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none transition-all"
-                    />
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: FOOTER PAGE SETTINGS */}
+          {activeTab === 'footer-settings' && (
+            <div className="space-y-6 animate-fadeIn text-left">
+              
+              {/* Dynamic Breadcrumbs Navigation Bar */}
+              <nav className="flex items-center space-x-2 text-xs text-gray-400 bg-dark-850 p-3 rounded-2xl border border-white/10 overflow-x-auto font-medium">
+                <button onClick={() => handleTabChange('analytics')} className="hover:text-rosegold-400 transition-colors flex items-center space-x-1 shrink-0">
+                  <Home className="w-3.5 h-3.5" />
+                  <span>Admin Dashboard</span>
+                </button>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <span className="text-gray-300 font-bold shrink-0">Website Management</span>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                <span className="text-rosegold-400 font-bold shrink-0">Footer Page Settings</span>
+                {websiteSubTab !== 'all' && (
+                  <>
+                    <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                    <span className="text-white font-bold shrink-0 font-sans">
+                      {websiteSubTab === 'links' ? 'Website Links' :
+                       websiteSubTab === 'gallery' ? 'Look Book & Gallery' :
+                       websiteSubTab === 'faqs' ? 'Frequently Asked Questions' :
+                       websiteSubTab === 'offers' ? 'Offers & Coupons' : websiteSubTab}
+                    </span>
+                  </>
+                )}
+              </nav>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-rosegold-500/15 border border-rosegold-500/30 flex items-center justify-center text-rosegold-400">
+                      <Globe className="w-4 h-4" />
+                    </div>
+                    <h2 className="text-2xl font-bold font-serif text-white">Footer Page Settings & Content Management</h2>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Independently manage Website Quick Links, Lookbook & Gallery showcase, FAQs, and Offers & Coupons.</p>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-dark-800 p-1 rounded-2xl border border-white/10 text-xs overflow-x-auto">
+                  <button onClick={() => setWebsiteSubTab('all')} className={`px-3 py-1.5 rounded-xl font-bold transition-all ${websiteSubTab === 'all' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}>All Subsections</button>
+                  <button onClick={() => setWebsiteSubTab('links')} className={`px-3 py-1.5 rounded-xl font-bold transition-all ${websiteSubTab === 'links' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}>🔗 Website Links</button>
+                  <button onClick={() => setWebsiteSubTab('gallery')} className={`px-3 py-1.5 rounded-xl font-bold transition-all ${websiteSubTab === 'gallery' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}>📸 Gallery</button>
+                  <button onClick={() => setWebsiteSubTab('faqs')} className={`px-3 py-1.5 rounded-xl font-bold transition-all ${websiteSubTab === 'faqs' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}>❓ FAQs</button>
+                  <button onClick={() => setWebsiteSubTab('offers')} className={`px-3 py-1.5 rounded-xl font-bold transition-all ${websiteSubTab === 'offers' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}>🏷️ Offers</button>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                
+                {/* 1. WEBSITE LINKS MODULE */}
+                {(websiteSubTab === 'all' || websiteSubTab === 'links') && (
+                  <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                      <div>
+                        <h3 className="font-serif font-bold text-base text-white">1. Website Quick & Legal Footer Links</h3>
+                        <p className="text-xs text-gray-400">Manage links displayed in footer quick navigation.</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWebsiteLinks(DEFAULT_WEBSITE_LINKS);
+                            showToast("Restored standard website footer links!", 'info');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs flex items-center space-x-1 cursor-pointer border border-white/20"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restore Defaults</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newLink = {
+                              id: String(Date.now()),
+                              label: 'New Website Link',
+                              url: '/services',
+                              isExternal: false,
+                              isActive: true,
+                              category: 'Quick Link'
+                            };
+                            setWebsiteLinks(prev => [...prev, newLink]);
+                            showToast("New website link entry added!", 'info');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs flex items-center space-x-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add New Link</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      {websiteLinks.map((link, idx) => (
+                        <div key={link.id || idx} className="p-3.5 rounded-2xl bg-dark-850 border border-white/10 flex flex-col md:flex-row md:items-center gap-3">
+                          <input
+                            type="text"
+                            value={link.label}
+                            onChange={(e) => {
+                              const updated = [...websiteLinks];
+                              updated[idx].label = e.target.value;
+                              setWebsiteLinks(updated);
+                            }}
+                            placeholder="Link Title"
+                            className="flex-1 p-2.5 rounded-xl bg-dark-900 text-white border border-white/10 font-bold"
+                          />
+
+                          <input
+                            type="text"
+                            value={link.url}
+                            onChange={(e) => {
+                              const updated = [...websiteLinks];
+                              updated[idx].url = e.target.value;
+                              setWebsiteLinks(updated);
+                            }}
+                            placeholder="/page-url"
+                            className="flex-1 p-2.5 rounded-xl bg-dark-900 text-rosegold-300 border border-white/10 font-mono"
+                          />
+
+                          <div className="flex items-center space-x-3 shrink-0">
+                            <label className="flex items-center space-x-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={link.isActive !== false}
+                                onChange={(e) => {
+                                  const updated = [...websiteLinks];
+                                  updated[idx].isActive = e.target.checked;
+                                  setWebsiteLinks(updated);
+                                }}
+                                className="rounded border-white/20 bg-dark-900 text-rosegold-500"
+                              />
+                              <span className="text-gray-300 font-semibold text-[11px]">Active</span>
+                            </label>
+
+                            <button
+                              type="button"
+                              onClick={() => setWebsiteLinks(prev => prev.filter((_, i) => i !== idx))}
+                              className="p-2 rounded-xl bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="pt-2 flex justify-end">
+                        <button
+                          onClick={async () => {
+                            const settingsObj = {
+                              heroTitle: landingHeroTitle,
+                              heroSubtitle: landingHeroSubtitle,
+                              announcement: landingAnnouncement,
+                              announcementActive: landingAnnouncementActive,
+                              hotlinePhone: landingHotlinePhone,
+                              supportEmail: landingSupportEmail,
+                              openingHours: landingOpeningHours,
+                              studioAddress: landingStudioAddress,
+                              contactTitle, contactDescription, googleMapsUrl,
+                              stat1Value, stat1Label, stat2Value, stat2Label, stat3Value, stat3Label, stat4Value, stat4Label,
+                              instagramUrl: landingInstagramUrl, facebookUrl: landingFacebookUrl, youtubeUrl: landingYoutubeUrl,
+                              websiteLinks, galleryItems: landingGalleryItems, faqItems: landingFaqItems
+                            };
+                            localStorage.setItem('spy_landing_settings', JSON.stringify(settingsObj));
+                            window.dispatchEvent(new Event('storage'));
+                            try {
+                              await apiFetch(`${API_BASE_URL}/admin/landing-settings`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(settingsObj)
+                              });
+                            } catch (e) {}
+                            showToast("Website Footer Links updated successfully!", 'success');
+                          }}
+                          className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
+                        >
+                          Save Website Links
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. LOOKBOOK & GALLERY SHOWCASE MANAGER */}
+                {(websiteSubTab === 'all' || websiteSubTab === 'gallery') && (
+                  <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="w-4 h-4 text-rosegold-400" />
+                        <h3 className="font-serif font-bold text-base text-white">2. Lookbook & Gallery Showcase Manager (`/gallery`)</h3>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-rosegold-400 font-mono bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/30">
+                          {landingGalleryItems.length} Photos Listed
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItem = {
+                              id: String(Date.now()),
+                              title: 'New Transformation Photo',
+                              category: 'Hair',
+                              url: ''
+                            };
+                            setLandingGalleryItems(prev => [...prev, newItem]);
+                            showToast("New gallery photo card added!", 'info');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs flex items-center space-x-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add New Photo</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                      {landingGalleryItems.map((item, idx) => (
+                        <div key={item.id || idx} className="p-4 rounded-2xl bg-dark-850 border border-white/10 space-y-3 relative">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span className="font-mono text-[10px] text-rosegold-400 font-bold">Photo #{idx + 1}</span>
+                            <div className="flex items-center space-x-1">
+                              {idx > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...landingGalleryItems];
+                                    const temp = updated[idx - 1];
+                                    updated[idx - 1] = updated[idx];
+                                    updated[idx] = temp;
+                                    setLandingGalleryItems(updated);
+                                  }}
+                                  className="p-1 rounded bg-dark-900 text-gray-300 hover:text-white"
+                                  title="Move Up"
+                                >
+                                  ↑
+                                </button>
+                              )}
+                              {idx < landingGalleryItems.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...landingGalleryItems];
+                                    const temp = updated[idx + 1];
+                                    updated[idx + 1] = updated[idx];
+                                    updated[idx] = temp;
+                                    setLandingGalleryItems(updated);
+                                  }}
+                                  className="p-1 rounded bg-dark-900 text-gray-300 hover:text-white"
+                                  title="Move Down"
+                                >
+                                  ↓
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setLandingGalleryItems(prev => prev.filter((_, i) => i !== idx))}
+                                className="p-1 rounded bg-red-500/20 text-red-400 hover:text-red-300"
+                                title="Delete Photo"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <ImageUploader
+                            initialUrl={item.url}
+                            folder="gallery"
+                            label="Showcase Photo"
+                            onUploadSuccess={(url) => {
+                              const updated = [...landingGalleryItems];
+                              updated[idx].url = url;
+                              setLandingGalleryItems(updated);
+                            }}
+                          />
+
+                          <div className="space-y-2">
+                            <div>
+                              <label className="text-gray-400 font-semibold block text-[10px] mb-0.5">Photo Title *</label>
+                              <input
+                                type="text"
+                                value={item.title}
+                                onChange={(e) => {
+                                  const updated = [...landingGalleryItems];
+                                  updated[idx].title = e.target.value;
+                                  setLandingGalleryItems(updated);
+                                }}
+                                placeholder="Balayage Transformation"
+                                className="w-full p-2.5 rounded-xl bg-dark-900 text-white border border-white/10 text-xs font-semibold"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-gray-400 font-semibold block text-[10px] mb-0.5">Category *</label>
+                                <select
+                                  value={item.category}
+                                  onChange={(e) => {
+                                    const updated = [...landingGalleryItems];
+                                    updated[idx].category = e.target.value;
+                                    setLandingGalleryItems(updated);
+                                  }}
+                                  className="w-full p-2.5 rounded-xl bg-dark-900 text-white border border-white/10 text-xs font-bold"
+                                >
+                                  <option value="Hair">Hair</option>
+                                  <option value="Facials">Facials</option>
+                                  <option value="Bridal">Bridal</option>
+                                  <option value="Interiors">Interiors</option>
+                                  <option value="Nails">Nails</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="text-gray-400 font-semibold block text-[10px] mb-0.5">Direct Image URL</label>
+                                <input
+                                  type="url"
+                                  value={item.url}
+                                  onChange={(e) => {
+                                    const updated = [...landingGalleryItems];
+                                    updated[idx].url = e.target.value;
+                                    setLandingGalleryItems(updated);
+                                  }}
+                                  placeholder="https://..."
+                                  className="w-full p-2.5 rounded-xl bg-dark-900 text-gray-300 border border-white/10 text-[11px] font-mono"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        onClick={async () => {
+                          const settingsObj = {
+                            heroTitle: landingHeroTitle,
+                            heroSubtitle: landingHeroSubtitle,
+                            announcement: landingAnnouncement,
+                            announcementActive: landingAnnouncementActive,
+                            hotlinePhone: landingHotlinePhone,
+                            supportEmail: landingSupportEmail,
+                            openingHours: landingOpeningHours,
+                            studioAddress: landingStudioAddress,
+                            contactTitle, contactDescription, googleMapsUrl,
+                            stat1Value, stat1Label, stat2Value, stat2Label, stat3Value, stat3Label, stat4Value, stat4Label,
+                            instagramUrl: landingInstagramUrl, facebookUrl: landingFacebookUrl, youtubeUrl: landingYoutubeUrl,
+                            websiteLinks, galleryItems: landingGalleryItems, faqItems: landingFaqItems
+                          };
+                          localStorage.setItem('spy_landing_settings', JSON.stringify(settingsObj));
+                          window.dispatchEvent(new Event('storage'));
+                          try {
+                            await apiFetch(`${API_BASE_URL}/admin/landing-settings`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(settingsObj)
+                            });
+                          } catch (e) {}
+                          showToast("Lookbook & Gallery Showcase saved successfully!", 'success');
+                        }}
+                        className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
+                      >
+                        Save Gallery Showcase
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. FREQUENTLY ASKED QUESTIONS MANAGER */}
+                {(websiteSubTab === 'all' || websiteSubTab === 'faqs') && (
+                  <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                      <div className="flex items-center space-x-2">
+                        <MessageSquare className="w-4 h-4 text-rosegold-400" />
+                        <h3 className="font-serif font-bold text-base text-white">3. Frequently Asked Questions Manager (`/faqs`)</h3>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-rosegold-400 font-mono bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/30">
+                          {landingFaqItems.length} FAQs Published
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newFaq = {
+                              id: String(Date.now()),
+                              question: 'What is your appointment cancellation policy?',
+                              answer: 'You can reschedule or cancel up to 2 hours prior to your slot duration.'
+                            };
+                            setLandingFaqItems(prev => [...prev, newFaq]);
+                            showToast("New FAQ question entry added!", 'info');
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs flex items-center space-x-1 cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add New FAQ</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-xs">
+                      {landingFaqItems.map((faq, idx) => (
+                        <div key={faq.id || idx} className="p-4 rounded-2xl bg-dark-850 border border-white/10 space-y-2.5">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                            <span className="font-mono text-[10px] text-rosegold-400 font-bold">FAQ #{idx + 1}</span>
+                            <div className="flex items-center space-x-1">
+                              {idx > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...landingFaqItems];
+                                    const temp = updated[idx - 1];
+                                    updated[idx - 1] = updated[idx];
+                                    updated[idx] = temp;
+                                    setLandingFaqItems(updated);
+                                  }}
+                                  className="p-1 rounded bg-dark-900 text-gray-300 hover:text-white"
+                                  title="Move Up"
+                                >
+                                  ↑
+                                </button>
+                              )}
+                              {idx < landingFaqItems.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...landingFaqItems];
+                                    const temp = updated[idx + 1];
+                                    updated[idx + 1] = updated[idx];
+                                    updated[idx] = temp;
+                                    setLandingFaqItems(updated);
+                                  }}
+                                  className="p-1 rounded bg-dark-900 text-gray-300 hover:text-white"
+                                  title="Move Down"
+                                >
+                                  ↓
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setLandingFaqItems(prev => prev.filter((_, i) => i !== idx))}
+                                className="p-1 rounded bg-red-500/20 text-red-400 hover:text-red-300"
+                                title="Delete FAQ"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="text-gray-300 font-bold block mb-1">Question Title *</label>
+                            <input
+                              type="text"
+                              value={faq.question}
+                              onChange={(e) => {
+                                const updated = [...landingFaqItems];
+                                updated[idx].question = e.target.value;
+                                setLandingFaqItems(updated);
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-dark-950 border border-dark-700 text-white focus:outline-none focus:border-rosegold-500"
+                              placeholder="e.g., What are your opening hours?"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-gray-300 font-bold block mb-1">Answer Text *</label>
+                            <textarea
+                              rows={2}
+                              value={faq.answer}
+                              onChange={(e) => {
+                                const updated = [...landingFaqItems];
+                                updated[idx].answer = e.target.value;
+                                setLandingFaqItems(updated);
+                              }}
+                              className="w-full px-3 py-2 rounded-lg bg-dark-950 border border-dark-700 text-white focus:outline-none focus:border-rosegold-500"
+                              placeholder="Detailed response to this question..."
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const settingsObj = {
+                            heroTitle: landingHeroTitle,
+                            heroSubtitle: landingHeroSubtitle,
+                            announcement: landingAnnouncement,
+                            announcementActive: landingAnnouncementActive,
+                            hotlinePhone: landingHotlinePhone,
+                            supportEmail: landingSupportEmail,
+                            openingHours: landingOpeningHours,
+                            studioAddress: landingStudioAddress,
+                            contactTitle, contactDescription, googleMapsUrl,
+                            stat1Value, stat1Label, stat2Value, stat2Label, stat3Value, stat3Label, stat4Value, stat4Label,
+                            instagramUrl: landingInstagramUrl, facebookUrl: landingFacebookUrl, youtubeUrl: landingYoutubeUrl,
+                            websiteLinks, galleryItems: landingGalleryItems, faqItems: landingFaqItems
+                          };
+                          localStorage.setItem('spy_landing_settings', JSON.stringify(settingsObj));
+                          window.dispatchEvent(new Event('storage'));
+                          try {
+                            await apiFetch(`${API_BASE_URL}/admin/landing-settings`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify(settingsObj)
+                            });
+                          } catch (e) {}
+                          showToast("Frequently Asked Questions updated successfully!", 'success');
+                        }}
+                        className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
+                      >
+                        Save FAQ Settings
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-Module 4: Offers & Coupons Showcase Manager */}
+                <div className="glass-card p-6 rounded-2xl border border-dark-800 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-dark-700/50 pb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                        <Tag className="w-5 h-5 text-rosegold-400" />
+                        <span>Offers & Coupons Showcase Manager</span>
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Active promotional coupons are published live at <span className="font-mono text-rosegold-400">/offers</span> and in footer quick links.
+                      </p>
+                    </div>
+                    <Link
+                      href="/offers"
+                      target="_blank"
+                      className="px-4 py-2 rounded-xl bg-rosegold-500/20 hover:bg-rosegold-500/30 text-rosegold-300 font-semibold text-xs flex items-center space-x-2 w-fit"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Preview Live Offers Page</span>
+                    </Link>
+                  </div>
+                  <div className="p-4 rounded-xl bg-dark-850/80 border border-dark-700/50 text-xs text-gray-300 space-y-2">
+                    <p className="font-semibold text-white">🏷️ Footer Offers Integration</p>
+                    <p>
+                      Promotional campaigns and seasonal discount coupons configured in the database auto-sync with the website footer links and the public offers route.
+                    </p>
                   </div>
                 </div>
 

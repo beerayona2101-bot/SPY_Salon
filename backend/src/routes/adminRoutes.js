@@ -18,6 +18,12 @@ router.get('/notifications', adminController.getNotifications);
 router.put('/notifications/read', adminController.markNotificationRead);
 router.get('/export/:module', adminController.exportData);
 
+// Offers & Coupons Routes (CRUD)
+router.get('/offers', adminController.getAdminOffers);
+router.post('/offers', validateRequest({ required: ['title', 'code'] }), adminController.createOffer);
+router.put('/offers/:id', adminController.updateOffer);
+router.delete('/offers/:id', adminController.deleteOffer);
+
 // Employee Routes (CRUD)
 router.get('/employees', adminController.getEmployees);
 router.get('/employees/:id', adminController.getEmployeeById);
@@ -83,6 +89,7 @@ router.delete('/transactions/:id', adminController.deleteTransaction);
 // Enquiry & Lead Management Routes
 router.get('/enquiries', adminController.getEnquiries);
 router.get('/enquiries/stats', adminController.getEnquiryStats);
+router.patch('/enquiries/:id/view', adminController.markEnquiryViewed);
 router.patch('/enquiries/:id/status', adminController.updateEnquiryStatus);
 router.delete('/enquiries/:id', adminController.deleteEnquiry);
 

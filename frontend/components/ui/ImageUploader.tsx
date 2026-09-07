@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Image as ImageIcon, X } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
+import { apiFetch, formatImageUrl } from '@/lib/api';
 
 interface ImageUploaderProps {
   initialUrl?: string;
@@ -19,10 +19,14 @@ export default function ImageUploader({
   onUploadSuccess,
   className = ''
 }: ImageUploaderProps) {
-  const [previewUrl, setPreviewUrl] = useState<string>(initialUrl);
+  const [previewUrl, setPreviewUrl] = useState<string>(formatImageUrl(initialUrl));
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPreviewUrl(formatImageUrl(initialUrl));
+  }, [initialUrl]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -33,7 +37,7 @@ export default function ImageUploader({
       return;
     }
 
-    // Show local preview immediately
+    // Show local blob preview immediately
     const localPreview = URL.createObjectURL(file);
     setPreviewUrl(localPreview);
 
@@ -54,15 +58,17 @@ export default function ImageUploader({
       const data = await res.json();
 
       if (res.ok && data.success && data.data?.url) {
-        const cloudinaryUrl = data.data.url;
-        setPreviewUrl(cloudinaryUrl);
-        setSuccessMessage('Compressed & saved to Cloudinary!');
-        onUploadSuccess(cloudinaryUrl);
+        const uploadedUrl = data.data.url;
+        const formattedUrl = formatImageUrl(uploadedUrl);
+        setPreviewUrl(formattedUrl);
+        setSuccessMessage('Compressed & uploaded successfully!');
+        onUploadSuccess(formattedUrl);
       } else {
-        setErrorMessage(data.message || 'Cloudinary upload failed.');
+        setErrorMessage(data.message || 'Image upload failed.');
       }
     } catch (err: any) {
-      setErrorMessage('Failed to connect to image upload server.');
+      console.error('[ImageUploader] Upload error:', err);
+      setErrorMessage(err?.message || 'Failed to connect to image upload server.');
     } finally {
       setIsUploading(false);
     }
@@ -79,7 +85,7 @@ export default function ImageUploader({
     <div className={`space-y-2 ${className}`}>
       {label && (
         <label className="text-xs text-gray-300 uppercase font-semibold block">
-          {label} (Cloudinary & Compressed)
+          {label} (Sharp WebP & Compressed)
         </label>
       )}
 
@@ -101,7 +107,7 @@ export default function ImageUploader({
         {previewUrl ? (
           <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-rosegold-500/40 bg-dark-800 shadow-md">
             <img
-              src={previewUrl}
+              src={formatImageUrl(previewUrl)}
               alt="Uploaded Preview"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform"
             />
@@ -151,3 +157,4 @@ export default function ImageUploader({
     </div>
   );
 }
+

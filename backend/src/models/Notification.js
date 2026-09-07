@@ -74,7 +74,22 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     default: null,
     index: true
+  },
+  reviewId: {
+    type: String,
+    default: null,
+    index: true
+  },
+  enquiryId: {
+    type: String,
+    default: null,
+    index: true
   }
 }, { timestamps: true });
+
+notificationSchema.index({ enquiryId: 1, role: 1 }, { sparse: true });
+notificationSchema.index({ bookingId: 1, role: 1 }, { sparse: true });
+notificationSchema.index({ leaveRequestId: 1, role: 1 }, { sparse: true });
+notificationSchema.index({ reviewId: 1, role: 1 }, { sparse: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);
