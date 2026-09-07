@@ -147,7 +147,7 @@ function EmployeeDashboardContent() {
   }, []);
 
   const tabFromUrl = searchParams?.get('tab');
-  const validTabs = ['queue', 'calendar', 'clockin', 'payrolls', 'bank', 'leaves', 'schedule', 'performance'];
+  const validTabs = ['queue', 'calendar', 'clockin', 'payrolls', 'leaves', 'schedule', 'performance'];
   const activeTab = (tabFromUrl && validTabs.includes(tabFromUrl)) ? tabFromUrl : 'queue';
 
   const handleTabChange = (newTab: string) => {
@@ -888,7 +888,6 @@ function EmployeeDashboardContent() {
     { id: 'calendar', label: 'My Calendar', icon: Calendar, badge: null },
     { id: 'clockin', label: 'Clock-In & Attendance', icon: CheckSquare, badge: null },
     { id: 'payrolls', label: 'My Salary Slips & Payouts', icon: FileText, badge: payrolls.length },
-    { id: 'bank', label: 'Bank & UPI Account Details', icon: Building, badge: null },
     { id: 'leaves', label: 'Leave Requests', icon: Calendar, badge: leaves.filter(l => l.status === 'Pending').length },
     { id: 'schedule', label: 'My Shift & Breaktime', icon: Clock, badge: null },
     { id: 'performance', label: 'Commission & Performance', icon: Award, badge: null }
@@ -1533,7 +1532,8 @@ function EmployeeDashboardContent() {
                 </div>
               </div>
 
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+              {/* DESKTOP TABLE VIEW */}
+              <div className="hidden sm:block glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
                 <table className="w-full min-w-[650px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
@@ -1596,6 +1596,64 @@ function EmployeeDashboardContent() {
                   </tbody>
                 </table>
               </div>
+
+              {/* MOBILE RESPONSIVE CARD VIEW */}
+              <div className="sm:hidden space-y-3">
+                {attendance.map((rec) => (
+                  <div key={rec._id} className="glass-card p-4 rounded-2xl border border-rosegold-500/30 space-y-2.5 text-left">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <span className="font-bold text-white text-sm">{rec.date}</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        rec.attendanceState === 'ON_BREAK'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+                          : rec.attendanceType === 'FULL_DAY' || rec.status === 'Present'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                          : rec.attendanceType === 'HALF_DAY' || rec.status === 'Half Day'
+                          ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                      }`}>
+                        {rec.attendanceState === 'ON_BREAK' 
+                          ? 'ON BREAK' 
+                          : rec.attendanceType === 'FULL_DAY'
+                          ? 'FULL DAY (1.0d)'
+                          : rec.attendanceType === 'HALF_DAY'
+                          ? 'HALF DAY (0.5d)'
+                          : rec.clockOut 
+                          ? 'COMPLETED' 
+                          : 'WORKING'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-dark-800/80 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-[10px] text-gray-400 uppercase font-semibold block">Clock In</span>
+                        <span className="text-green-400 font-semibold">{rec.clockIn}</span>
+                      </div>
+                      <div className="bg-dark-800/80 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-[10px] text-gray-400 uppercase font-semibold block">Clock Out</span>
+                        <span className="text-gray-300 font-semibold">{rec.clockOut ? rec.clockOut : '—'}</span>
+                      </div>
+                    </div>
+
+                    {/* Breaks & Work Duration */}
+                    <div className="bg-dark-800/80 p-2.5 rounded-xl border border-white/5 text-xs">
+                      <span className="text-[10px] text-gray-400 uppercase font-semibold block mb-1">Breaks & Duration</span>
+                      {rec.breaks && rec.breaks.length > 0 ? (
+                        <div className="space-y-1 text-[11px]">
+                          {rec.breaks.map((b, idx) => (
+                            <div key={idx} className="flex items-center space-x-1.5 text-amber-300/90 font-mono">
+                              <Coffee className="w-3 h-3 text-amber-400 shrink-0" />
+                              <span>Break {idx + 1}: {b.start} → {b.end ? b.end : 'In Progress'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-500 italic text-[11px]">No breaks taken</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
@@ -1640,89 +1698,6 @@ function EmployeeDashboardContent() {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* TAB 4: BANK ACCOUNT & UPI PAYOUT DETAILS */}
-          {activeTab === 'bank' && (
-            <div className="space-y-6 animate-fadeIn text-left">
-              <div>
-                <h2 className={`text-2xl font-bold font-serif ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>Bank Account & UPI Payout Settings</h2>
-                <p className={`text-xs mt-0.5 ${theme === 'light' ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}>Keep your bank account and UPI details updated for automatic monthly salary disbursement.</p>
-              </div>
-
-              {bankSaved && (
-                <div className="p-4 rounded-2xl bg-green-900/40 border border-green-500/50 text-green-300 text-xs font-bold flex items-center space-x-2 animate-fadeIn">
-                  <Check className="w-5 h-5 text-green-400" />
-                  <span>Bank & UPI Payout account details saved successfully! Updated in Admin Payout Roster.</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSaveBankDetails} className={`p-6 sm:p-8 rounded-3xl border max-w-2xl space-y-4 text-xs shadow-2xl ${theme === 'light' ? 'bg-amber-100/40 border-amber-900/20' : 'bg-dark-850/90 border-rosegold-500/30'}`}>
-                <div>
-                  <label className={`font-bold block mb-1 text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>Account Holder Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    value={bankForm.accountName} 
-                    onChange={e => setBankForm({ ...bankForm, accountName: e.target.value })} 
-                    className={`w-full p-3 rounded-xl font-bold text-xs border transition-all focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-gray-100 text-dark-900 border-gray-300'}`} 
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={`font-bold block mb-1 text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>Bank Account Number *</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={bankForm.accountNumber} 
-                      onChange={e => setBankForm({ ...bankForm, accountNumber: e.target.value })} 
-                      className={`w-full p-3 rounded-xl font-mono font-bold text-xs border transition-all focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-gray-100 text-dark-900 border-gray-300'}`} 
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`font-bold block mb-1 text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>IFSC Code *</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={bankForm.ifscCode} 
-                      onChange={e => setBankForm({ ...bankForm, ifscCode: e.target.value.toUpperCase() })} 
-                      className={`w-full p-3 rounded-xl font-mono font-bold text-xs border transition-all focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-gray-100 text-dark-900 border-gray-300'}`} 
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className={`font-bold block mb-1 text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>Bank Name & Branch</label>
-                    <input 
-                      type="text" 
-                      value={bankForm.bankName} 
-                      onChange={e => setBankForm({ ...bankForm, bankName: e.target.value })} 
-                      className={`w-full p-3 rounded-xl font-bold text-xs border transition-all focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-gray-100 text-dark-900 border-gray-300'}`} 
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`font-bold block mb-1 text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>UPI ID (For Fast Disbursal)</label>
-                    <input 
-                      type="text" 
-                      value={bankForm.upiId} 
-                      onChange={e => setBankForm({ ...bankForm, upiId: e.target.value })} 
-                      className={`w-full p-3 rounded-xl font-mono font-bold text-xs border transition-all focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-gray-100 text-dark-900 border-gray-300'}`} 
-                    />
-                  </div>
-                </div>
-
-                <button 
-                  type="submit" 
-                  className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-white font-extrabold text-xs uppercase tracking-wider shadow-glow-rosegold cursor-pointer"
-                >
-                  Save Bank & UPI Account Settings
-                </button>
-              </form>
             </div>
           )}
 
@@ -1870,8 +1845,8 @@ function EmployeeDashboardContent() {
       {/* SALARY SLIP VIEW MODAL */}
       {selectedSlip && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-          <div className="w-full max-w-lg bg-white text-gray-900 p-6 sm:p-8 rounded-3xl shadow-2xl space-y-5 text-left relative">
-            <button onClick={() => setSelectedSlip(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg">✕</button>
+          <div className="w-full max-w-lg bg-white text-gray-900 p-6 sm:p-8 rounded-3xl shadow-2xl space-y-5 text-left relative printable-document">
+            <button onClick={() => setSelectedSlip(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-lg no-print">✕</button>
 
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 pb-4">
@@ -1928,7 +1903,7 @@ function EmployeeDashboardContent() {
               <span>Paid via: <strong>{selectedSlip.paymentMethod}</strong></span>
               <button 
                 onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl bg-gray-900 text-white font-bold text-xs flex items-center space-x-1.5 hover:bg-gray-800 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-gray-900 text-white font-bold text-xs flex items-center space-x-1.5 hover:bg-gray-800 cursor-pointer no-print"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Salary Slip</span>

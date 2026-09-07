@@ -568,6 +568,81 @@ class ApiService {
     }
   }
 
+  // --- LEAVE & ATTENDANCE ADMIN API METHODS ---
+
+  /// Fetch Admin Leaves List from Backend / MongoDB
+  static Future<List<dynamic>> getAdminLeaves() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves'), headers: headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) return data;
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Admin leaves fetch error: $e');
+    }
+    return [];
+  }
+
+  /// Approve Leave Request in Backend / MongoDB
+  static Future<bool> approveAdminLeave(String id) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/approve'),
+        headers: headers,
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('[ApiService] Approve leave error: $e');
+      return false;
+    }
+  }
+
+  /// Reject Leave Request in Backend / MongoDB
+  static Future<bool> rejectAdminLeave(String id, String rejectionReason) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/reject'),
+        headers: headers,
+        body: json.encode({'rejectionReason': rejectionReason}),
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('[ApiService] Reject leave error: $e');
+      return false;
+    }
+  }
+
+  /// Fetch Admin Attendance Report from Backend / MongoDB
+  static Future<List<dynamic>> getAdminAttendanceReport() async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/attendance/report'), headers: headers)
+          .timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List) return data;
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Admin attendance report fetch error: $e');
+    }
+    return [];
+  }
+
   // --- PUBLIC METHODS WITH OFFLINE DEMO FALLBACKS ---
 
   static final List<Map<String, dynamic>> _fallbackServices = [

@@ -1692,3 +1692,130 @@ html.light section.hero-section-container a.hero-secondary-btn span,
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
+
+/* Global Green Color Glow Reduction & Muted Luxury Emerald Palette */
+.bg-green-500\/20,
+.bg-green-500\/15,
+.bg-emerald-500\/20,
+.bg-emerald-500\/15 {
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+.text-green-400,
+.text-green-300,
+.text-emerald-400,
+.text-emerald-300 {
+  color: #6ee7b7 !important; /* Soft muted sage emerald */
+}
+
+.bg-green-500,
+.bg-emerald-500 {
+  background-color: #065f46 !important; /* Deep matte luxury emerald */
+  color: #ecfdf5 !important;
+  box-shadow: none !important;
+}
+
+.bg-green-500:hover,
+.bg-emerald-500:hover {
+  background-color: #047857 !important;
+}
+
+.shadow-glow-emerald,
+.shadow-emerald,
+.shadow-green {
+  box-shadow: 0 4px 12px rgba(6, 95, 70, 0.25) !important;
+}
+
+/* ========================================================
+   MASTER CLEAN PRINT & OFFICIAL DOCUMENT PDF STYLING SYSTEM
+   ======================================================== */
+@media print {
+  @page {
+    margin: 12mm 15mm;
+    size: A4 portrait;
+  }
+
+  *, *:before, *:after {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide non-printable UI elements */
+  header, nav, footer, aside, button,
+  .no-print,
+  .print\:hidden,
+  [role="dialog"] button {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset fixed modal overlay positioning for print */
+  .fixed.inset-0 {
+    position: static !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Force printable document cards to expand neatly to full printable page */
+  .printable-document,
+  .fixed.inset-0 > div {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    background: #ffffff !important;
+    color: #111111 !important;
+    padding: 24px !important;
+    margin: 0 auto !important;
+    position: static !important;
+  }
+
+  /* Clean text contrast for printable documents */
+  p, span, div, h1, h2, h3, h4, h5, h6, td, th, label {
+    color: #111111 !important;
+  }
+
+  .text-gray-400, .text-gray-500, .text-gray-600 {
+    color: #4b5563 !important;
+  }
+
+  .text-rosegold-500, .text-rosegold-400 {
+    color: #92400e !important;
+  }
+
+  .text-green-600, .text-green-700, .text-emerald-700 {
+    color: #047857 !important;
+  }
+
+  .text-red-500, .text-red-600 {
+    color: #b91c1c !important;
+  }
+
+  .bg-green-100 {
+    background-color: #d1fae5 !important;
+  }
+}
+

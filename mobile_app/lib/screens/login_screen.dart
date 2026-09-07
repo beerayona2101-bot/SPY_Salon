@@ -16,17 +16,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Login Mode: 'password' or 'otp'
-  String _loginMode = 'password';
-
   // Sign In Controllers
   final _loginIdentifierCtrl = TextEditingController();
   final _loginPasswordCtrl = TextEditingController();
-  final _loginOtpCtrl = TextEditingController();
   bool _loginObscure = true;
   bool _isSubmittingLogin = false;
-  bool _otpSent = false;
-  bool _isSendingOtp = false;
 
   // Register Controllers
   final _regNameCtrl = TextEditingController();
@@ -47,7 +41,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _tabController.dispose();
     _loginIdentifierCtrl.dispose();
     _loginPasswordCtrl.dispose();
-    _loginOtpCtrl.dispose();
     _regNameCtrl.dispose();
     _regEmailCtrl.dispose();
     _regPhoneCtrl.dispose();
@@ -59,125 +52,53 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final identifier = _loginIdentifierCtrl.text.trim();
 
     if (identifier.isEmpty) {
-      _showSnackBar('Please enter email address or phone number');
+      _showSnackBar('Please enter Email or Mobile');
       return;
     }
 
-    if (_loginMode == 'password') {
-      final password = _loginPasswordCtrl.text.trim();
-      if (password.isEmpty) {
-        _showSnackBar('Please enter your password');
-        return;
-      }
-
-      setState(() => _isSubmittingLogin = true);
-      final res = await ApiService.login(identifier, password);
-
-      if (mounted) {
-        setState(() => _isSubmittingLogin = false);
-        if (res['success'] == true) {
-          _showSnackBar(res['message'], isError: false);
-          widget.onLoginSuccess();
-
-          final user = res['user'] ?? await ApiService.getStoredUser();
-          final role = (user?['role'] ?? 'customer').toString().toLowerCase();
-          final isAdmin = role == 'admin' || role == 'manager';
-          final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-          if (isAdmin && mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
-              (route) => false,
-            );
-          } else if (isStaff && mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
-              (route) => false,
-            );
-          } else if (mounted) {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                (route) => false,
-              );
-            }
-          }
-        } else {
-          _showSnackBar(res['message']);
-        }
-      }
-    } else {
-      // OTP Verification Mode
-      final otp = _loginOtpCtrl.text.trim();
-      if (otp.isEmpty) {
-        _showSnackBar('Please enter the 6-digit OTP code');
-        return;
-      }
-
-      setState(() => _isSubmittingLogin = true);
-      final res = await ApiService.verifyOTP(identifier, otp);
-
-      if (mounted) {
-        setState(() => _isSubmittingLogin = false);
-        if (res['success'] == true) {
-          _showSnackBar(res['message'], isError: false);
-          widget.onLoginSuccess();
-
-          final user = res['user'] ?? await ApiService.getStoredUser();
-          final role = (user?['role'] ?? 'customer').toString().toLowerCase();
-          final isAdmin = role == 'admin' || role == 'manager';
-          final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-          if (isAdmin && mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
-              (route) => false,
-            );
-          } else if (isStaff && mounted) {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
-              (route) => false,
-            );
-          } else if (mounted) {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                (route) => false,
-              );
-            }
-          }
-        } else {
-          _showSnackBar(res['message']);
-        }
-      }
-    }
-  }
-
-  Future<void> _handleSendOtp() async {
-    final identifier = _loginIdentifierCtrl.text.trim();
-    if (identifier.isEmpty) {
-      _showSnackBar('Please enter your email or phone number first');
+    final password = _loginPasswordCtrl.text.trim();
+    if (password.isEmpty) {
+      _showSnackBar('Please enter your password');
       return;
     }
 
-    setState(() => _isSendingOtp = true);
-    final res = await ApiService.sendOTP(identifier);
+    setState(() => _isSubmittingLogin = true);
+    final res = await ApiService.login(identifier, password);
 
     if (mounted) {
-      setState(() => _isSendingOtp = false);
+      setState(() => _isSubmittingLogin = false);
       if (res['success'] == true) {
-        setState(() => _otpSent = true);
         _showSnackBar(res['message'], isError: false);
+        widget.onLoginSuccess();
+
+        final user = res['user'] ?? await ApiService.getStoredUser();
+        final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+        final isAdmin = role == 'admin' || role == 'manager';
+        final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+        if (isAdmin && mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const AdminDashboardScreen()),
+            (route) => false,
+          );
+        } else if (isStaff && mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+            (route) => false,
+          );
+        } else if (mounted) {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+              (route) => false,
+            );
+          }
+        }
       } else {
         _showSnackBar(res['message']);
       }
@@ -286,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           controller: _tabController,
           indicatorColor: goldColor,
           labelColor: goldColor,
-          unselectedLabelColor: Colors.white54,
+          unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
             Tab(text: 'SIGN IN'),
@@ -324,69 +245,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         ),
         const SizedBox(height: 4),
         const Text(
-          'Sign in with password or seamless 6-digit OTP',
-          style: TextStyle(fontSize: 12, color: Colors.white54),
+          'Enter your credentials to access your account',
+          style: TextStyle(fontSize: 12, color: Colors.white70),
         ),
-        const SizedBox(height: 16),
-        // Mode Switcher Buttons (Password vs OTP)
-        Row(
-          children: [
-            Expanded(
-              child: ChoiceChip(
-                label: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.lock_outline, size: 16),
-                    SizedBox(width: 6),
-                    Text('Password Login'),
-                  ],
-                ),
-                selected: _loginMode == 'password',
-                selectedColor: goldColor,
-                labelStyle: TextStyle(
-                  color: _loginMode == 'password' ? Colors.black : Colors.white70,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-                backgroundColor: cardBg,
-                onSelected: (selected) {
-                  if (selected) setState(() => _loginMode = 'password');
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: ChoiceChip(
-                label: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.vpn_key_outlined, size: 16),
-                    SizedBox(width: 6),
-                    Text('OTP Login'),
-                  ],
-                ),
-                selected: _loginMode == 'otp',
-                selectedColor: goldColor,
-                labelStyle: TextStyle(
-                  color: _loginMode == 'otp' ? Colors.black : Colors.white70,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-                backgroundColor: cardBg,
-                onSelected: (selected) {
-                  if (selected) setState(() => _loginMode = 'otp');
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         TextField(
           controller: _loginIdentifierCtrl,
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           decoration: InputDecoration(
-            labelText: 'Mobile Number / Email *',
-            labelStyle: const TextStyle(color: Colors.white60),
+            labelText: 'Email or Mobile *',
+            labelStyle: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+            hintText: 'Email or Mobile',
+            hintStyle: const TextStyle(color: Colors.white38),
             prefixIcon: Icon(Icons.person_outline, color: goldColor),
             filled: true,
             fillColor: cardBg,
@@ -396,104 +266,60 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        if (_loginMode == 'password') ...[
-          TextField(
-            controller: _loginPasswordCtrl,
-            obscureText: _loginObscure,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Password',
-              labelStyle: const TextStyle(color: Colors.white60),
-              prefixIcon: Icon(Icons.lock_outline, color: goldColor),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _loginObscure ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.white38,
-                ),
-                onPressed: () => setState(() => _loginObscure = !_loginObscure),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _loginPasswordCtrl,
+          obscureText: _loginObscure,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            labelText: 'Password *',
+            labelStyle: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold),
+            hintText: '••••••••',
+            hintStyle: const TextStyle(color: Colors.white38),
+            prefixIcon: Icon(Icons.lock_outline, color: goldColor),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _loginObscure ? Icons.visibility_off : Icons.visibility,
+                color: Colors.white60,
               ),
-              filled: true,
-              fillColor: cardBg,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
+              onPressed: () => setState(() => _loginObscure = !_loginObscure),
+            ),
+            filled: true,
+            fillColor: cardBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
           ),
-        ] else ...[
-          if (!_otpSent) ...[
-            SizedBox(
-              height: 46,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: goldColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _isSendingOtp ? null : _handleSendOtp,
-                icon: const Icon(Icons.key, color: Colors.black, size: 18),
-                label: _isSendingOtp
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                    : const Text('Send 6-Digit OTP 🔑', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          height: 50,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: goldColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
               ),
             ),
-          ] else ...[
-            TextField(
-              controller: _loginOtpCtrl,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, letterSpacing: 3, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                labelText: 'Enter 6-Digit OTP',
-                labelStyle: const TextStyle(color: Colors.white60, letterSpacing: 0),
-                prefixIcon: Icon(Icons.mark_email_read_outlined, color: goldColor),
-                filled: true,
-                fillColor: cardBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: _isSendingOtp ? null : _handleSendOtp,
-                child: Text('Resend OTP', style: TextStyle(color: goldColor, fontSize: 12)),
-              ),
-            ),
-          ],
-        ],
-        const SizedBox(height: 20),
-        if (_loginMode == 'password' || _otpSent) ...[
-          SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: goldColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
-              ),
-              onPressed: _isSubmittingLogin ? null : _handleLogin,
-              child: _isSubmittingLogin
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                    )
-                  : Text(
-                      _loginMode == 'password' ? 'SIGN IN' : 'VERIFY & SIGN IN',
-                      style: const TextStyle(
-                        color: Color(0xFF13100E),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        letterSpacing: 1.0,
-                      ),
+            onPressed: _isSubmittingLogin ? null : _handleLogin,
+            child: _isSubmittingLogin
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                  )
+                : const Text(
+                    'SIGN IN',
+                    style: TextStyle(
+                      color: Color(0xFF13100E),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      letterSpacing: 1.0,
                     ),
-            ),
+                  ),
           ),
-        ],
+        ),
       ],
     );
   }

@@ -1862,31 +1862,11 @@ function AdminDashboardContent() {
     {
       type: 'accordion',
       id: 'acc_customers',
-      label: 'Customers & CRM',
+      label: 'Customers',
       icon: UserCheck,
       children: [
         { id: 'customers', label: 'Customer Directory', icon: UserCheck },
-        { id: 'enquiries', label: 'Enquiries & Leads CRM', icon: Mail, badge: enquiryNewCount > 0 ? enquiryNewCount : null }
-      ]
-    },
-    {
-      type: 'accordion',
-      id: 'acc_services',
-      label: 'Services & Memberships',
-      icon: Scissors,
-      children: [
-        { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
-        { id: 'memberships', label: 'VIP Memberships', icon: Crown }
-      ]
-    },
-    {
-      type: 'accordion',
-      id: 'acc_website',
-      label: 'Website Management',
-      icon: Sliders,
-      children: [
-        { id: 'home-settings', label: 'Home Page Settings', icon: Sliders },
-        { id: 'footer-settings', label: 'Footer Page Settings', icon: Globe }
+        { id: 'enquiries', label: 'Enquiries & Leads', icon: Mail, badge: enquiryNewCount > 0 ? enquiryNewCount : null }
       ]
     },
     {
@@ -1897,6 +1877,16 @@ function AdminDashboardContent() {
       children: [
         { id: 'employees', label: 'Employee Management', icon: Users },
         { id: 'leaves', label: 'Leaves & Attendance', icon: Clock }
+      ]
+    },
+    {
+      type: 'accordion',
+      id: 'acc_services',
+      label: 'Services & Memberships',
+      icon: Scissors,
+      children: [
+        { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
+        { id: 'memberships', label: 'VIP Memberships', icon: Crown }
       ]
     },
     {
@@ -1913,6 +1903,16 @@ function AdminDashboardContent() {
       id: 'reviews',
       label: 'Reviews & Moderation',
       icon: MessageSquare
+    },
+    {
+      type: 'accordion',
+      id: 'acc_website',
+      label: 'Website Management',
+      icon: Sliders,
+      children: [
+        { id: 'home-settings', label: 'Home Page Settings', icon: Sliders },
+        { id: 'footer-settings', label: 'Footer Page Settings', icon: Globe }
+      ]
     },
     {
       type: 'single',
@@ -4258,8 +4258,9 @@ function AdminDashboardContent() {
                 </button>
               </div>
 
-              {/* APPOINTMENT LEDGER TABLE */}
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+              {/* APPOINTMENT LEDGER TABLE & MOBILE RESPONSIVE CARDS */}
+              {/* DESKTOP TABLE VIEW (MD & LARGER) */}
+              <div className="hidden md:block glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
                 <table className="w-full min-w-[820px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
@@ -4314,10 +4315,10 @@ function AdminDashboardContent() {
                             <select
                               value={a.paymentStatus || 'Pending'}
                               onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
-                              className={`w-full text-[10px] font-extrabold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                              className={`w-full text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
                                 a.paymentStatus === 'Paid'
-                                  ? 'bg-green-500/20 text-green-400 border-green-500/40 font-mono'
-                                  : 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-mono'
+                                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50 font-mono'
+                                  : 'bg-amber-950/70 text-amber-300 border-amber-800/40 font-mono'
                               }`}
                             >
                               <option value="Pending">🟡 Pending</option>
@@ -4331,7 +4332,7 @@ function AdminDashboardContent() {
                             {a.paymentStatus !== 'Paid' && (
                               <button
                                 onClick={() => handleUpdateAppPaymentStatus(a._id, 'Paid')}
-                                className="w-full mt-1 px-2 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-dark-900 font-extrabold text-[10px] shadow-sm transition-all cursor-pointer whitespace-nowrap text-center block"
+                                className="w-full mt-1 px-2 py-0.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 font-bold text-[10px] transition-all cursor-pointer whitespace-nowrap text-center block"
                                 title="Mark Cash Payment as Received & Paid"
                               >
                                 Mark Paid ✓
@@ -4380,7 +4381,7 @@ function AdminDashboardContent() {
                             <div className="flex items-center space-x-1 pt-1">
                               <button
                                 onClick={() => handleUpdateAppStatus(a._id, 'Confirmed')}
-                                className="px-2 py-0.5 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 text-[10px] font-bold border border-green-500/30 cursor-pointer"
+                                className="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 text-[10px] font-bold border border-emerald-800/40 cursor-pointer"
                               >
                                 Confirm
                               </button>
@@ -4395,7 +4396,7 @@ function AdminDashboardContent() {
                           {a.status === 'Completed' && (
                             <button
                               onClick={() => handleDownloadInvoice(a._id, a.bookingId)}
-                              className="p-1.5 rounded bg-green-500/20 text-green-400 hover:text-green-300 cursor-pointer"
+                              className="p-1.5 rounded bg-emerald-950/60 text-emerald-300 hover:text-emerald-200 border border-emerald-800/40 cursor-pointer"
                               title="Download PDF Invoice"
                             >
                               <FileText className="w-3.5 h-3.5" />
@@ -4407,6 +4408,161 @@ function AdminDashboardContent() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* MOBILE RESPONSIVE CARD VIEW (FOR MOBILE SCREENS < 768px) */}
+              <div className="md:hidden space-y-3.5">
+                {appointments
+                  .filter(a => {
+                    if (appKpiFilter === 'All') return true;
+                    if (appKpiFilter === 'Rescheduled') return a.status === 'Rescheduled' || a.status === 'Reschedule Requested';
+                    return a.status === appKpiFilter;
+                  })
+                  .map((a) => (
+                    <div key={a._id} className="glass-card p-4 rounded-2xl border border-rosegold-500/30 space-y-3 text-left">
+                      {/* Top Header Row: Booking ID + Actions */}
+                      <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-mono font-bold text-rosegold-400 bg-rosegold-500/10 px-2.5 py-1 rounded-lg border border-rosegold-500/30">
+                            {a.bookingId}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {a.status === 'Completed' && (
+                            <button
+                              onClick={() => handleDownloadInvoice(a._id, a.bookingId)}
+                              className="p-1.5 rounded-lg bg-emerald-950/60 text-emerald-300 hover:text-emerald-200 border border-emerald-800/40 cursor-pointer"
+                              title="Download PDF Invoice"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDeleteAppointment(a._id)}
+                            className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:text-red-300 cursor-pointer"
+                            title="Delete Appointment"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Customer Info & Service */}
+                      <div className="grid grid-cols-1 gap-2 text-xs">
+                        <div className="bg-dark-800/80 p-3 rounded-xl border border-white/5 space-y-0.5">
+                          <span className="text-[10px] text-rosegold-400 uppercase font-semibold block">Customer Details</span>
+                          <span className="text-white font-bold block text-sm">{a.customerName}</span>
+                          <span className="text-gray-300 text-xs font-mono block">{a.customerPhone}</span>
+                        </div>
+
+                        <div className="bg-dark-800/80 p-3 rounded-xl border border-white/5 space-y-0.5">
+                          <span className="text-[10px] text-rosegold-400 uppercase font-semibold block">Service Requested</span>
+                          <span className="text-white font-bold block">{a.service ? a.service.replace(/\s*\([^)]*\)/gi, '').trim() : ''}</span>
+                          <span className="text-[11px] text-rosegold-300 block">
+                            Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No Package'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Booking Date vs Scheduled Visit */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-dark-800/80 p-2.5 rounded-xl border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Booking Date</span>
+                          <span className="text-rosegold-300 font-mono text-[11px] font-bold block">
+                            {(() => {
+                              const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;
+                              const d = raw ? new Date(raw) : new Date();
+                              const isValid = !isNaN(d.getTime());
+                              const finalD = isValid ? d : new Date();
+                              return `${finalD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} • ${a.bookingTimeFormatted || finalD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+                            })()}
+                          </span>
+                        </div>
+
+                        <div className="bg-dark-800/80 p-2.5 rounded-xl border border-white/5 space-y-0.5">
+                          <span className="text-[9px] text-gray-400 uppercase font-semibold block">Scheduled Visit</span>
+                          <span className="text-white font-bold text-[11px] block">{a.appointmentDate}</span>
+                          <span className="text-rosegold-400 text-[10px] block font-mono">{a.appointmentTime}</span>
+                        </div>
+                      </div>
+
+                      {/* Payment & Status Control */}
+                      <div className="pt-1 flex flex-col space-y-2 border-t border-white/10">
+                        {/* Payment Selector */}
+                        <div className="flex items-center justify-between space-x-2 bg-dark-800/90 p-2 rounded-xl border border-white/5">
+                          <span className="text-[10px] text-gray-400 font-semibold uppercase">Payment:</span>
+                          <div className="flex items-center space-x-2">
+                            <select
+                              value={a.paymentStatus || 'Pending'}
+                              onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
+                              className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
+                                a.paymentStatus === 'Paid'
+                                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50 font-mono'
+                                  : 'bg-amber-950/70 text-amber-300 border-amber-800/40 font-mono'
+                              }`}
+                            >
+                              <option value="Pending">🟡 Pending</option>
+                              <option value="Paid">🟢 Paid</option>
+                            </select>
+                            <span className="text-[10px] text-gray-400 font-mono">
+                              ({a.paymentMethod || 'Cash'})
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Status Selector */}
+                        <div className="flex items-center justify-between space-x-2 bg-dark-800/90 p-2 rounded-xl border border-white/5">
+                          <span className="text-[10px] text-gray-400 font-semibold uppercase">Status:</span>
+                          <select 
+                            value={a.status} 
+                            onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} 
+                            disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
+                            className="bg-dark-900 text-xs font-bold text-white px-2.5 py-1 rounded-lg border border-rosegold-500/30 focus:outline-none disabled:opacity-60 cursor-pointer"
+                          >
+                            {getValidStatusOptions(a.status, a).map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Reschedule & Confirm Action Buttons if Pending */}
+                      {a.status === 'Reschedule Requested' && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-1.5 text-xs">
+                          <span className="text-[10px] text-amber-300 font-bold block">
+                            Requested: {a.rescheduleData?.requestedDate || a.appointmentDate} at {a.rescheduleData?.requestedTime || a.appointmentTime}
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleRespondReschedule(a._id, 'Approve')}
+                              className="flex-1 py-1.5 rounded-lg bg-green-500 text-dark-900 text-xs font-extrabold shadow cursor-pointer"
+                            >
+                              Approve ✅
+                            </button>
+                            <button
+                              onClick={() => {
+                                const reason = prompt('Reason for rejecting reschedule request:') || 'Slot unavailable';
+                                handleRespondReschedule(a._id, 'Reject', reason);
+                              }}
+                              className="flex-1 py-1.5 rounded-lg bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 cursor-pointer"
+                            >
+                              Reject ❌
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {a.status === 'Pending' && (
+                        <button
+                          onClick={() => handleUpdateAppStatus(a._id, 'Confirmed')}
+                          className="w-full py-2 rounded-xl bg-emerald-950/80 text-emerald-300 border border-emerald-800/50 font-bold text-xs cursor-pointer shadow-sm"
+                        >
+                          Confirm Appointment ✓
+                        </button>
+                      )}
+
+                    </div>
+                  ))}
               </div>
             </div>
           )}

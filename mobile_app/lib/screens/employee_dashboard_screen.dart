@@ -26,7 +26,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -401,7 +401,6 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       {'title': 'Timecard & Attendance', 'icon': Icons.access_time_outlined, 'badge': ''},
       {'title': 'Leave Applications', 'icon': Icons.event_busy_outlined, 'badge': '${_leaves.length}'},
       {'title': 'Payroll & Earnings', 'icon': Icons.payments_outlined, 'badge': ''},
-      {'title': 'Bank & Payout Setup', 'icon': Icons.account_balance_outlined, 'badge': ''},
       {'title': 'My Clients Directory', 'icon': Icons.people_outline, 'badge': '${_customers.length}'},
     ];
 
@@ -624,7 +623,6 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       'Timecard & Attendance',
       'Leave Applications',
       'Payroll & Earnings',
-      'Bank & Payout Setup',
       'My Clients Directory'
     ];
 
@@ -741,8 +739,6 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       case 3:
         return _buildPayrollTab(goldColor, cardBg);
       case 4:
-        return _buildBankSetupTab(goldColor, cardBg);
-      case 5:
         return _buildClientsTab(goldColor, cardBg);
       default:
         return _buildQueueTab(goldColor, cardBg);
@@ -1211,91 +1207,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
     );
   }
 
-  // --- TAB 5: BANK & UPI SETUP ---
-  Widget _buildBankSetupTab(Color goldColor, Color cardBg) {
-    final accNameCtrl = TextEditingController(text: _user?['name'] ?? '');
-    final bankNameCtrl = TextEditingController();
-    final accNumCtrl = TextEditingController();
-    final ifscCtrl = TextEditingController();
-    final upiCtrl = TextEditingController();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Commission Payout Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 4),
-          const Text('Enter your bank account & UPI ID for direct salary and commission payouts.', style: TextStyle(color: Colors.white54, fontSize: 12)),
-          const SizedBox(height: 16),
-          TextField(
-            controller: accNameCtrl,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(labelText: 'Account Holder Name', prefixIcon: Icon(Icons.person_outline, color: Color(0xFFE0A96D))),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: bankNameCtrl,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(labelText: 'Bank Name (e.g. HDFC, ICICI, SBI)', prefixIcon: Icon(Icons.account_balance, color: Color(0xFFE0A96D))),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: accNumCtrl,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(labelText: 'Account Number', prefixIcon: Icon(Icons.credit_card, color: Color(0xFFE0A96D))),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: ifscCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'IFSC Code', prefixIcon: Icon(Icons.qr_code, color: Color(0xFFE0A96D))),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: upiCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(labelText: 'UPI ID (e.g. name@upi)', prefixIcon: Icon(Icons.payment, color: Color(0xFFE0A96D))),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: goldColor),
-              onPressed: () async {
-                final success = await ApiService.updateEmployeeBankDetails({
-                  'accountName': accNameCtrl.text.trim(),
-                  'bankName': bankNameCtrl.text.trim(),
-                  'accountNumber': accNumCtrl.text.trim(),
-                  'ifscCode': ifscCtrl.text.trim(),
-                  'upiId': upiCtrl.text.trim(),
-                });
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: success ? const Color(0xFF1B4D3E) : Colors.red[900],
-                      content: Text(success ? 'Bank & UPI Payout details saved successfully!' : 'Failed to update details.'),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Save Bank & UPI Details', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // --- TAB 6: CLIENT DIRECTORY ---
   Widget _buildClientsTab(Color goldColor, Color cardBg) {

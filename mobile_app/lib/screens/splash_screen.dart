@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../utils/luxury_page_route.dart';
 import 'admin_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
+import 'login_screen.dart';
+import 'onboarding_screen.dart';
 import '../main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -50,16 +53,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     setState(() => _statusMessage = 'Connecting to Server...');
     await ApiService.checkHealth();
 
-    // Ensure splash displays for at least 2.2 seconds for a smooth luxury launch experience
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    // Ensure splash displays for ~2.3 seconds for smooth luxury launch experience
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    final remainingDelay = 2200 - elapsed;
+    final remainingDelay = 2300 - elapsed;
     if (remainingDelay > 0) {
       await Future.delayed(Duration(milliseconds: remainingDelay));
     }
 
     if (!mounted) return;
 
-    Widget targetScreen = const HomeScreen();
+    Widget targetScreen;
 
     if (user != null) {
       final role = (user['role'] ?? 'customer').toString().toLowerCase();
@@ -70,7 +76,21 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         targetScreen = const AdminDashboardScreen();
       } else if (isStaff) {
         targetScreen = const EmployeeDashboardScreen();
+      } else {
+        targetScreen = const HomeScreen();
       }
+    } else if (onboardingCompleted) {
+      targetScreen = LoginScreen(
+        onLoginSuccess: () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+            (route) => false,
+          );
+        },
+      );
+    } else {
+      targetScreen = const OnboardingScreen();
     }
 
     Navigator.pushReplacement(
@@ -82,26 +102,37 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
+    const darkBg = Color(0xFF13100E);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF13100E),
+      backgroundColor: darkBg,
       body: Stack(
         children: [
-          // Background luxury radial gradient
+          // Background luxury salon photo
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/splash_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, stack) => Container(color: darkBg),
+            ),
+          ),
+
+          // Dark Overlay Gradient
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.center,
-                  radius: 0.8,
+                  radius: 0.95,
                   colors: [
-                    goldColor.withValues(alpha: 0.12),
-                    const Color(0xFF13100E),
+                    darkBg.withValues(alpha: 0.75),
+                    darkBg.withValues(alpha: 0.95),
                   ],
                 ),
               ),
             ),
           ),
+
           Center(
             child: FadeTransition(
               opacity: _fadeAnim,
@@ -118,8 +149,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         border: Border.all(color: goldColor, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: goldColor.withValues(alpha: 0.4),
-                            blurRadius: 30,
+                            color: goldColor.withValues(alpha: 0.45),
+                            blurRadius: 32,
                             spreadRadius: 4,
                           ),
                         ],
@@ -146,9 +177,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       'SPY SALON',
                       style: TextStyle(
                         color: Color(0xFFF6F2EB),
-                        fontSize: 26,
+                        fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        letterSpacing: 3.0,
+                        letterSpacing: 3.2,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -157,8 +188,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       style: TextStyle(
                         color: goldColor,
                         fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.6,
                       ),
                     ),
                     const SizedBox(height: 48),
@@ -184,17 +215,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               ),
             ),
           ),
+
           Positioned(
             bottom: 30,
             left: 0,
             right: 0,
             child: Center(
               child: Text(
-                'SPY SALON v1.0.0 • Premium Edition',
+                'BEAUTY  |  STYLE  |  CONFIDENCE',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: Colors.white.withValues(alpha: 0.35),
                   fontSize: 11,
-                  letterSpacing: 1.0,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.0,
                 ),
               ),
             ),

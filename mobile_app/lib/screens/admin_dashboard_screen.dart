@@ -21,11 +21,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   List<dynamic> _customers = [];
   List<dynamic> _transactions = [];
   List<dynamic> _enquiries = [];
+  List<dynamic> _leaves = [];
+  List<dynamic> _attendanceReport = [];
+
+  String _leaveFilter = 'All';
+  String _leaveSearchQuery = '';
+  String _attendanceSearchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -92,6 +98,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       ApiService.getAdminCustomers(),
       ApiService.getAdminTransactions(),
       ApiService.getAdminEnquiries(),
+      ApiService.getAdminLeaves(),
+      ApiService.getAdminAttendanceReport(),
     ]);
 
     if (mounted) {
@@ -103,6 +111,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         _customers = results[4] as List<dynamic>;
         _transactions = results[5] as List<dynamic>;
         _enquiries = results[6] as List<dynamic>;
+        _leaves = results[7] as List<dynamic>;
+        _attendanceReport = results[8] as List<dynamic>;
         _isLoading = false;
       });
     }
@@ -841,11 +851,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildAdminDrawer(Color goldColor, Color cardBg) {
+    final pendingLeavesCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'pending').length;
+    final presentStaffCount = _attendanceReport.where((a) => (a['lastStatus'] ?? '').toString().contains('Present') || (a['lastStatus'] ?? '').toString().contains('On Break') || (a['lastStatus'] ?? '').toString().contains('Completed')).length;
+
     final navItems = [
       {'title': 'Overview & Analytics', 'icon': Icons.dashboard_outlined, 'badge': ''},
       {'title': 'Appointments Manager', 'icon': Icons.calendar_month_outlined, 'badge': '${_appointments.length}'},
       {'title': 'Services Catalog', 'icon': Icons.content_cut, 'badge': '${_services.length}'},
       {'title': 'Staff & Clients Desk', 'icon': Icons.people_outline, 'badge': '${_employees.length + _customers.length}'},
+      {'title': 'Leave Management', 'icon': Icons.event_busy_outlined, 'badge': pendingLeavesCount > 0 ? '$pendingLeavesCount pending' : '${_leaves.length}'},
+      {'title': 'Attendance Tracking', 'icon': Icons.access_time_filled_outlined, 'badge': '$presentStaffCount present'},
       {'title': 'Finance Ledger', 'icon': Icons.account_balance_wallet_outlined, 'badge': ''},
       {'title': 'Enquiries Desk', 'icon': Icons.mark_email_unread_outlined, 'badge': '${_enquiries.length}'},
     ];
@@ -1060,6 +1075,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       'Appointments Manager',
       'Services Catalog',
       'Staff & Clients',
+      'Leave Management',
+      'Attendance Tracking',
       'Finance Ledger',
       'Enquiries Desk'
     ];
@@ -1182,8 +1199,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       case 3:
         return _buildStaffAndClientsTab(goldColor, cardBg);
       case 4:
-        return _buildFinanceTab(goldColor, cardBg);
+        return _buildLeavesTab(goldColor, cardBg);
       case 5:
+        return _buildAttendanceTab(goldColor, cardBg);
+      case 6:
+        return _buildFinanceTab(goldColor, cardBg);
+      case 7:
         return _buildEnquiriesTab(goldColor, cardBg);
       default:
         return _buildOverviewTab(goldColor, cardBg);
@@ -1197,6 +1218,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final totalServices = _services.isNotEmpty ? _services.length : (_analytics['totalServices'] ?? 12);
     final totalClients = _customers.isNotEmpty ? _customers.length : (_analytics['totalCustomers'] ?? 35);
     final totalEnquiries = _enquiries.length;
+    final pendingLeavesCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'pending').length;
+    final presentStaffCount = _attendanceReport.where((a) => (a['lastStatus'] ?? '').toString().contains('Present') || (a['lastStatus'] ?? '').toString().contains('On Break') || (a['lastStatus'] ?? '').toString().contains('Completed')).length;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -1215,13 +1238,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             children: [
               _buildStatCard('Total Revenue', '₹$revenue', Icons.monetization_on_outlined, Colors.greenAccent, cardBg),
               _buildStatCard('Bookings', '$totalAppts', Icons.calendar_month_outlined, goldColor, cardBg),
+              _buildStatCard('Staff Present Today', '$presentStaffCount / ${_attendanceReport.length}', Icons.access_time_filled_outlined, Colors.tealAccent, cardBg),
+              _buildStatCard('Pending Leaves', '$pendingLeavesCount Requests', Icons.event_busy_outlined, Colors.orangeAccent, cardBg),
               _buildStatCard('Active Services', '$totalServices', Icons.dry_cleaning_rounded, Colors.purpleAccent, cardBg),
               _buildStatCard('Registered Clients', '$totalClients', Icons.people_outline, Colors.blueAccent, cardBg),
               _buildStatCard('Enquiries', '$totalEnquiries', Icons.mark_email_unread_outlined, Colors.amberAccent, cardBg),
             ],
           ),
           const SizedBox(height: 24),
-          const Text('Admin Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Text('Admin Quick Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -1232,6 +1257,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 onPressed: _showAddAppointmentModal,
                 icon: const Icon(Icons.add, color: Colors.black),
                 label: const Text('Book Appointment', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(side: BorderSide(color: goldColor)),
+                onPressed: () {
+                  setState(() => _tabController.index = 4);
+                },
+                icon: const Icon(Icons.event_busy_outlined, color: Colors.orangeAccent),
+                label: Text('Leave Desk ($pendingLeavesCount Pending)', style: const TextStyle(color: Colors.white)),
+              ),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(side: BorderSide(color: goldColor)),
+                onPressed: () {
+                  setState(() => _tabController.index = 5);
+                },
+                icon: const Icon(Icons.access_time_filled_outlined, color: Colors.tealAccent),
+                label: const Text('Attendance Roster', style: TextStyle(color: Colors.white)),
               ),
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(side: BorderSide(color: goldColor)),
@@ -1841,4 +1882,555 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       },
     );
   }
+
+  // --- TAB 5: LEAVE MANAGEMENT ---
+  Widget _buildLeavesTab(Color goldColor, Color cardBg) {
+    final pendingCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'pending').length;
+    final approvedCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'approved').length;
+    final rejectedCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'rejected').length;
+
+    final filteredLeaves = _leaves.where((leave) {
+      final status = (leave['status'] ?? 'pending').toString().toLowerCase();
+      if (_leaveFilter == 'Pending' && status != 'pending') return false;
+      if (_leaveFilter == 'Approved' && status != 'approved') return false;
+      if (_leaveFilter == 'Rejected' && status != 'rejected') return false;
+
+      if (_leaveSearchQuery.trim().isNotEmpty) {
+        final query = _leaveSearchQuery.trim().toLowerCase();
+        final name = (leave['employeeName'] ?? '').toString().toLowerCase();
+        final reason = (leave['reason'] ?? '').toString().toLowerCase();
+        return name.contains(query) || reason.contains(query);
+      }
+      return true;
+    }).toList();
+
+    return Column(
+      children: [
+        // Metric Summary Strip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: cardBg,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMiniStatBadge('Total Applications', '${_leaves.length}', Colors.white70),
+                  _buildMiniStatBadge('Pending', '$pendingCount', Colors.amber),
+                  _buildMiniStatBadge('Approved', '$approvedCount', Colors.greenAccent),
+                  _buildMiniStatBadge('Rejected', '$rejectedCount', Colors.redAccent),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Search Input
+              TextField(
+                onChanged: (val) => setState(() => _leaveSearchQuery = val),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search by staff name or leave reason...',
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFFE0A96D), size: 18),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                  filled: true,
+                  fillColor: const Color(0xFF25201C),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Filter Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'Pending', 'Approved', 'Rejected'].map((filter) {
+                    final isSelected = _leaveFilter == filter;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: isSelected,
+                        label: Text(filter, style: TextStyle(color: isSelected ? Colors.black : Colors.white70, fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                        selectedColor: goldColor,
+                        backgroundColor: const Color(0xFF25201C),
+                        onSelected: (bool selected) {
+                          setState(() => _leaveFilter = filter);
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Leave Requests List
+        Expanded(
+          child: filteredLeaves.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.event_available_outlined, size: 48, color: Colors.white24),
+                      const SizedBox(height: 12),
+                      Text(
+                        _leaveSearchQuery.isNotEmpty || _leaveFilter != 'All'
+                            ? 'No matching leave requests found'
+                            : 'No Leave Applications Found',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                      const SizedBox(height: 14),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                        onPressed: _loadAllAdminData,
+                        icon: const Icon(Icons.refresh, color: Colors.black, size: 18),
+                        label: const Text('Refresh Leave Logs', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredLeaves.length,
+                  itemBuilder: (ctx, index) {
+                    final leave = filteredLeaves[index];
+                    final id = (leave['_id'] ?? leave['id'] ?? '').toString();
+                    final empName = (leave['employeeName'] ?? 'Staff Member').toString();
+                    final startDate = (leave['startDate'] ?? '').toString();
+                    final endDate = (leave['endDate'] ?? '').toString();
+                    final reason = (leave['reason'] ?? 'Personal leave').toString();
+                    final status = (leave['status'] ?? 'pending').toString();
+                    final statusLower = status.toLowerCase();
+                    final rejectionReason = (leave['rejectionReason'] ?? '').toString();
+                    final actionBy = (leave['actionByAdminName'] ?? '').toString();
+
+                    Color statusColor = Colors.amber;
+                    if (statusLower == 'approved') statusColor = Colors.greenAccent;
+                    if (statusLower == 'rejected') statusColor = Colors.redAccent;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+                        boxShadow: [
+                          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 3)),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundColor: goldColor.withValues(alpha: 0.2),
+                                child: Text(
+                                  empName.isNotEmpty ? empName[0].toUpperCase() : 'S',
+                                  style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      empName,
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '📅 $startDate to $endDate',
+                                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: statusColor),
+                                ),
+                                child: Text(
+                                  status.toUpperCase(),
+                                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF25201C),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.notes, size: 16, color: Color(0xFFE0A96D)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    reason,
+                                    style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (statusLower == 'rejected' && rejectionReason.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text('Rejection Reason: $rejectionReason', style: const TextStyle(color: Colors.redAccent, fontSize: 12, fontStyle: FontStyle.italic)),
+                          ],
+                          if (actionBy.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('Processed by: $actionBy', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                          ],
+
+                          // Action Buttons for Pending Requests
+                          if (statusLower == 'pending') ...[
+                            const Divider(color: Colors.white10, height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: Colors.redAccent),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onPressed: () => _showRejectLeaveModal(id, empName),
+                                  icon: const Icon(Icons.close, color: Colors.redAccent, size: 16),
+                                  label: const Text('Reject', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                                ),
+                                const SizedBox(width: 12),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  onPressed: () async {
+                                    final success = await ApiService.approveAdminLeave(id);
+                                    if (ctx.mounted) {
+                                      ScaffoldMessenger.of(ctx).showSnackBar(
+                                        SnackBar(
+                                          content: Text(success ? 'Leave request approved for $empName!' : 'Failed to approve leave'),
+                                          backgroundColor: success ? Colors.green : Colors.redAccent,
+                                        ),
+                                      );
+                                      if (success) _loadAllAdminData();
+                                    }
+                                  },
+                                  icon: const Icon(Icons.check, color: Colors.white, size: 16),
+                                  label: const Text('Approve Leave', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _showRejectLeaveModal(String leaveId, String empName) {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF191512),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Colors.redAccent, width: 0.8)),
+        title: Text('Reject Leave for $empName', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Optionally provide a reason for rejecting this leave request:', style: TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                hintText: 'e.g. High booking load on selected dates',
+                hintStyle: TextStyle(color: Colors.white38, fontSize: 12),
+                fillColor: Color(0xFF25201C),
+                filled: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(dialogCtx);
+              final success = await ApiService.rejectAdminLeave(leaveId, reasonCtrl.text.trim());
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(success ? 'Leave request rejected for $empName' : 'Failed to reject leave'),
+                    backgroundColor: success ? Colors.orange : Colors.redAccent,
+                  ),
+                );
+                if (success) _loadAllAdminData();
+              }
+            },
+            child: const Text('Reject Leave', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- TAB 6: ATTENDANCE TRACKING ---
+  Widget _buildAttendanceTab(Color goldColor, Color cardBg) {
+    final totalStaff = _attendanceReport.length;
+    final presentCount = _attendanceReport.where((a) => (a['lastStatus'] ?? '').toString().contains('Present') || (a['lastStatus'] ?? '').toString().contains('On Break') || (a['lastStatus'] ?? '').toString().contains('Completed')).length;
+    final leaveCount = _attendanceReport.where((a) => (a['leaveDays'] ?? 0) > 0 || (a['lastStatus'] ?? '').toString().contains('Leave')).length;
+    final absentCount = totalStaff - presentCount - leaveCount;
+
+    final filteredReport = _attendanceReport.where((emp) {
+      if (_attendanceSearchQuery.trim().isNotEmpty) {
+        final query = _attendanceSearchQuery.trim().toLowerCase();
+        final name = (emp['name'] ?? '').toString().toLowerCase();
+        final code = (emp['empCode'] ?? '').toString().toLowerCase();
+        return name.contains(query) || code.contains(query);
+      }
+      return true;
+    }).toList();
+
+    return Column(
+      children: [
+        // Metric Summary Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: cardBg,
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildMiniStatBadge('Total Staff', '$totalStaff', Colors.white70),
+                  _buildMiniStatBadge('Present Today', '$presentCount', Colors.greenAccent),
+                  _buildMiniStatBadge('On Leave', '$leaveCount', Colors.amber),
+                  _buildMiniStatBadge('Not Checked In', '${absentCount < 0 ? 0 : absentCount}', Colors.redAccent),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                onChanged: (val) => setState(() => _attendanceSearchQuery = val),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search staff by name or emp code (e.g. EMP-1001)...',
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFFE0A96D), size: 18),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                  filled: true,
+                  fillColor: const Color(0xFF25201C),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Staff Attendance List
+        Expanded(
+          child: filteredReport.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.access_time, size: 48, color: Colors.white24),
+                      const SizedBox(height: 12),
+                      Text(
+                        _attendanceSearchQuery.isNotEmpty ? 'No staff matching query' : 'No Staff Attendance Records Found',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                      const SizedBox(height: 14),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                        onPressed: _loadAllAdminData,
+                        icon: const Icon(Icons.refresh, color: Colors.black, size: 18),
+                        label: const Text('Refresh Attendance Roster', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredReport.length,
+                  itemBuilder: (ctx, index) {
+                    final emp = filteredReport[index];
+                    final name = (emp['name'] ?? 'Staff Member').toString();
+                    final empCode = (emp['empCode'] ?? 'EMP-1000').toString();
+                    final attendancePct = (emp['attendancePercentage'] ?? '0.0%').toString();
+                    final workedDays = emp['workedDays'] ?? 0;
+                    final salonDays = emp['salonOpenedDays'] ?? 26;
+                    final fullDays = emp['fullDays'] ?? 0;
+                    final halfDays = emp['halfDays'] ?? 0;
+                    final leaveDays = emp['leaveDays'] ?? 0;
+                    final absentDays = emp['absentDays'] ?? 0;
+                    final workingHours = (emp['workingHours'] ?? '0h 0m').toString();
+                    final breakHours = (emp['breakHours'] ?? '0h 0m').toString();
+                    final lastStatus = (emp['lastStatus'] ?? 'Not Checked In').toString();
+
+                    Color statusColor = Colors.white38;
+                    if (lastStatus.contains('Present') || lastStatus.contains('Completed')) statusColor = Colors.greenAccent;
+                    if (lastStatus.contains('On Break')) statusColor = Colors.amber;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 14),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: goldColor.withValues(alpha: 0.25)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header Row: Avatar, Name & Live Status Badge
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor: goldColor.withValues(alpha: 0.2),
+                                child: Text(
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'E',
+                                  style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(color: const Color(0xFF25201C), borderRadius: BorderRadius.circular(4)),
+                                          child: Text(empCode, style: const TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          lastStatus,
+                                          style: TextStyle(color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Monthly Pct Badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: goldColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: goldColor.withValues(alpha: 0.4)),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(attendancePct, style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                                    const Text('Rate', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(color: Colors.white10, height: 20),
+
+                          // Monthly Metrics Grid
+                          Row(
+                            children: [
+                              _buildMetricTile('Worked Days', '$workedDays / $salonDays', Icons.calendar_today, Colors.blueAccent),
+                              _buildMetricTile('Working Hrs', workingHours, Icons.timer_outlined, Colors.greenAccent),
+                              _buildMetricTile('Break Hrs', breakHours, Icons.coffee_outlined, Colors.amber),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Full Days: $fullDays', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                              Text('Half Days: $halfDays', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                              Text('Leaves: $leaveDays', style: const TextStyle(color: Colors.amber, fontSize: 11)),
+                              Text('Absent: $absentDays', style: const TextStyle(color: Colors.redAccent, fontSize: 11)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStatBadge(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+      ],
+    );
+  }
+
+  Widget _buildMetricTile(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF25201C),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 12, color: color),
+                const SizedBox(width: 4),
+                Expanded(child: Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10), overflow: TextOverflow.ellipsis)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
