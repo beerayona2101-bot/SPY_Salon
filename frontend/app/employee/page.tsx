@@ -1016,10 +1016,10 @@ function EmployeeDashboardContent() {
               </button>
             )}
 
-            <div className="flex items-center space-x-2 text-xs">
-              <span className="text-gray-400">Employee Desk</span>
-              <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-              <span className="text-rosegold-400 font-bold uppercase tracking-wider">
+            <div className="flex items-center space-x-2 text-xs min-w-0">
+              <span className="text-gray-400 hidden sm:inline">Employee Desk</span>
+              <ChevronRight className="w-3.5 h-3.5 text-gray-600 hidden sm:inline" />
+              <span className="text-rosegold-400 font-bold uppercase tracking-wider truncate max-w-[110px] xs:max-w-[160px] sm:max-w-none">
                 {navMenuItems.find(m => m.id === activeTab)?.label}
               </span>
             </div>
@@ -1157,43 +1157,41 @@ function EmployeeDashboardContent() {
               <button
                 onClick={handleClockIn}
                 disabled={attLoading}
-                className="px-4 py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50"
+                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-[11px] sm:text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
               >
-                <CheckSquare className="w-3.5 h-3.5" />
+                <CheckSquare className="w-3.5 h-3.5 shrink-0" />
                 <span>{attLoading ? 'Clocking In...' : 'Check In Shift 🟢'}</span>
               </button>
             ) : shiftStatus === 'CLOCKED_IN' ? (
-              <>
+              <div className="flex items-center space-x-1.5 shrink-0">
                 <button
                   onClick={handleStartBreak}
                   disabled={attLoading}
-                  className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50"
+                  className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-[11px] sm:text-xs flex items-center space-x-1 shadow-md hover:scale-105 transition-transform cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
                 >
-                  <Coffee className="w-3.5 h-3.5" />
+                  <Coffee className="w-3.5 h-3.5 shrink-0" />
                   <span>Start Break ☕</span>
                 </button>
                 <button
                   onClick={handleCheckOut}
                   disabled={attLoading}
-                  className="px-3.5 py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-xs cursor-pointer transition-all disabled:opacity-50"
+                  className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 font-bold text-[11px] sm:text-xs cursor-pointer transition-all disabled:opacity-50 whitespace-nowrap shrink-0"
                 >
                   <span>Clock Out 🔴</span>
                 </button>
-              </>
+              </div>
             ) : shiftStatus === 'ON_BREAK' ? (
-              <>
-                <button
-                  onClick={handleEndBreak}
-                  disabled={attLoading}
-                  className="px-4 py-2 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse disabled:opacity-50"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>End Break ⏱️</span>
-                </button>
-              </>
+              <button
+                onClick={handleEndBreak}
+                disabled={attLoading}
+                className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full bg-green-500 hover:bg-green-400 text-dark-900 font-extrabold text-[11px] sm:text-xs flex items-center space-x-1.5 shadow-md hover:scale-105 transition-transform cursor-pointer animate-pulse disabled:opacity-50 whitespace-nowrap shrink-0"
+              >
+                <Clock className="w-3.5 h-3.5 shrink-0" />
+                <span>End Break ⏱️</span>
+              </button>
             ) : (
-              <span className="px-3.5 py-1.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 text-xs font-bold flex items-center space-x-1">
-                <Check className="w-3.5 h-3.5" />
+              <span className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/40 text-[11px] sm:text-xs font-bold flex items-center space-x-1 whitespace-nowrap shrink-0">
+                <Check className="w-3.5 h-3.5 shrink-0" />
                 <span>Shift Completed</span>
               </span>
             )}
@@ -1298,12 +1296,12 @@ function EmployeeDashboardContent() {
 
                 {/* Queue Filter Buttons */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex flex-wrap items-center gap-2 max-w-full">
                     <span className="text-xs text-gray-400 font-bold uppercase text-[10px]">Queue Filter:</span>
-                    <div className="flex bg-dark-900 p-1 rounded-xl border border-white/10 text-xs font-bold">
+                    <div className="flex bg-dark-900 p-1 rounded-xl border border-white/10 text-xs font-bold overflow-x-auto max-w-full custom-scrollbar">
                       <button
                         onClick={() => setQueueFilter('All')}
-                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                           queueFilter === 'All' ? 'rosegold-gradient-bg text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
@@ -1311,7 +1309,7 @@ function EmployeeDashboardContent() {
                       </button>
                       <button
                         onClick={() => setQueueFilter('In Queue')}
-                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                           queueFilter === 'In Queue' ? 'bg-amber-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
@@ -1319,7 +1317,7 @@ function EmployeeDashboardContent() {
                       </button>
                       <button
                         onClick={() => setQueueFilter('Completed')}
-                        className={`px-3 py-1.5 rounded-lg transition-all ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all whitespace-nowrap text-[11px] sm:text-xs ${
                           queueFilter === 'Completed' ? 'bg-green-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >

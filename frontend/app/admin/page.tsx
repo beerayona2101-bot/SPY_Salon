@@ -2455,8 +2455,8 @@ function AdminDashboardContent() {
                     <p className="text-xs text-gray-400">Real-time ledger tracking every Credited Amount (Income) and Debited Amount (Salary & Expenses Payouts).</p>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <div className="flex bg-dark-800 p-1 rounded-xl border border-white/10 text-xs">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex bg-dark-800 p-1 rounded-xl border border-white/10 text-xs shrink-0">
                       <button 
                         onClick={() => setTxnFilter('All')} 
                         className={`px-3 py-1 rounded-lg font-bold transition-all ${txnFilter === 'All' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}
@@ -2479,7 +2479,7 @@ function AdminDashboardContent() {
 
                     <button
                       onClick={() => setBreakdownModal('addTxn')}
-                      className="px-3.5 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1 hover:scale-105 transition-all cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs flex items-center space-x-1 hover:scale-105 transition-all cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Log Entry</span>
@@ -2487,9 +2487,9 @@ function AdminDashboardContent() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-gray-300">
-                    <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                <div className="overflow-x-auto max-w-full custom-scrollbar border border-white/5 rounded-2xl">
+                  <table className="w-full min-w-[720px] text-xs text-gray-300">
+                    <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10 whitespace-nowrap">
                       <tr>
                         <th className="p-3 text-left">TXN ID</th>
                         <th className="p-3 text-left">Date & Time</th>
@@ -2526,10 +2526,10 @@ function AdminDashboardContent() {
 
                           return (
                             <tr key={t._id} className="hover:bg-white/5 transition-colors">
-                              <td className="p-3 font-mono font-bold text-rosegold-300">{t.txnId}</td>
-                              <td className="p-3 font-mono text-[11px] text-gray-300 font-semibold">{formattedTxnDate}</td>
-                            <td className="p-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
+                              <td className="p-3 font-mono font-bold text-rosegold-300 whitespace-nowrap">{t.txnId}</td>
+                              <td className="p-3 font-mono text-[11px] text-gray-300 font-semibold whitespace-nowrap">{formattedTxnDate}</td>
+                            <td className="p-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border inline-flex items-center space-x-1 whitespace-nowrap ${
                                 t.type === 'Credited' 
                                   ? 'bg-green-500/20 text-green-400 border-green-500/40' 
                                   : 'bg-red-500/20 text-red-400 border-red-500/40'

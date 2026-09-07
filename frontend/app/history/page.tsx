@@ -325,30 +325,30 @@ function CustomerHistoryContent() {
 
       {/* 2. MODULE NAVIGATION TABS */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-        <div className="flex bg-dark-800/80 p-1.5 rounded-2xl border border-white/10 text-xs font-semibold text-gray-400">
+        <div className="flex bg-dark-800/80 p-1 rounded-2xl border border-white/10 text-xs font-semibold text-gray-400 w-full sm:w-auto">
           <button
             onClick={() => { setActiveTab('schedules'); setStatusFilter('all'); }}
-            className={`px-5 py-2.5 rounded-xl transition-all flex items-center space-x-2 cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
               activeTab === 'schedules' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
             }`}
           >
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
             <span>MY SCHEDULES ({schedulesList.length})</span>
           </button>
 
           <button
             onClick={() => { setActiveTab('past-orders'); setStatusFilter('all'); }}
-            className={`px-5 py-2.5 rounded-xl transition-all flex items-center space-x-2 cursor-pointer ${
+            className={`flex-1 sm:flex-initial px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
               activeTab === 'past-orders' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
             }`}
           >
-            <ShoppingBag className="w-4 h-4" />
+            <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
             <span>PAST ORDERS / BOOKINGS ({pastOrdersList.length})</span>
           </button>
         </div>
 
         {/* SEARCH & STATUS FILTER */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
             <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-3" />
             <input
