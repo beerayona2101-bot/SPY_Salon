@@ -1400,7 +1400,7 @@ function BookingContent() {
             {/* PAYMENT METHOD SELECTION */}
             <div className="space-y-2 pt-2 border-t border-white/10">
               <label className="text-xs text-gray-400 block font-semibold">Payment Option</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
                 {(['Razorpay', 'UPI', 'Cash'] as const).map(method => (
                   <button
                     type="button"

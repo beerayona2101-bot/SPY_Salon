@@ -1533,8 +1533,8 @@ function EmployeeDashboardContent() {
                 </div>
               </div>
 
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto">
-                <table className="w-full text-xs text-gray-300">
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[650px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
                       <th className="p-4">Date</th>

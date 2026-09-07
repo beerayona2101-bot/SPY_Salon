@@ -415,7 +415,7 @@ export default function MembershipDetailsPage() {
           </div>
 
           <div className="overflow-x-auto custom-scrollbar">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full min-w-[600px] whitespace-nowrap text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-white/10 text-rosegold-400 font-serif text-sm">
                   <th className="p-3">Features & Privileges</th>

@@ -2570,12 +2570,12 @@ function AdminDashboardContent() {
               </div>
 
               {/* Payroll Roster Table */}
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto">
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
                 <div className="p-4 border-b border-white/10 flex items-center justify-between">
                   <h3 className="text-base font-serif font-bold text-white">Staff Payroll Slips History</h3>
                   <span className="text-xs text-gray-400">Total {payrolls.length} Slips Issued</span>
                 </div>
-                <table className="w-full text-xs text-gray-300">
+                <table className="w-full min-w-[720px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
                       <th className="p-4">Slip ID</th>
@@ -3672,8 +3672,8 @@ function AdminDashboardContent() {
                 </div>
               </div>
 
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto">
-                <table className="w-full text-xs text-gray-300">
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[650px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
                       <th className="p-4">Customer Name</th>
@@ -4514,8 +4514,8 @@ function AdminDashboardContent() {
               </div>
 
               {/* APPOINTMENT LEDGER TABLE */}
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto">
-                <table className="w-full text-xs text-gray-300">
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[820px] whitespace-nowrap text-xs text-gray-300">
                   <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                     <tr>
                       <th className="p-4 text-left whitespace-nowrap">Booking ID</th>
@@ -5220,7 +5220,8 @@ function AdminDashboardContent() {
                           </p>
                         </div>
                       ) : (
-                        <table className="w-full text-xs text-gray-300">
+                        <div className="overflow-x-auto custom-scrollbar">
+                          <table className="w-full min-w-[680px] whitespace-nowrap text-xs text-gray-300">
                           <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                             <tr>
                               <th className="p-3 text-left">Specialist Name</th>
@@ -5246,7 +5247,8 @@ function AdminDashboardContent() {
                             ))}
                           </tbody>
                         </table>
-                      )}
+                      </div>
+                    )}
                     </div>
                   </div>
 
@@ -5413,7 +5415,8 @@ function AdminDashboardContent() {
                       </p>
                     </div>
                   ) : (
-                    <table className="w-full text-xs text-left">
+                    <div className="overflow-x-auto custom-scrollbar">
+                      <table className="w-full min-w-[880px] whitespace-nowrap text-xs text-left">
                       <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                         <tr>
                           <th className="p-3.5">Slip ID</th>
@@ -5489,7 +5492,8 @@ function AdminDashboardContent() {
                         })}
                       </tbody>
                     </table>
-                  )}
+                  </div>
+                )}
                 </div>
               </div>
             </div>
@@ -5580,9 +5584,8 @@ function AdminDashboardContent() {
               </div>
 
               {/* ENQUIRIES DATA TABLE */}
-              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-hidden shadow-xl">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+              <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
+                <table className="w-full min-w-[680px] whitespace-nowrap text-xs text-left">
                     <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
                       <tr>
                         <th className="p-3.5">Enquiry ID</th>
@@ -5681,8 +5684,7 @@ function AdminDashboardContent() {
                   </table>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* TAB 1: HOME PAGE SETTINGS */}
           {(activeTab === 'home-settings' || activeTab === 'landing-settings') && (
