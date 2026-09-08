@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSocket } from '@/context/SocketContext';
 import { SharedAxisZ } from '@/components/ui/shared-axis-z';
 import { AnimatedButton } from '@/components/ui/animated-button';
+import { TextAnimate } from '@/registry/magicui/text-animate';
 
 import { API_BASE_URL } from '@/lib/api';
 
@@ -352,26 +353,24 @@ export default function Home() {
               </motion.div>
 
               {/* Main Responsive Headline */}
-              <motion.h1
-                initial={{ opacity: 1, y: 0 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}
-                className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif"
-              >
-                {homeSettings.heroTitle}
-              </motion.h1>
+              <h1 className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif">
+                <TextAnimate animation="blurInUp" by="character" once className="!text-white font-serif">
+                  {homeSettings.heroTitle}
+                </TextAnimate>
+              </h1>
 
               {/* Sub-description / Quote */}
-              <motion.p
-                initial={{ opacity: 1, y: 0 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                style={{ color: '#FFF2E2', WebkitTextFillColor: '#FFF2E2' }}
-                className="hero-subtitle-text text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
-              >
-                {homeSettings.heroSubtitle}
-              </motion.p>
+              <p className="hero-subtitle-text text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic">
+                <TextAnimate
+                  animation="blurInUp"
+                  by="character"
+                  delay={0.5}
+                  once
+                  className="text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
+                >
+                  {homeSettings.heroSubtitle}
+                </TextAnimate>
+              </p>
 
               {/* Action Buttons */}
               <motion.div

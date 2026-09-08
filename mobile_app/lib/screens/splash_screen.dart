@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../utils/luxury_page_route.dart';
 import 'admin_dashboard_screen.dart';
+import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
-import 'login_screen.dart';
 import 'onboarding_screen.dart';
-import '../main.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -53,9 +51,6 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     setState(() => _statusMessage = 'Connecting to Server...');
     await ApiService.checkHealth();
 
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
-
     // Ensure splash displays for ~2.3 seconds for smooth luxury launch experience
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
     final remainingDelay = 2300 - elapsed;
@@ -77,18 +72,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       } else if (isStaff) {
         targetScreen = const EmployeeDashboardScreen();
       } else {
-        targetScreen = const HomeScreen();
+        targetScreen = const CustomerDashboardScreen();
       }
-    } else if (onboardingCompleted) {
-      targetScreen = LoginScreen(
-        onLoginSuccess: () {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-            (route) => false,
-          );
-        },
-      );
     } else {
       targetScreen = const OnboardingScreen();
     }

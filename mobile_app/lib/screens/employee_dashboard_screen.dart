@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 import '../services/api_service.dart';
+import 'admin_dashboard_screen.dart';
+import 'customer_dashboard_screen.dart';
 import 'login_screen.dart';
 
 class EmployeeDashboardScreen extends StatefulWidget {
@@ -79,7 +80,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       );
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+        MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
         (route) => false,
       );
       return;
@@ -93,31 +94,60 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       ApiService.getEmployeeCustomers(),
     ]);
 
-    if (mounted) {
-      final attList = results[1];
-      String currentShift = 'NOT_CLOCKED_IN';
-      if (attList.isNotEmpty) {
-        final todayRec = attList.first;
-        if (todayRec['attendanceState'] != null) {
-          currentShift = todayRec['attendanceState'];
-        } else if (todayRec['clockOut'] != null) {
-          currentShift = 'CLOCKED_OUT';
-        } else if (todayRec['clockIn'] != null) {
-          currentShift = 'CLOCKED_IN';
-        }
-      }
+    if (!mounted) return;
 
-      setState(() {
-        _user = storedUser;
-        _appointments = results[0];
-        _attendance = attList;
-        _leaves = results[2];
-        _payrolls = results[3];
-        _customers = results[4];
-        _shiftStatus = currentShift;
-        _isLoading = false;
-      });
+    final currentUserCheck = await ApiService.getStoredUser();
+    if (!mounted) return;
+    if (currentUserCheck == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFC8868F),
+          content: Text('Session expired or invalid. Please log in again.'),
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const EmployeeDashboardScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ),
+        (route) => false,
+      );
+      return;
     }
+
+    final attList = results[1];
+    String currentShift = 'NOT_CLOCKED_IN';
+    if (attList.isNotEmpty) {
+      final todayRec = attList.first;
+      if (todayRec['attendanceState'] != null) {
+        currentShift = todayRec['attendanceState'];
+      } else if (todayRec['clockOut'] != null) {
+        currentShift = 'CLOCKED_OUT';
+      } else if (todayRec['clockIn'] != null) {
+        currentShift = 'CLOCKED_IN';
+      }
+    }
+
+    setState(() {
+      _user = currentUserCheck;
+      _appointments = results[0];
+      _attendance = attList;
+      _leaves = results[2];
+      _payrolls = results[3];
+      _customers = results[4];
+      _shiftStatus = currentShift;
+      _isLoading = false;
+    });
   }
 
   // --- MODAL: SEAT WALK-IN CLIENT ---
@@ -397,11 +427,11 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
 
   Widget _buildStaffDrawer(Color goldColor, Color cardBg, Color shiftColor, String shiftText) {
     final navItems = [
-      {'title': 'My Appointment Queue', 'icon': Icons.calendar_month_outlined, 'badge': '${_appointments.length}'},
+      {'title': 'My Appointment Queue', 'icon': Icons.calendar_month_outlined, 'badge': ''},
       {'title': 'Timecard & Attendance', 'icon': Icons.access_time_outlined, 'badge': ''},
-      {'title': 'Leave Applications', 'icon': Icons.event_busy_outlined, 'badge': '${_leaves.length}'},
-      {'title': 'Payroll & Earnings', 'icon': Icons.payments_outlined, 'badge': ''},
-      {'title': 'My Clients Directory', 'icon': Icons.people_outline, 'badge': '${_customers.length}'},
+      {'title': 'Leave Applications', 'icon': Icons.event_busy_outlined, 'badge': ''},
+      {'title': 'Earnings', 'icon': Icons.payments_outlined, 'badge': ''},
+      {'title': 'My Clients Directory', 'icon': Icons.people_outline, 'badge': ''},
     ];
 
     final staffName = _user?['name'] ?? 'Staff Member';
@@ -546,7 +576,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
               leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
               title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
               onTap: () async {
-                Navigator.pop(context);
+                final navigator = Navigator.of(context);
+                navigator.pop();
                 if (!mounted) return;
                 final confirm = await showDialog<bool>(
                   context: context,
@@ -583,20 +614,49 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
 
                 if (confirm == true) {
                   await ApiService.logout();
-                  if (mounted) {
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                  if (!mounted) return;
+                  navigator.pushAndRemoveUntil(
+                    MaterialPageRoute(
+                        builder: (ctx) => LoginScreen(
+                          onLoginSuccess: () async {
+                            final user = await ApiService.getStoredUser();
+                            final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+                            final isAdmin = role == 'admin' || role == 'manager';
+                            final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+                            if (!ctx.mounted) return;
+
+                            if (isAdmin) {
+                              Navigator.pushAndRemoveUntil(
+                                ctx,
+                                MaterialPageRoute(builder: (c) => const AdminDashboardScreen()),
+                                (route) => false,
+                              );
+                            } else if (isStaff) {
+                              Navigator.pushAndRemoveUntil(
+                                ctx,
+                                MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
+                                (route) => false,
+                              );
+                            } else {
+                              Navigator.pushAndRemoveUntil(
+                                ctx,
+                                MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
+                                (route) => false,
+                              );
+                            }
+                          },
+                        ),
+                      ),
                       (route) => false,
                     );
                   }
                 }
-              },
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
   }
 
   @override
@@ -622,7 +682,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       'My Appointment Queue',
       'Timecard & Attendance',
       'Leave Applications',
-      'Payroll & Earnings',
+      'Earnings',
       'My Clients Directory'
     ];
 
@@ -747,101 +807,139 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
 
   // --- TAB 1: MY APPOINTMENTS QUEUE & WALK-IN DESK ---
   Widget _buildQueueTab(Color goldColor, Color cardBg) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          color: cardBg,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('${_appointments.length} Assigned Clients', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: goldColor),
-                onPressed: _showWalkInModal,
-                icon: const Icon(Icons.add, color: Colors.black, size: 18),
-                label: const Text('Seat Walk-In Client', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: _appointments.isEmpty
-              ? const Center(child: Text('No Assigned Appointments in Queue', style: TextStyle(color: Colors.white54)))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _appointments.length,
-                  itemBuilder: (ctx, index) {
-                    final appt = _appointments[index];
-                    final id = appt['_id'] ?? appt['id'] ?? '';
-                    final clientName = appt['customerName'] ?? appt['name'] ?? 'Client';
-                    final phone = appt['customerPhone'] ?? appt['phone'] ?? '';
-                    final service = appt['service'] ?? 'Hair Styling';
-                    final time = appt['appointmentTime'] ?? appt['time'] ?? '12:00 PM';
-                    final status = (appt['status'] ?? 'pending').toString().toLowerCase();
-
-                    Color statusColor = Colors.amber;
-                    if (status == 'confirmed') statusColor = Colors.greenAccent;
-                    if (status == 'in progress') statusColor = Colors.purpleAccent;
-                    if (status == 'completed') statusColor = Colors.blueAccent;
-                    if (status == 'cancelled') statusColor = Colors.redAccent;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: statusColor.withValues(alpha: 0.3))),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(child: Text(clientName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white))),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: statusColor)),
-                                child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text('Service: $service', style: TextStyle(color: goldColor, fontSize: 13)),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.schedule, size: 14, color: Colors.white38),
-                              const SizedBox(width: 4),
-                              Text('Slot: $time', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                              const Spacer(),
-                              if (phone.isNotEmpty) Text(phone, style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                            ],
-                          ),
-                          const Divider(color: Colors.white10, height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              _buildStatusUpdatePopupMenu(appt, id, goldColor),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+    return RefreshIndicator(
+      color: goldColor,
+      backgroundColor: cardBg,
+      onRefresh: _loadStaffData,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            color: cardBg,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('${_appointments.length} Assigned Clients', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                  onPressed: _showWalkInModal,
+                  icon: const Icon(Icons.add, color: Colors.black, size: 18),
+                  label: const Text('Seat Walk-In Client', style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
-        ),
-      ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: _appointments.isEmpty
+                ? ListView(
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(
+                        child: Text(
+                          'No Assigned Appointments in Queue\nPull down to refresh',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white54, height: 1.5),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _appointments.length,
+                    itemBuilder: (ctx, index) {
+                      final appt = _appointments[index];
+                      final id = appt['_id'] ?? appt['id'] ?? '';
+                      final clientName = appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? 'Client';
+                      final phone = appt['customerPhone'] ?? appt['phone'] ?? '';
+                      final service = appt['service'] ?? appt['serviceName'] ?? 'Hair Styling';
+                      final date = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'] ?? '';
+                      final time = appt['appointmentTime'] ?? appt['time'] ?? appt['bookingTimeFormatted'] ?? '12:00 PM';
+                      final status = (appt['status'] ?? 'pending').toString().toLowerCase();
+
+                      Color statusColor = Colors.amber;
+                      if (status == 'confirmed') statusColor = Colors.greenAccent;
+                      if (status == 'in progress') statusColor = Colors.purpleAccent;
+                      if (status == 'completed') statusColor = Colors.blueAccent;
+                      if (status == 'cancelled' || status == 'staff_rejected') statusColor = Colors.redAccent;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(child: Text(clientName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white))),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: statusColor),
+                                  ),
+                                  child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text('Service: $service', style: TextStyle(color: goldColor, fontSize: 13, fontWeight: FontWeight.w500)),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 12, color: Color(0xFFE0A96D)),
+                                const SizedBox(width: 4),
+                                Text(date.isNotEmpty ? date : 'Today', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                const SizedBox(width: 12),
+                                const Icon(Icons.schedule, size: 13, color: Colors.white38),
+                                const SizedBox(width: 4),
+                                Text(time, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                                const Spacer(),
+                                if (phone.isNotEmpty) Text(phone, style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                              ],
+                            ),
+                            const Divider(color: Colors.white10, height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                _buildStatusUpdatePopupMenu(appt, id, goldColor),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
   bool _hasAppointmentStarted(String? dateStr, String? timeStr) {
     if (dateStr == null || timeStr == null || dateStr.isEmpty || timeStr.isEmpty) return true;
+    if (timeStr.toLowerCase().contains('walk-in') || timeStr.toLowerCase().contains('immediate')) return true;
     try {
       final now = DateTime.now();
-      final dateParts = dateStr.trim().split('T')[0].split('-');
+      final cleanDateStr = dateStr.trim().split('T')[0];
+      final dateParts = cleanDateStr.split(RegExp(r'[-/]'));
       if (dateParts.length < 3) return true;
-      final year = int.parse(dateParts[0]);
-      final month = int.parse(dateParts[1]);
-      final day = int.parse(dateParts[2]);
+      int year, month, day;
+      if (dateParts[0].length == 4) {
+        year = int.parse(dateParts[0]);
+        month = int.parse(dateParts[1]);
+        day = int.parse(dateParts[2]);
+      } else {
+        day = int.parse(dateParts[0]);
+        month = int.parse(dateParts[1]);
+        year = int.parse(dateParts[2]);
+      }
 
       final timeParts = timeStr.trim().split(RegExp(r'\s+'));
       if (timeParts.length < 2) return true;
@@ -891,7 +989,24 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
           body['rejectionReason'] = 'Specialist unavailable';
         }
         final success = await ApiService.updateEmployeeAppointmentStatus(id, body);
-        if (success) _loadStaffData();
+        if (mounted) {
+          if (success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: Colors.green,
+                content: Text('Appointment status updated to $newStatus'),
+              ),
+            );
+            _loadStaffData();
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: Color(0xFFC8868F),
+                content: Text('Failed to update appointment status. Please check connection.'),
+              ),
+            );
+          }
+        }
       },
       itemBuilder: (ctx) => [
         const PopupMenuItem(value: 'In Progress', child: Text('In Progress ✂️', style: TextStyle(color: Colors.purpleAccent))),
@@ -1156,12 +1271,12 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
               children: [
                 Text('Staff Salary & Commission Earnings', style: TextStyle(color: Colors.white60, fontSize: 13)),
                 SizedBox(height: 6),
-                Text('₹28,500.00', style: TextStyle(color: Colors.greenAccent, fontSize: 28, fontWeight: FontWeight.bold)),
+                Text('\u{20B9}28,500.00', style: TextStyle(color: Colors.greenAccent, fontSize: 28, fontWeight: FontWeight.bold)),
                 SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Base Salary', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('₹25,000.00', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))])),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Commissions (20%)', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('₹3,500.00', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Base Salary', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('\u{20B9}25,000.00', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Commissions (20%)', style: TextStyle(color: Colors.white38, fontSize: 11)), Text('\u{20B9}3,500.00', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold))])),
                   ],
                 ),
               ],
@@ -1179,7 +1294,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                   itemBuilder: (ctx, i) {
                     final p = _payrolls[i];
                     final month = p['month'] ?? 'Current Month';
-                    final net = p['netPay'] != null ? '₹${p['netPay']}' : '₹28,500';
+                    final net = p['netPay'] != null ? '\u{20B9}${p['netPay']}' : '\u{20B9}28,500';
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(12),

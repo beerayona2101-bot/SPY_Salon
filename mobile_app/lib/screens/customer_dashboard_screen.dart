@@ -20,6 +20,9 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadCustomerData();
   }
 
@@ -606,6 +609,229 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
     );
   }
 
+  Future<void> _confirmSignOut() async {
+    final navigator = Navigator.of(context);
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF191512),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFFE0A96D), width: 0.8),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.redAccent, size: 22),
+            SizedBox(width: 10),
+            Text('Sign Out', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('Are you sure you want to sign out from Client Desk?', style: TextStyle(color: Colors.white70, fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await ApiService.logout();
+      if (!mounted) return;
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {
+              if (ctx.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  ctx,
+                  MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
+  Widget _buildCustomerDrawer(Color goldColor, Color cardBg) {
+    final navItems = [
+      {'title': 'My Bookings & History', 'icon': Icons.calendar_month_outlined, 'tabIndex': 0},
+      {'title': 'VIP Membership & Offers', 'icon': Icons.card_membership_outlined, 'tabIndex': 1},
+      {'title': 'My Profile Details', 'icon': Icons.person_outline, 'tabIndex': 2},
+      {'title': 'Account & Security', 'icon': Icons.security_outlined, 'tabIndex': 3},
+    ];
+
+    final clientName = _user?['name'] ?? 'VIP Client';
+    final clientEmail = _user?['email'] ?? '';
+    final clientTier = _user?['membership']?['tier'] ?? 'Gold VIP';
+
+    return Drawer(
+      backgroundColor: const Color(0xFF13100E),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF191512),
+              border: Border(bottom: BorderSide(color: Color(0xFF25201C))),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: goldColor.withValues(alpha: 0.2),
+                  child: Text(
+                    clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C',
+                    style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        clientName,
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (clientEmail.isNotEmpty)
+                        Text(
+                          clientEmail,
+                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: goldColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: goldColor.withValues(alpha: 0.5)),
+                        ),
+                        child: Text(
+                          clientTier.toUpperCase(),
+                          style: TextStyle(color: goldColor, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'CLIENT NAVIGATION',
+                style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              children: [
+                ...navItems.map((item) {
+                  final index = item['tabIndex'] as int;
+                  final isSelected = _tabController.index == index;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? goldColor.withValues(alpha: 0.15) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isSelected ? Border.all(color: goldColor.withValues(alpha: 0.4)) : null,
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                      leading: Icon(
+                        item['icon'] as IconData,
+                        color: isSelected ? goldColor : Colors.white60,
+                        size: 22,
+                      ),
+                      title: Text(
+                        item['title'] as String,
+                        style: TextStyle(
+                          color: isSelected ? goldColor : Colors.white70,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _tabController.index = index;
+                        });
+                        Navigator.pop(context);
+                      },
+                    ),
+                  );
+                }),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(color: Color(0xFF25201C)),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    color: goldColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: goldColor.withValues(alpha: 0.3)),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                    leading: Icon(Icons.add_circle_outline, color: goldColor, size: 22),
+                    title: Text(
+                      'Book New Appointment',
+                      style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showBookAppointmentModal();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFF25201C), height: 1),
+          Container(
+            padding: const EdgeInsets.all(12),
+            child: ListTile(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              tileColor: Colors.redAccent.withValues(alpha: 0.1),
+              leading: const Icon(Icons.logout, color: Colors.redAccent, size: 22),
+              title: const Text(
+                'Sign Out',
+                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmSignOut();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
@@ -615,14 +841,25 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
     final String clientEmail = _user?['email'] ?? '';
     final String clientTier = _user?['membership']?['tier'] ?? 'Gold VIP';
 
+    final sectionTitles = [
+      'My Bookings & History',
+      'VIP Membership & Offers',
+      'My Profile Details',
+      'Account & Security',
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFF13100E),
+      drawer: _buildCustomerDrawer(goldColor, cardBg),
       appBar: AppBar(
         backgroundColor: cardBg,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: Builder(
+          builder: (drawerCtx) => IconButton(
+            icon: const Icon(Icons.menu, color: goldColor, size: 24),
+            tooltip: 'Open Menu',
+            onPressed: () => Scaffold.of(drawerCtx).openDrawer(),
+          ),
         ),
         title: Row(
           children: [
@@ -640,7 +877,11 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('CLIENT DESK', style: TextStyle(color: Color(0xFFF6F2EB), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                  Text(
+                    sectionTitles[_tabController.index].toUpperCase(),
+                    style: const TextStyle(color: Color(0xFFF6F2EB), fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   Text(clientName, style: const TextStyle(color: goldColor, fontSize: 11)),
                 ],
               ),
@@ -650,7 +891,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
         actions: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: 4),
             decoration: BoxDecoration(color: goldColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: goldColor)),
             child: Text(clientTier.toUpperCase(), style: const TextStyle(color: goldColor, fontSize: 10, fontWeight: FontWeight.bold)),
           ),
@@ -658,31 +899,62 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
             icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
             onPressed: _loadCustomerData,
           ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
+            tooltip: 'Sign Out',
+            onPressed: _confirmSignOut,
+          ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: goldColor,
-          labelColor: goldColor,
-          unselectedLabelColor: Colors.white54,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          tabs: const [
-            Tab(text: 'MY BOOKINGS'),
-            Tab(text: 'VIP MEMBERSHIP'),
-            Tab(text: 'MY PROFILE'),
-            Tab(text: 'SECURITY'),
-          ],
-        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: goldColor))
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildBookingsTab(goldColor, cardBg),
-                _buildVipTab(goldColor, cardBg),
-                _buildProfileTab(goldColor, cardBg, clientName, clientEmail),
-                _buildSecurityTab(goldColor, cardBg),
-              ],
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                final fadeAnimation = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                );
+                final slideAnimation = Tween<Offset>(
+                  begin: const Offset(0.04, 0.0),
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ));
+                final scaleAnimation = Tween<double>(
+                  begin: 0.98,
+                  end: 1.0,
+                ).animate(CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ));
+
+                return FadeTransition(
+                  opacity: fadeAnimation,
+                  child: SlideTransition(
+                    position: slideAnimation,
+                    child: ScaleTransition(
+                      scale: scaleAnimation,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey(_tabController.index),
+                child: IndexedStack(
+                  index: _tabController.index,
+                  children: [
+                    _buildBookingsTab(goldColor, cardBg),
+                    _buildVipTab(goldColor, cardBg),
+                    _buildProfileTab(goldColor, cardBg, clientName, clientEmail),
+                    _buildSecurityTab(goldColor, cardBg),
+                  ],
+                ),
+              ),
             ),
     );
   }
@@ -760,7 +1032,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
                               const SizedBox(width: 4),
                               Text('$date at $time', style: const TextStyle(color: Colors.white70, fontSize: 12)),
                               const Spacer(),
-                              Text('Γé╣$price', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 15)),
+                              Text('\u{20B9}$price', style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold, fontSize: 15)),
                             ],
                           ),
                           if (status != 'completed' && status != 'cancelled') ...[

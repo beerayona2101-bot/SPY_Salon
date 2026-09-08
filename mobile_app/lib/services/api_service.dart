@@ -68,12 +68,17 @@ class ApiService {
   /// Helper to get stored auth token headers
   static Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('jwt_token');
+    final token = prefs.getString('jwt_token') ?? prefs.getString('auth_token') ?? prefs.getString('token');
     final headers = {'Content-Type': 'application/json'};
     if (token != null && token.isNotEmpty) {
       headers['Authorization'] = 'Bearer $token';
     }
     return headers;
+  }
+
+  /// Handles 401 Unauthorized responses by clearing stale session tokens
+  static Future<void> _handle401() async {
+    await clearSession();
   }
 
   /// Sign In user with email/phone & password
@@ -193,6 +198,7 @@ class ApiService {
   static Future<void> saveSession(String token, Map<String, dynamic> user) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt_token', token);
+    await prefs.setString('auth_token', token);
     await prefs.setString('user_data', json.encode(user));
   }
 
@@ -214,6 +220,8 @@ class ApiService {
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
+    await prefs.remove('auth_token');
+    await prefs.remove('token');
     await prefs.remove('user_data');
   }
 
@@ -564,6 +572,21 @@ class ApiService {
       return response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Update enquiry error: $e');
+      return false;
+    }
+  }
+
+  /// Delete Enquiry
+  static Future<bool> deleteEnquiry(String id) async {
+    try {
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/enquiries/$id'),
+        headers: headers,
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] Delete enquiry error: $e');
       return false;
     }
   }
@@ -954,6 +977,8 @@ class ApiService {
         final data = json.decode(response.body);
         if (data is List) return data;
         if (data is Map && data['data'] != null) return data['data'];
+      } else if (response.statusCode == 401) {
+        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Employee appointments error: $e');
@@ -1156,6 +1181,8 @@ class ApiService {
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
           return data['data'];
         }
+      } else if (response.statusCode == 401) {
+        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Attendance fetch error: $e');
@@ -1212,6 +1239,8 @@ class ApiService {
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
           return data['data'];
         }
+      } else if (response.statusCode == 401) {
+        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Leaves fetch error: $e');
@@ -1231,6 +1260,8 @@ class ApiService {
         final data = json.decode(response.body);
         if (data is List) return data;
         if (data is Map && data['data'] != null) return data['data'];
+      } else if (response.statusCode == 401) {
+        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Payrolls fetch error: $e');
@@ -1266,6 +1297,8 @@ class ApiService {
         final data = json.decode(response.body);
         if (data is List) return data;
         if (data is Map && data['data'] != null) return data['data'];
+      } else if (response.statusCode == 401) {
+        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Staff customers error: $e');
@@ -1373,7 +1406,7 @@ class ApiService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/users/profile'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/profile/details'),
         headers: headers,
         body: json.encode(data),
       );
@@ -1393,7 +1426,7 @@ class ApiService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/users/change-password'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/profile/change-password'),
         headers: headers,
         body: json.encode({
           'currentPassword': currentPassword,
@@ -1412,7 +1445,7 @@ class ApiService {
     try {
       final headers = await _getAuthHeaders();
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/users/membership'),
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/membership/purchase'),
         headers: headers,
         body: json.encode({'tier': tier}),
       );

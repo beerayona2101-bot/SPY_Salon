@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../main.dart';
 import '../services/api_service.dart';
+import 'customer_dashboard_screen.dart';
+import 'employee_dashboard_screen.dart';
 import 'login_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -27,6 +28,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   String _leaveFilter = 'All';
   String _leaveSearchQuery = '';
   String _attendanceSearchQuery = '';
+  String _enquiryFilter = 'All';
+  String _enquirySearchQuery = '';
 
   @override
   void initState() {
@@ -84,7 +87,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       );
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+        MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
         (route) => false,
       );
       return;
@@ -851,18 +854,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   Widget _buildAdminDrawer(Color goldColor, Color cardBg) {
-    final pendingLeavesCount = _leaves.where((l) => (l['status'] ?? '').toString().toLowerCase() == 'pending').length;
-    final presentStaffCount = _attendanceReport.where((a) => (a['lastStatus'] ?? '').toString().contains('Present') || (a['lastStatus'] ?? '').toString().contains('On Break') || (a['lastStatus'] ?? '').toString().contains('Completed')).length;
-
     final navItems = [
       {'title': 'Overview & Analytics', 'icon': Icons.dashboard_outlined, 'badge': ''},
-      {'title': 'Appointments Manager', 'icon': Icons.calendar_month_outlined, 'badge': '${_appointments.length}'},
-      {'title': 'Services Catalog', 'icon': Icons.content_cut, 'badge': '${_services.length}'},
-      {'title': 'Staff & Clients Desk', 'icon': Icons.people_outline, 'badge': '${_employees.length + _customers.length}'},
-      {'title': 'Leave Management', 'icon': Icons.event_busy_outlined, 'badge': pendingLeavesCount > 0 ? '$pendingLeavesCount pending' : '${_leaves.length}'},
-      {'title': 'Attendance Tracking', 'icon': Icons.access_time_filled_outlined, 'badge': '$presentStaffCount present'},
+      {'title': 'Appointments Manager', 'icon': Icons.calendar_month_outlined, 'badge': ''},
+      {'title': 'Services Catalog', 'icon': Icons.content_cut, 'badge': ''},
+      {'title': 'Staff & Clients Desk', 'icon': Icons.people_outline, 'badge': ''},
+      {'title': 'Leave Management', 'icon': Icons.event_busy_outlined, 'badge': ''},
+      {'title': 'Attendance', 'icon': Icons.access_time_filled_outlined, 'badge': ''},
       {'title': 'Finance Ledger', 'icon': Icons.account_balance_wallet_outlined, 'badge': ''},
-      {'title': 'Enquiries Desk', 'icon': Icons.mark_email_unread_outlined, 'badge': '${_enquiries.length}'},
+      {'title': 'Enquiries Desk', 'icon': Icons.mark_email_unread_outlined, 'badge': ''},
     ];
 
     return Drawer(
@@ -991,27 +991,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               children: [
                 ListTile(
                   dense: true,
-                  leading: const Icon(Icons.home_outlined, color: Colors.white70, size: 20),
-                  title: const Text('Back to Main App', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    } else {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                        (route) => false,
-                      );
-                    }
-                  },
-                ),
-                ListTile(
-                  dense: true,
                   leading: const Icon(Icons.logout, color: Colors.redAccent, size: 20),
                   title: const Text('Sign Out', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
                   onTap: () async {
-                    Navigator.pop(context);
+                    final navigator = Navigator.of(context);
+                    navigator.pop();
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (dialogCtx) => AlertDialog(
@@ -1047,22 +1031,51 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
                     if (confirm == true) {
                       await ApiService.logout();
-                      if (mounted) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (ctx) => const HomeScreen()),
+                      if (!mounted) return;
+                      navigator.pushAndRemoveUntil(
+                        MaterialPageRoute(
+                            builder: (ctx) => LoginScreen(
+                              onLoginSuccess: () async {
+                                final user = await ApiService.getStoredUser();
+                                final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+                                final isAdmin = role == 'admin' || role == 'manager';
+                                final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+                                if (!ctx.mounted) return;
+
+                                if (isAdmin) {
+                                  Navigator.pushAndRemoveUntil(
+                                    ctx,
+                                    MaterialPageRoute(builder: (c) => const AdminDashboardScreen()),
+                                    (route) => false,
+                                  );
+                                } else if (isStaff) {
+                                  Navigator.pushAndRemoveUntil(
+                                    ctx,
+                                    MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
+                                    (route) => false,
+                                  );
+                                } else {
+                                  Navigator.pushAndRemoveUntil(
+                                    ctx,
+                                    MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
+                                    (route) => false,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
                           (route) => false,
                         );
                       }
                     }
-                  },
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
   }
 
   @override
@@ -1076,7 +1089,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       'Services Catalog',
       'Staff & Clients',
       'Leave Management',
-      'Attendance Tracking',
+      'Attendance',
       'Finance Ledger',
       'Enquiries Desk'
     ];
@@ -1125,21 +1138,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             icon: const Icon(Icons.refresh, color: Colors.white70),
             onPressed: _loadAllAdminData,
             tooltip: 'Refresh Admin Data',
-          ),
-          IconButton(
-            icon: const Icon(Icons.home_outlined, color: goldColor),
-            onPressed: () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
-              } else {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-                  (route) => false,
-                );
-              }
-            },
-            tooltip: 'Back to Home',
           ),
         ],
       ),
@@ -1788,98 +1786,290 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   // --- TAB 6: ENQUIRIES DESK ---
   Widget _buildEnquiriesTab(Color goldColor, Color cardBg) {
-    if (_enquiries.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.mark_email_read_outlined, size: 48, color: Colors.white24),
-            const SizedBox(height: 12),
-            const Text('No Customer Enquiries Found', style: TextStyle(color: Colors.white54)),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: goldColor),
-              onPressed: _loadAllAdminData,
-              child: const Text('Refresh', style: TextStyle(color: Colors.black)),
-            ),
-          ],
-        ),
-      );
-    }
+    final totalCount = _enquiries.length;
+    final newCount = _enquiries.where((e) {
+      final s = (e['status'] ?? '').toString().toLowerCase();
+      return s == 'new' || s == 'pending' || s.isEmpty;
+    }).length;
+    final contactedCount = _enquiries.where((e) {
+      final s = (e['status'] ?? '').toString().toLowerCase();
+      return s == 'contacted' || s == 'in progress';
+    }).length;
+    final resolvedCount = _enquiries.where((e) {
+      final s = (e['status'] ?? '').toString().toLowerCase();
+      return s == 'resolved' || s == 'closed';
+    }).length;
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _enquiries.length,
-      itemBuilder: (ctx, index) {
-        final enq = _enquiries[index];
-        final id = enq['_id'] ?? enq['id'] ?? '';
-        final name = enq['name'] ?? 'Inquirer';
-        final email = enq['email'] ?? '';
-        final phone = enq['phone'] ?? '';
-        final message = enq['message'] ?? enq['subject'] ?? 'Service Enquiry';
-        final status = (enq['status'] ?? 'pending').toString().toLowerCase();
+    final filteredEnquiries = _enquiries.where((enq) {
+      final status = (enq['status'] ?? 'New').toString();
+      final statusLower = status.toLowerCase();
 
-        Color statusColor = Colors.amber;
-        if (status == 'contacted' || status == 'resolved') statusColor = Colors.greenAccent;
+      if (_enquiryFilter == 'New' && (statusLower != 'new' && statusLower != 'pending')) return false;
+      if (_enquiryFilter == 'Contacted' && (statusLower != 'contacted' && statusLower != 'in progress')) return false;
+      if (_enquiryFilter == 'Resolved' && (statusLower != 'resolved' && statusLower != 'closed')) return false;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: statusColor.withValues(alpha: 0.3))),
+      if (_enquirySearchQuery.trim().isNotEmpty) {
+        final query = _enquirySearchQuery.trim().toLowerCase();
+        final name = (enq['name'] ?? '').toString().toLowerCase();
+        final email = (enq['email'] ?? '').toString().toLowerCase();
+        final phone = (enq['phone'] ?? '').toString().toLowerCase();
+        final enquiryId = (enq['enquiryId'] ?? enq['_id'] ?? '').toString().toLowerCase();
+        final message = (enq['message'] ?? enq['subject'] ?? '').toString().toLowerCase();
+
+        return name.contains(query) || email.contains(query) || phone.contains(query) || enquiryId.contains(query) || message.contains(query);
+      }
+      return true;
+    }).toList();
+
+    return Column(
+      children: [
+        // Metric Summary Strip
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          color: cardBg,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12), border: Border.all(color: statusColor)),
-                    child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
+                  _buildMiniStatBadge('Total Enquiries', '$totalCount', Colors.white70),
+                  _buildMiniStatBadge('New', '$newCount', Colors.amber),
+                  _buildMiniStatBadge('Contacted', '$contactedCount', Colors.lightBlueAccent),
+                  _buildMiniStatBadge('Resolved', '$resolvedCount', Colors.greenAccent),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(message, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  if (phone.isNotEmpty) Text('📞 $phone   ', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                  if (email.isNotEmpty) Text('✉️ $email', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-                ],
+              const SizedBox(height: 12),
+              // Search Input
+              TextField(
+                onChanged: (val) => setState(() => _enquirySearchQuery = val),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Search by client name, email, phone, or ID...',
+                  hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white38, size: 18),
+                  filled: true,
+                  fillColor: const Color(0xFF13100E),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                ),
               ),
-              const Divider(color: Colors.white10, height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  PopupMenuButton<String>(
-                    color: const Color(0xFF25201C),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: goldColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                      child: Row(
-                        children: [
-                          Text('Mark Status', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                          Icon(Icons.arrow_drop_down, color: goldColor, size: 18),
-                        ],
+              const SizedBox(height: 10),
+              // Filter Chips
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: ['All', 'New', 'Contacted', 'Resolved'].map((tab) {
+                    final isSelected = _enquiryFilter == tab;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: isSelected,
+                        label: Text(tab, style: TextStyle(color: isSelected ? Colors.black : Colors.white70, fontSize: 12, fontWeight: FontWeight.bold)),
+                        backgroundColor: const Color(0xFF13100E),
+                        selectedColor: goldColor,
+                        onSelected: (sel) {
+                          if (sel) setState(() => _enquiryFilter = tab);
+                        },
                       ),
-                    ),
-                    onSelected: (newStatus) async {
-                      final success = await ApiService.updateEnquiryStatus(id, newStatus);
-                      if (success) _loadAllAdminData();
-                    },
-                    itemBuilder: (ctx) => const [
-                      PopupMenuItem(value: 'contacted', child: Text('Mark Contacted', style: TextStyle(color: Colors.greenAccent))),
-                      PopupMenuItem(value: 'resolved', child: Text('Mark Resolved', style: TextStyle(color: Colors.blueAccent))),
-                    ],
-                  ),
-                ],
+                    );
+                  }).toList(),
+                ),
               ),
             ],
           ),
-        );
-      },
+        ),
+
+        // List Area
+        Expanded(
+          child: filteredEnquiries.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.mark_email_read_outlined, size: 48, color: Colors.white24),
+                      const SizedBox(height: 12),
+                      Text(
+                        _enquiries.isEmpty
+                            ? 'No Customer Enquiries Found'
+                            : 'No enquiries matching query',
+                        style: const TextStyle(color: Colors.white54),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: goldColor),
+                        onPressed: _loadAllAdminData,
+                        child: const Text('Refresh Enquiries', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: filteredEnquiries.length,
+                  itemBuilder: (ctx, index) {
+                    final enq = filteredEnquiries[index];
+                    final id = (enq['_id'] ?? enq['id'] ?? '').toString();
+                    final enquiryId = (enq['enquiryId'] ?? '').toString();
+                    final name = (enq['name'] ?? 'Inquirer').toString();
+                    final email = (enq['email'] ?? '').toString();
+                    final phone = (enq['phone'] ?? '').toString();
+                    final message = (enq['message'] ?? enq['subject'] ?? 'Service Enquiry').toString();
+                    final rawStatus = (enq['status'] ?? 'New').toString();
+                    final statusLower = rawStatus.toLowerCase();
+                    final adminNotes = (enq['adminNotes'] ?? '').toString();
+                    final createdAt = (enq['createdAt'] ?? enq['date'] ?? '').toString();
+
+                    Color statusColor = Colors.amber;
+                    String displayStatus = 'NEW';
+
+                    if (statusLower == 'contacted') {
+                      statusColor = Colors.lightBlueAccent;
+                      displayStatus = 'CONTACTED';
+                    } else if (statusLower == 'in progress') {
+                      statusColor = Colors.purpleAccent;
+                      displayStatus = 'IN PROGRESS';
+                    } else if (statusLower == 'resolved') {
+                      statusColor = Colors.greenAccent;
+                      displayStatus = 'RESOLVED';
+                    } else if (statusLower == 'closed') {
+                      statusColor = Colors.white54;
+                      displayStatus = 'CLOSED';
+                    } else {
+                      statusColor = Colors.amber;
+                      displayStatus = rawStatus.toUpperCase();
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                                    if (enquiryId.isNotEmpty)
+                                      Text('ID: $enquiryId', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: statusColor),
+                                ),
+                                child: Text(displayStatus, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF13100E),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              message,
+                              style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
+                            ),
+                          ),
+                          if (adminNotes.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text('Memo: $adminNotes', style: const TextStyle(color: Colors.amber, fontSize: 11, fontStyle: FontStyle.italic)),
+                          ],
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 12,
+                            runSpacing: 4,
+                            children: [
+                              if (phone.isNotEmpty) Text('📞 $phone', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                              if (email.isNotEmpty) Text('✉️ $email', style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                            ],
+                          ),
+                          if (createdAt.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text('Received: ${createdAt.length > 10 ? createdAt.substring(0, 10) : createdAt}', style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                          ],
+                          const Divider(color: Colors.white10, height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                tooltip: 'Delete Enquiry',
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      backgroundColor: const Color(0xFF191512),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE0A96D))),
+                                      title: const Text('Delete Enquiry', style: TextStyle(color: Colors.white)),
+                                      content: const Text('Are you sure you want to delete this enquiry record?', style: TextStyle(color: Colors.white70)),
+                                      actions: [
+                                        TextButton(onPressed: () => Navigator.pop(dialogCtx, false), child: const Text('Cancel', style: TextStyle(color: Colors.white54))),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                                          onPressed: () => Navigator.pop(dialogCtx, true),
+                                          child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true && id.isNotEmpty) {
+                                    final success = await ApiService.deleteEnquiry(id);
+                                    if (success) _loadAllAdminData();
+                                  }
+                                },
+                              ),
+                              PopupMenuButton<String>(
+                                color: const Color(0xFF25201C),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(color: goldColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: goldColor.withValues(alpha: 0.5))),
+                                  child: Row(
+                                    children: [
+                                      Text('Update Status', style: TextStyle(color: goldColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      Icon(Icons.arrow_drop_down, color: goldColor, size: 18),
+                                    ],
+                                  ),
+                                ),
+                                onSelected: (newStatus) async {
+                                  if (id.isNotEmpty) {
+                                    final success = await ApiService.updateEnquiryStatus(id, newStatus);
+                                    if (success) _loadAllAdminData();
+                                  }
+                                },
+                                itemBuilder: (ctx) => const [
+                                  PopupMenuItem(value: 'New', child: Text('Mark New', style: TextStyle(color: Colors.amber))),
+                                  PopupMenuItem(value: 'Contacted', child: Text('Mark Contacted', style: TextStyle(color: Colors.lightBlueAccent))),
+                                  PopupMenuItem(value: 'In Progress', child: Text('Mark In Progress', style: TextStyle(color: Colors.purpleAccent))),
+                                  PopupMenuItem(value: 'Resolved', child: Text('Mark Resolved', style: TextStyle(color: Colors.greenAccent))),
+                                  PopupMenuItem(value: 'Closed', child: Text('Mark Closed', style: TextStyle(color: Colors.white54))),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 

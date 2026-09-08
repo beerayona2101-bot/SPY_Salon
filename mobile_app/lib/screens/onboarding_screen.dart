@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../services/api_service.dart';
+import 'admin_dashboard_screen.dart';
+import 'customer_dashboard_screen.dart';
+import 'employee_dashboard_screen.dart';
 import 'login_screen.dart';
-import '../main.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -41,22 +43,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  Future<void> _completeOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
-
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
+  void _navigateToLogin() {
+    Navigator.push(
       context,
       MaterialPageRoute(
         builder: (ctx) => LoginScreen(
-          onLoginSuccess: () {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const HomeScreen()),
-              (route) => false,
-            );
+          onLoginSuccess: () async {
+            final user = await ApiService.getStoredUser();
+            final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+            final isAdmin = role == 'admin' || role == 'manager';
+            final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+            if (!mounted) return;
+
+            if (isAdmin) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (c) => const AdminDashboardScreen()),
+                (route) => false,
+              );
+            } else if (isStaff) {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
+                (route) => false,
+              );
+            } else {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
+                (route) => false,
+              );
+            }
           },
         ),
       ),
@@ -70,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOutCubic,
       );
     } else {
-      _completeOnboarding();
+      _navigateToLogin();
     }
   }
 
@@ -179,7 +197,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ],
                                 ),
                                 TextButton(
-                                  onPressed: _completeOnboarding,
+                                  onPressed: _navigateToLogin,
                                   child: const Text(
                                     'Skip',
                                     style: TextStyle(

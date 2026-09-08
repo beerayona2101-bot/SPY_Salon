@@ -41,6 +41,9 @@ class ApiConfig {
       list.add(_activeBaseUrl!.trim());
     }
 
+    // Live Deployed Application Backend Endpoint
+    list.add('https://hairsalon.speshway.site');
+
     // Workstation LAN IP first so physical devices connect immediately
     list.add('http://$lanIp:$port');
 
@@ -72,10 +75,8 @@ class ApiConfig {
       return _activeBaseUrl!;
     }
     
-    // Default fallback
-    if (kIsWeb) return 'http://localhost:$port';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://$lanIp:$port';
-    return 'http://localhost:$port';
+    // Default fallback to live production application
+    return 'https://hairsalon.speshway.site';
   }
 
   // API Endpoints

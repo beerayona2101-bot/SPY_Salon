@@ -1,4 +1,4 @@
-package com.spysalon.spy_salon_mobile
+package com.speshway.hairsalon
 
 import io.flutter.embedding.android.FlutterActivity
 
