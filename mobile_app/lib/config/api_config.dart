@@ -109,12 +109,6 @@ class ApiConfig {
     // Workstation LAN IP first so physical devices connect immediately
     list.add('http://$lanIp:$port');
 
-    // Probe common local Wi-Fi subnet IPs
-    for (int i = 2; i <= 15; i++) {
-      list.add('http://192.168.1.$i:$port');
-      list.add('http://192.168.0.$i:$port');
-    }
-
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       list.add('http://10.0.2.2:$port');
     }

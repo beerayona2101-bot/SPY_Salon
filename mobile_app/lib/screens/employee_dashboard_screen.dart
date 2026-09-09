@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/realtime_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'login_screen.dart';
@@ -13,6 +15,7 @@ class EmployeeDashboardScreen extends StatefulWidget {
 
 class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
   bool _isLoading = true;
   Map<String, dynamic>? _user;
@@ -32,16 +35,30 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       if (mounted) setState(() {});
     });
     _loadStaffData();
+
+    RealtimeService().joinRoom('room:employee');
+
+    _realtimeSubscription = RealtimeService().eventStream.listen((event) {
+      if (!mounted) return;
+      debugPrint('[EmployeeDashboardScreen] Realtime event received: ${event.name}');
+      if (event.name.startsWith('appointment:') ||
+          event.name.startsWith('attendance:') ||
+          event.name.startsWith('leave:') ||
+          event.name == 'app:fallback_sync') {
+        _loadStaffData(quiet: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadStaffData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadStaffData({bool quiet = false}) async {
+    if (!quiet) setState(() => _isLoading = true);
 
     final storedUser = await ApiService.getStoredUser();
 

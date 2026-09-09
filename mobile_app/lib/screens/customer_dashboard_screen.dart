@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/realtime_service.dart';
 import 'login_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
@@ -11,6 +13,7 @@ class CustomerDashboardScreen extends StatefulWidget {
 
 class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
   bool _isLoading = true;
   Map<String, dynamic>? _user;
@@ -24,16 +27,29 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
       if (mounted) setState(() {});
     });
     _loadCustomerData();
+
+    _realtimeSubscription = RealtimeService().eventStream.listen((event) {
+      if (!mounted) return;
+      debugPrint('[CustomerDashboardScreen] Realtime event received: ${event.name}');
+      if (event.name.startsWith('appointment:') ||
+          event.name.startsWith('service:') ||
+          event.name.startsWith('membership:') ||
+          event.name == 'offers_updated' ||
+          event.name == 'app:fallback_sync') {
+        _loadCustomerData(quiet: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCustomerData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadCustomerData({bool quiet = false}) async {
+    if (!quiet) setState(() => _isLoading = true);
     final storedUser = await ApiService.getStoredUser();
 
     if (!mounted) return;

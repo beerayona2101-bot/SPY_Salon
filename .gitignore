@@ -27,3 +27,4 @@ backend/.mongodb_data/
 *.tsbuildinfo
 
 yarn-error.log*
+*.apk

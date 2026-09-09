@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/realtime_service.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
 import 'login_screen.dart';
@@ -13,6 +15,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
   bool _isLoading = true;
   Map<String, dynamic> _analytics = {};
@@ -39,16 +42,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       if (mounted) setState(() {});
     });
     _loadAllAdminData();
+
+    RealtimeService().joinRoom('room:admin');
+
+    _realtimeSubscription = RealtimeService().eventStream.listen((event) {
+      if (!mounted) return;
+      debugPrint('[AdminDashboardScreen] Realtime event received: ${event.name}');
+      _loadAllAdminData(quiet: true);
+    });
   }
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadAllAdminData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadAllAdminData({bool quiet = false}) async {
+    if (!quiet) setState(() => _isLoading = true);
 
     final storedUser = await ApiService.getStoredUser();
 

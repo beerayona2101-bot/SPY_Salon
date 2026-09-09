@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/realtime_service.dart';
 import 'admin_dashboard_screen.dart';
 import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
@@ -29,13 +30,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _regEmailCtrl = TextEditingController();
   final _regPhoneCtrl = TextEditingController();
   final _regPasswordCtrl = TextEditingController();
+  final _regConfirmPasswordCtrl = TextEditingController();
   bool _regObscure = true;
+  bool _regConfirmObscure = true;
   bool _isSubmittingRegister = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -47,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _regEmailCtrl.dispose();
     _regPhoneCtrl.dispose();
     _regPasswordCtrl.dispose();
+    _regConfirmPasswordCtrl.dispose();
     super.dispose();
   }
 
@@ -72,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (res['success'] == true) {
         _showSnackBar(res['message'], isError: false);
         widget.onLoginSuccess();
+        RealtimeService().connect();
 
         final user = res['user'] ?? await ApiService.getStoredUser();
         final role = (user?['role'] ?? 'customer').toString().toLowerCase();
@@ -112,9 +120,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     final email = _regEmailCtrl.text.trim();
     final phone = _regPhoneCtrl.text.trim();
     final password = _regPasswordCtrl.text.trim();
+    final confirmPassword = _regConfirmPasswordCtrl.text.trim();
 
-    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty) {
+    if (name.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       _showSnackBar('Please fill in all registration fields');
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(email)) {
+      _showSnackBar('Please enter a valid email address');
+      return;
+    }
+
+    final cleanPhone = phone.replaceAll(RegExp(r'\D'), '');
+    if (cleanPhone.length < 10) {
+      _showSnackBar('Please enter a valid phone number (at least 10 digits)');
+      return;
+    }
+
+    if (password.length < 6) {
+      _showSnackBar('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackBar('Passwords do not match');
       return;
     }
 
@@ -133,6 +164,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (res['success'] == true) {
         _showSnackBar(res['message'], isError: false);
         widget.onLoginSuccess();
+        RealtimeService().connect();
 
         if (mounted) {
           final user = res['user'] ?? await ApiService.getStoredUser();
@@ -333,6 +365,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           ),
                           child: TabBar(
                             controller: _tabController,
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            onTap: (index) => setState(() {}),
                             indicator: BoxDecoration(
                               color: goldColor,
                               borderRadius: BorderRadius.circular(24),
@@ -626,6 +660,37 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 size: 18,
               ),
               onPressed: () => setState(() => _regObscure = !_regObscure),
+            ),
+            filled: true,
+            fillColor: darkBg.withValues(alpha: 0.7),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: goldColor.withValues(alpha: 0.2)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: goldColor, width: 1.5),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _regConfirmPasswordCtrl,
+          obscureText: _regConfirmObscure,
+          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            labelText: 'Confirm Password *',
+            labelStyle: const TextStyle(color: Colors.white70, fontSize: 12),
+            prefixIcon: Icon(Icons.lock_reset_outlined, color: goldColor, size: 18),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _regConfirmObscure ? Icons.visibility_off : Icons.visibility,
+                color: Colors.white54,
+                size: 18,
+              ),
+              onPressed: () => setState(() => _regConfirmObscure = !_regConfirmObscure),
             ),
             filled: true,
             fillColor: darkBg.withValues(alpha: 0.7),

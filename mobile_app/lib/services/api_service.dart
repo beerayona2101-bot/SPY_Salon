@@ -45,20 +45,33 @@ class ApiService {
       try {
         final response = await http
             .get(Uri.parse(endpoint))
-            .timeout(const Duration(milliseconds: 2000));
+            .timeout(const Duration(milliseconds: 2500));
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           Map<String, dynamic> data = {};
+          bool isJson = false;
           try {
             data = json.decode(response.body);
+            isJson = true;
           } catch (_) {}
-          return {
-            'connected': true,
-            'status': data['status'] ?? 'UP',
-            'service': data['service'] ?? 'SPY Salon Enterprise REST API',
-            'timestamp': data['timestamp'],
-            'url': url,
-          };
+
+          final serviceName = (data['service'] ?? '').toString();
+          final isSpySalon = isJson && (
+            serviceName.toLowerCase().contains('spy salon') ||
+            data['status'] == 'UP' ||
+            data['success'] == true ||
+            (data['data'] != null && data['data'] is List)
+          );
+
+          if (isSpySalon) {
+            return {
+              'connected': true,
+              'status': data['status'] ?? 'UP',
+              'service': data['service'] ?? 'SPY Salon Enterprise REST API',
+              'timestamp': data['timestamp'],
+              'url': url,
+            };
+          }
         } else if (response.statusCode == 401 || response.statusCode == 403) {
           return {
             'connected': true,
@@ -99,21 +112,33 @@ class ApiService {
         if (response.statusCode == 200 || response.statusCode == 201) {
           stopwatch.stop();
           Map<String, dynamic> data = {};
+          bool isJson = false;
           try {
             data = json.decode(response.body);
+            isJson = true;
           } catch (_) {}
 
-          return {
-            'connected': true,
-            'statusCode': response.statusCode,
-            'status': data['status'] ?? 'UP',
-            'service': data['service'] ?? 'SPY Salon Enterprise REST API',
-            'latencyMs': stopwatch.elapsedMilliseconds,
-            'normalizedUrl': normalized,
-            'displayApiUrl': displayApi,
-            'endpoint': endpoint,
-            'message': 'Server is reachable and healthy.',
-          };
+          final serviceName = (data['service'] ?? '').toString();
+          final isSpySalon = isJson && (
+            serviceName.toLowerCase().contains('spy salon') ||
+            data['status'] == 'UP' ||
+            data['success'] == true ||
+            (data['data'] != null && data['data'] is List)
+          );
+
+          if (isSpySalon) {
+            return {
+              'connected': true,
+              'statusCode': response.statusCode,
+              'status': data['status'] ?? 'UP',
+              'service': data['service'] ?? 'SPY Salon Enterprise REST API',
+              'latencyMs': stopwatch.elapsedMilliseconds,
+              'normalizedUrl': normalized,
+              'displayApiUrl': displayApi,
+              'endpoint': endpoint,
+              'message': 'Server is reachable and healthy.',
+            };
+          }
         } else if (response.statusCode == 401 || response.statusCode == 403) {
           stopwatch.stop();
           return {
@@ -139,7 +164,7 @@ class ApiService {
       'latencyMs': stopwatch.elapsedMilliseconds,
       'normalizedUrl': normalized,
       'displayApiUrl': displayApi,
-      'message': 'Unable to connect to backend endpoints.',
+      'message': 'Unable to connect to SPY Salon backend endpoints.',
     };
   }
 
@@ -303,6 +328,17 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('[ApiService] Error reading stored user: $e');
+    }
+    return null;
+  }
+
+  /// Get stored session token
+  static Future<String?> getStoredToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('auth_token') ?? prefs.getString('jwt_token');
+    } catch (e) {
+      debugPrint('[ApiService] Error reading stored token: $e');
     }
     return null;
   }
