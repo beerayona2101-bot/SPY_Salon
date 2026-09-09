@@ -20,8 +20,7 @@ const ApiError = require('../utils/apiError');
 const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const { broadcastEvent } = require('../utils/socket');
-const { invalidateCache } = require('../middlewares/cacheMiddleware');
-const { parseKolkataDateTime } = require('../utils/timezoneHelper');
+const { parseKolkataDateTime, isPastDateTimeKolkata, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
 
 function hasAppointmentStarted(dateStr, timeStr) {
   if (!dateStr || !timeStr) return true;
@@ -651,41 +650,27 @@ class AdminService {
       throw ApiError.badRequest('Customer name and service title are required');
     }
 
-    const { getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
     const appDate = payload.appointmentDate || payload.date || getKolkataCurrentDateStr();
     const appTime = payload.appointmentTime || payload.time || 'Immediate Walk-In';
 
-    if (appTime !== 'Immediate Walk-In' && isPastDateTimeKolkata(appDate, appTime)) {
-      throw ApiError.badRequest('Please select a future appointment time.');
-    }
-
     const bookingId = `SPY-${Math.floor(100000 + Math.random() * 900000)}`;
     
-    // Look up customer user ID
-    const customer = await User.findOne({ 
-      $or: [
-        { email: payload.customerEmail }, 
-        { phone: payload.customerPhone }
-      ]
-    });
+    // Look up customer user ID safely
+    const customerCriteria = [];
+    if (payload.customerEmail && String(payload.customerEmail).trim()) {
+      customerCriteria.push({ email: String(payload.customerEmail).trim() });
+    }
+    if (payload.customerPhone && String(payload.customerPhone).trim()) {
+      customerCriteria.push({ phone: String(payload.customerPhone).trim() });
+    }
+    const customer = customerCriteria.length > 0
+      ? await User.findOne({ $or: customerCriteria })
+      : null;
 
     let assignedSpecialist = payload.specialistName;
     if (!assignedSpecialist) {
       const activeEmp = await Employee.findOne({ status: 'Active' });
       assignedSpecialist = activeEmp ? `${activeEmp.name} (${activeEmp.specialties?.[0] || 'Specialist'})` : 'General Specialist Desk';
-    }
-
-    if (assignedSpecialist && assignedSpecialist !== 'Any Available Specialist' && appTime !== 'Immediate Walk-In') {
-      const cleanSpecFirst = assignedSpecialist.split('(')[0].trim().split(/\s+/)[0];
-      const conflictCheck = await Appointment.findOne({
-        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
-        appointmentDate: appDate,
-        appointmentTime: appTime,
-        status: { $nin: ['Cancelled', 'Staff_Rejected'] }
-      });
-      if (conflictCheck) {
-        throw ApiError.badRequest('Sorry, this slot is no longer available. Please select another time.');
-      }
     }
 
     const rawServiceName = String(payload.service || '').trim();
@@ -726,6 +711,10 @@ class AdminService {
       adminTotalDuration = serviceDoc ? (serviceDoc.durationMinutes || 30) : 30;
     }
 
+    const appStatus = payload.status 
+      ? (payload.status.toLowerCase() === 'confirmed' ? 'Confirmed' : payload.status.toLowerCase() === 'pending' ? 'Pending' : payload.status)
+      : 'Confirmed';
+
     const newApp = await Appointment.create({
       bookingId,
       customerName: payload.customerName,
@@ -743,29 +732,41 @@ class AdminService {
       bookingDate: getKolkataCurrentDateStr(),
       bookingTimeFormatted: getKolkataCurrentTimeStr(),
       paymentMethod: payload.paymentMethod || 'UPI',
-      status: 'Confirmed',
+      status: appStatus,
+      paymentStatus: payload.paymentStatus || 'Pending',
       branch: payload.branch || 'Jubilee Hills Flagship',
       branchId: payload.branchId || null,
       customerId: customer ? customer._id.toString() : null
     });
-    await Transaction.create({
-      txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-      type: 'Credited',
-      category: 'Appointment Booking',
-      description: `Customer Appointment #${bookingId} - ${newApp.customerName} (${newApp.service})`,
-      amount: txnAmount,
-      paymentMethod: payload.paymentMethod || 'UPI',
-      status: 'Completed',
-      date: new Date().toISOString(),
-      branchId: payload.branchId || null
-    });
 
-    await this.createActivityLog({
-      action: 'Appointment Booked',
-      details: `Booked ${newApp.service} for ${newApp.customerName} (#${bookingId}).`,
-      user: 'Admin',
-      branchId: payload.branchId || null
-    });
+    try {
+      await Transaction.create({
+        txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+        type: 'Credited',
+        category: 'Appointment Booking',
+        description: `Customer Appointment #${bookingId} - ${newApp.customerName} (${newApp.service})`,
+        amount: txnAmount,
+        paymentMethod: payload.paymentMethod || 'UPI',
+        status: 'Completed',
+        date: new Date().toISOString(),
+        branchId: payload.branchId || null
+      });
+    } catch (txnErr) {
+      console.warn('[adminService] Transaction creation notice:', txnErr.message);
+    }
+
+    try {
+      await this.createActivityLog({
+        action: 'Appointment Booked',
+        details: `Booked ${newApp.service} for ${newApp.customerName} (#${bookingId}).`,
+        user: 'Admin',
+        branchId: payload.branchId || null
+      });
+    } catch (actErr) {
+      console.warn('[adminService] Activity log notice:', actErr.message);
+    }
+
+    broadcastEvent('appointment:created', { appointment: newApp });
 
     return newApp;
   }

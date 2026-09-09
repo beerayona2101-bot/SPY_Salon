@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 import '../services/api_service.dart';
 import 'admin_dashboard_screen.dart';
+import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
 
@@ -178,6 +180,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
+  Future<void> _openBackendSettings() async {
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (ctx) => const BackendSettingsScreen()),
+    );
+    if (updated == true && mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     const goldColor = Color(0xFFE0A96D);
@@ -217,7 +229,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           SafeArea(
             child: Column(
               children: [
-                // Top Header Row with Back button & Tagline
+                // Top Header Row with Back button & Tagline & Settings
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
@@ -242,7 +254,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                       ),
                       const Spacer(),
-                      const SizedBox(width: 40),
+                      IconButton(
+                        tooltip: 'Backend Settings',
+                        icon: const Icon(Icons.settings_outlined, color: goldColor, size: 22),
+                        onPressed: _openBackendSettings,
+                      ),
                     ],
                   ),
                 ),
@@ -371,7 +387,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             },
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: _openBackendSettings,
+                          icon: const Icon(Icons.tune_rounded, color: Colors.white54, size: 16),
+                          label: Text(
+                            '⚙ Backend Settings (${ApiConfig.baseUrl})',
+                            style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/api_config.dart';
 import '../services/api_service.dart';
 import '../utils/luxury_page_route.dart';
 import 'admin_dashboard_screen.dart';
@@ -44,6 +45,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _initializeApp() async {
     final startTime = DateTime.now();
+
+    setState(() => _statusMessage = 'Loading Backend Config...');
+    await ApiConfig.loadSavedBaseUrl();
 
     setState(() => _statusMessage = 'Verifying Session...');
     final user = await ApiService.getStoredUser();

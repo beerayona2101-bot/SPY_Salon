@@ -95,7 +95,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(rateLimiter({ windowMs: 15 * 60 * 1000, max: 50000 }));
 
 // Health Check Endpoint
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/v1/health', '/api/health'], (req, res) => {
   res.status(200).json({ 
     success: true,
     statusCode: 200,

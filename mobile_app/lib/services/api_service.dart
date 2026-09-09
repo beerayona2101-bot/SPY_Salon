@@ -34,38 +34,129 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> _probeUrl(String url) async {
-    try {
-      final healthEndpoint = '$url/health';
-      final response = await http
-          .get(Uri.parse(healthEndpoint))
-          .timeout(const Duration(milliseconds: 1500));
+    final probeEndpoints = [
+      '$url/api/v1/health',
+      '$url/health',
+      '$url/api/health',
+      '$url/api/v1/services',
+    ];
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'connected': true,
-          'status': data['status'] ?? 'UP',
-          'service': data['service'] ?? 'SPY Salon Enterprise REST API',
-          'timestamp': data['timestamp'],
-          'url': url,
-        };
-      } else {
-        return {
-          'connected': false,
-          'error': 'HTTP Error ${response.statusCode}',
-          'url': url,
-        };
-      }
-    } catch (e) {
-      return {
-        'connected': false,
-        'error': 'Unreachable (${e.runtimeType})',
-        'url': url,
-      };
+    for (final endpoint in probeEndpoints) {
+      try {
+        final response = await http
+            .get(Uri.parse(endpoint))
+            .timeout(const Duration(milliseconds: 2000));
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          Map<String, dynamic> data = {};
+          try {
+            data = json.decode(response.body);
+          } catch (_) {}
+          return {
+            'connected': true,
+            'status': data['status'] ?? 'UP',
+            'service': data['service'] ?? 'SPY Salon Enterprise REST API',
+            'timestamp': data['timestamp'],
+            'url': url,
+          };
+        } else if (response.statusCode == 401 || response.statusCode == 403) {
+          return {
+            'connected': true,
+            'status': 'UP',
+            'service': 'SPY Salon Enterprise REST API',
+            'url': url,
+          };
+        }
+      } catch (_) {}
     }
+
+    return {
+      'connected': false,
+      'error': 'Unreachable',
+      'url': url,
+    };
   }
 
-  /// Helper to get stored auth token headers
+  /// Public connection test method for Backend Settings Screen
+  static Future<Map<String, dynamic>> testConnection(String rawUrl) async {
+    final normalized = ApiConfig.normalizeUrl(rawUrl);
+    final displayApi = '$normalized/api/v1';
+    final stopwatch = Stopwatch()..start();
+
+    final probeEndpoints = [
+      '$normalized/api/v1/health',
+      '$normalized/health',
+      '$normalized/api/health',
+      '$normalized/api/v1/services',
+    ];
+
+    for (final endpoint in probeEndpoints) {
+      try {
+        final response = await http
+            .get(Uri.parse(endpoint))
+            .timeout(const Duration(seconds: 4));
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          stopwatch.stop();
+          Map<String, dynamic> data = {};
+          try {
+            data = json.decode(response.body);
+          } catch (_) {}
+
+          return {
+            'connected': true,
+            'statusCode': response.statusCode,
+            'status': data['status'] ?? 'UP',
+            'service': data['service'] ?? 'SPY Salon Enterprise REST API',
+            'latencyMs': stopwatch.elapsedMilliseconds,
+            'normalizedUrl': normalized,
+            'displayApiUrl': displayApi,
+            'endpoint': endpoint,
+            'message': 'Server is reachable and healthy.',
+          };
+        } else if (response.statusCode == 401 || response.statusCode == 403) {
+          stopwatch.stop();
+          return {
+            'connected': true,
+            'statusCode': response.statusCode,
+            'status': 'REACHABLE',
+            'service': 'SPY Salon Enterprise REST API',
+            'latencyMs': stopwatch.elapsedMilliseconds,
+            'normalizedUrl': normalized,
+            'displayApiUrl': displayApi,
+            'endpoint': endpoint,
+            'message': 'Server is reachable (HTTP ${response.statusCode}).',
+          };
+        }
+      } catch (_) {}
+    }
+
+    stopwatch.stop();
+    return {
+      'connected': false,
+      'statusCode': 404,
+      'status': 'Unreachable',
+      'latencyMs': stopwatch.elapsedMilliseconds,
+      'normalizedUrl': normalized,
+      'displayApiUrl': displayApi,
+      'message': 'Unable to connect to backend endpoints.',
+    };
+  }
+
+  /// Updates active backend URL and handles cross-backend session cleanup
+  static Future<bool> updateBackendUrl(String newUrl) async {
+    final oldHost = Uri.tryParse(ApiConfig.baseUrl)?.host;
+    final normalized = ApiConfig.normalizeUrl(newUrl);
+    final newHost = Uri.tryParse(normalized)?.host;
+
+    await ApiConfig.setActiveBaseUrl(normalized);
+
+    // If host changed, clear old auth session to prevent cross-backend token contamination
+    if (oldHost != null && newHost != null && oldHost != newHost) {
+      await clearSession();
+    }
+    return true;
+  }
   static Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? prefs.getString('auth_token') ?? prefs.getString('token');

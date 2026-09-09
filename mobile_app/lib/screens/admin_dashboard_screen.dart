@@ -287,10 +287,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE0A96D)),
                     onPressed: () async {
-                      if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) return;
-                      await ApiService.createAdminAppointment({
-                        'customerName': nameCtrl.text.trim(),
-                        'customerPhone': phoneCtrl.text.trim(),
+                      final name = nameCtrl.text.trim();
+                      final phone = phoneCtrl.text.trim();
+                      if (name.isEmpty || phone.isEmpty) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(
+                            backgroundColor: Colors.amber,
+                            content: Text('Please enter Customer Full Name and Phone Number'),
+                          ),
+                        );
+                        return;
+                      }
+                      final success = await ApiService.createAdminAppointment({
+                        'customerName': name,
+                        'customerPhone': phone,
                         'service': selectedService,
                         'specialistName': selectedSpecialist,
                         'appointmentDate': dateCtrl.text.trim(),
@@ -301,6 +311,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       if (ctx.mounted) {
                         Navigator.pop(ctx);
                         _loadAllAdminData();
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(
+                            backgroundColor: success ? const Color(0xFF1B4D3E) : Colors.red[900],
+                            content: Text(
+                              success
+                                  ? '✓ Walk-In Appointment booked successfully!'
+                                  : '✕ Appointment creation failed. Please check input details.',
+                            ),
+                          ),
+                        );
                       }
                     },
                     child: const Text('Confirm Booking', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
