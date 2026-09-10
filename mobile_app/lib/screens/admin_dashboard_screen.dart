@@ -13,7 +13,7 @@ class AdminDashboardScreen extends StatefulWidget {
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin {
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
@@ -37,6 +37,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -54,9 +55,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[AdminDashboardScreen] App resumed from background/idle. Refreshing admin data...');
+      _loadAllAdminData(quiet: true);
+    }
   }
 
   Future<void> _loadAllAdminData({bool quiet = false}) async {
@@ -119,15 +129,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     if (mounted) {
       setState(() {
-        _analytics = results[0] as Map<String, dynamic>;
-        _appointments = results[1] as List<dynamic>;
-        _services = results[2] as List<dynamic>;
-        _employees = results[3] as List<dynamic>;
-        _customers = results[4] as List<dynamic>;
-        _transactions = results[5] as List<dynamic>;
-        _enquiries = results[6] as List<dynamic>;
-        _leaves = results[7] as List<dynamic>;
-        _attendanceReport = results[8] as List<dynamic>;
+        if (results[0] != null) _analytics = results[0] as Map<String, dynamic>;
+        if (results[1] != null) _appointments = results[1] as List<dynamic>;
+        if (results[2] != null) _services = results[2] as List<dynamic>;
+        if (results[3] != null) _employees = results[3] as List<dynamic>;
+        if (results[4] != null) _customers = results[4] as List<dynamic>;
+        if (results[5] != null) _transactions = results[5] as List<dynamic>;
+        if (results[6] != null) _enquiries = results[6] as List<dynamic>;
+        if (results[7] != null) _leaves = results[7] as List<dynamic>;
+        if (results[8] != null) _attendanceReport = results[8] as List<dynamic>;
         _isLoading = false;
       });
     }

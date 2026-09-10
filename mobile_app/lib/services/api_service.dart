@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import 'fcm_service.dart';
 
 class ApiService {
   /// Probes current base URL and candidate URLs in parallel to find a reachable backend instantly
@@ -182,6 +183,7 @@ class ApiService {
     }
     return true;
   }
+
   static Future<Map<String, String>> _getAuthHeaders() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token') ?? prefs.getString('auth_token') ?? prefs.getString('token');
@@ -192,6 +194,121 @@ class ApiService {
     return headers;
   }
 
+  /// Executes HTTP request with automatic retries for network/socket errors,
+  /// timeout handling, non-sensitive debug logging, and token refresh exchange for 401 status.
+  static Future<http.Response?> _requestWithRetry(
+    String method,
+    String url, {
+    Map<String, String>? headers,
+    Object? body,
+    Duration timeout = const Duration(seconds: 10),
+    int maxRetries = 2,
+  }) async {
+    int attempts = 0;
+    http.Response? response;
+
+    while (attempts <= maxRetries) {
+      attempts++;
+      final currentHeaders = headers ?? await _getAuthHeaders();
+      try {
+        final uri = Uri.parse(url);
+        debugPrint('[ApiService] $method ${uri.path} (Attempt $attempts/${maxRetries + 1})');
+        final Future<http.Response> reqFuture;
+
+        switch (method.toUpperCase()) {
+          case 'GET':
+            reqFuture = http.get(uri, headers: currentHeaders);
+            break;
+          case 'POST':
+            reqFuture = http.post(uri, headers: currentHeaders, body: body);
+            break;
+          case 'PUT':
+            reqFuture = http.put(uri, headers: currentHeaders, body: body);
+            break;
+          case 'PATCH':
+            reqFuture = http.patch(uri, headers: currentHeaders, body: body);
+            break;
+          case 'DELETE':
+            reqFuture = http.delete(uri, headers: currentHeaders, body: body);
+            break;
+          default:
+            reqFuture = http.get(uri, headers: currentHeaders);
+        }
+
+        response = await reqFuture.timeout(timeout);
+        debugPrint('[ApiService] $method ${uri.path} -> Status ${response.statusCode}');
+
+        if (response.statusCode == 401 && attempts == 1) {
+          debugPrint('[ApiService] 401 Unauthorized encountered. Attempting refresh token exchange...');
+          final refreshed = await tryRefreshToken();
+          if (refreshed) {
+            headers = await _getAuthHeaders();
+            continue;
+          } else {
+            await _handle401();
+            return response;
+          }
+        }
+
+        if ((response.statusCode == 502 || response.statusCode == 503 || response.statusCode == 504) && attempts <= maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempts));
+          continue;
+        }
+
+        return response;
+      } catch (e) {
+        debugPrint('[ApiService] $method $url failed on attempt $attempts (${e.runtimeType})');
+        if (attempts <= maxRetries) {
+          await Future.delayed(Duration(milliseconds: 500 * attempts));
+        }
+      }
+    }
+    return response;
+  }
+
+  /// Refreshes JWT access token using stored refresh_token
+  static Future<bool> tryRefreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedRefreshToken = prefs.getString('refresh_token');
+      if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
+        debugPrint('[ApiService] Token refresh skipped: No stored refresh token.');
+        return false;
+      }
+
+      debugPrint('[ApiService] Exchanging refresh token at POST /api/v1/auth/refresh');
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'refreshToken': storedRefreshToken}),
+      ).timeout(const Duration(seconds: 8));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final payload = data['data'] ?? data;
+        final newToken = payload['token'];
+        final newRefreshToken = payload['refreshToken'] ?? storedRefreshToken;
+        final user = payload['user'];
+
+        if (newToken != null && newToken.toString().isNotEmpty) {
+          await prefs.setString('jwt_token', newToken);
+          await prefs.setString('auth_token', newToken);
+          if (newRefreshToken != null) {
+            await prefs.setString('refresh_token', newRefreshToken.toString());
+          }
+          if (user != null) {
+            await prefs.setString('user_data', json.encode(user));
+          }
+          debugPrint('[ApiService] Token refresh successful!');
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Token refresh error: $e');
+    }
+    return false;
+  }
+
   /// Handles 401 Unauthorized responses by clearing stale session tokens
   static Future<void> _handle401() async {
     await clearSession();
@@ -200,23 +317,29 @@ class ApiService {
   /// Sign In user with email/phone & password
   static Future<Map<String, dynamic>> login(String loginInput, String password) async {
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.loginUrl),
+      final response = await _requestWithRetry(
+        'POST',
+        ApiConfig.loginUrl,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'identifier': loginInput,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 8));
+      );
+
+      if (response == null) {
+        return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+      }
 
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
         final payload = data['data'] ?? data;
         final token = payload['token'];
+        final refreshToken = payload['refreshToken'] ?? data['refreshToken'];
         final user = payload['user'];
         if (token != null && user != null) {
-          await saveSession(token, user);
+          await saveSession(token, user, refreshToken: refreshToken);
         }
         return {'success': true, 'message': data['message'] ?? 'Login successful', 'user': user};
       } else {
@@ -230,11 +353,16 @@ class ApiService {
   /// Request 6-digit OTP for Login / Auto-Registration
   static Future<Map<String, dynamic>> sendOTP(String identifier) async {
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/send-otp'),
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/auth/send-otp',
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'identifier': identifier, 'email': identifier, 'phone': identifier}),
-      ).timeout(const Duration(seconds: 8));
+      );
+
+      if (response == null) {
+        return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+      }
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
@@ -250,19 +378,25 @@ class ApiService {
   /// Verify 6-digit OTP for Login / Auto-Registration
   static Future<Map<String, dynamic>> verifyOTP(String identifier, String otp) async {
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/verify-otp'),
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/auth/verify-otp',
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'identifier': identifier, 'email': identifier, 'phone': identifier, 'otp': otp}),
-      ).timeout(const Duration(seconds: 8));
+      );
+
+      if (response == null) {
+        return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+      }
 
       final data = json.decode(response.body);
       if (response.statusCode == 200 && data['success'] == true) {
         final payload = data['data'] ?? data;
         final token = payload['token'];
+        final refreshToken = payload['refreshToken'] ?? data['refreshToken'];
         final user = payload['user'];
         if (token != null && user != null) {
-          await saveSession(token, user);
+          await saveSession(token, user, refreshToken: refreshToken);
         }
         return {'success': true, 'message': data['message'] ?? 'OTP Verified successfully!', 'user': user};
       } else {
@@ -281,8 +415,9 @@ class ApiService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(ApiConfig.registerUrl),
+      final response = await _requestWithRetry(
+        'POST',
+        ApiConfig.registerUrl,
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'name': name,
@@ -290,16 +425,21 @@ class ApiService {
           'phone': phone,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 8));
+      );
+
+      if (response == null) {
+        return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+      }
 
       final data = json.decode(response.body);
 
       if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
         final payload = data['data'] ?? data;
         final token = payload['token'];
+        final refreshToken = payload['refreshToken'] ?? data['refreshToken'];
         final user = payload['user'];
         if (token != null && user != null) {
-          await saveSession(token, user);
+          await saveSession(token, user, refreshToken: refreshToken);
         }
         return {'success': true, 'message': data['message'] ?? 'Account created successfully!', 'user': user};
       } else {
@@ -310,12 +450,67 @@ class ApiService {
     }
   }
 
+  /// Register FCM Device Token with Backend API
+  static Future<Map<String, dynamic>> registerFcmToken(
+    String fcmToken, {
+    String platform = 'android',
+    String? userId,
+    String? email,
+    String role = 'customer',
+    String deviceId = '',
+  }) async {
+    try {
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/notifications/device-token',
+        body: json.encode({
+          'fcmToken': fcmToken,
+          'platform': platform,
+          'userId': userId,
+          'email': email,
+          'role': role,
+          'deviceId': deviceId,
+        }),
+      );
+
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        final data = json.decode(response.body);
+        return {'success': true, 'data': data};
+      }
+    } catch (e) {
+      debugPrint('[ApiService] FCM token registration notice: $e');
+    }
+    return {'success': false};
+  }
+
+  /// Unregister FCM Device Token from Backend API on Logout
+  static Future<Map<String, dynamic>> unregisterFcmToken(String fcmToken) async {
+    try {
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/notifications/device-token',
+        body: json.encode({'fcmToken': fcmToken}),
+      );
+
+      if (response != null && response.statusCode == 200) {
+        return {'success': true};
+      }
+    } catch (e) {
+      debugPrint('[ApiService] FCM token unregistration notice: $e');
+    }
+    return {'success': false};
+  }
+
   /// Save session data to SharedPreferences
-  static Future<void> saveSession(String token, Map<String, dynamic> user) async {
+  static Future<void> saveSession(String token, Map<String, dynamic> user, {String? refreshToken}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('jwt_token', token);
     await prefs.setString('auth_token', token);
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await prefs.setString('refresh_token', refreshToken);
+    }
     await prefs.setString('user_data', json.encode(user));
+    await FcmService.syncTokenWithBackend();
   }
 
   /// Get stored session user
@@ -345,10 +540,12 @@ class ApiService {
 
   /// Clear session on Logout
   static Future<void> clearSession() async {
+    await FcmService.unregisterTokenOnLogout();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
     await prefs.remove('auth_token');
     await prefs.remove('token');
+    await prefs.remove('refresh_token');
     await prefs.remove('user_data');
   }
 
@@ -359,52 +556,45 @@ class ApiService {
   // --- ADMIN REST API METHODS ---
 
   /// Fetch Admin Dashboard Analytics
-  static Future<Map<String, dynamic>> getAdminAnalytics() async {
+  static Future<Map<String, dynamic>?> getAdminAnalytics() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/analytics'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/analytics');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
-        return data['data'] ?? data;
+        return (data['data'] ?? data) as Map<String, dynamic>;
       }
     } catch (e) {
       debugPrint('[ApiService] Admin analytics error: $e');
     }
-    return {};
+    return null;
   }
 
   /// Fetch Admin Appointments
-  static Future<List<dynamic>> getAdminAppointments() async {
+  static Future<List<dynamic>?> getAdminAppointments() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/appointments'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/appointments');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Admin appointments error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Create Admin Appointment
   static Future<bool> createAdminAppointment(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/appointments'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/admin/appointments',
         body: json.encode(data),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Create admin appointment error: $e');
       return false;
@@ -414,13 +604,12 @@ class ApiService {
   /// Update Admin Appointment Status
   static Future<bool> updateAppointmentStatus(String id, String status) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/appointments/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id',
         body: json.encode({'status': status}),
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Update appointment error: $e');
       return false;
@@ -430,12 +619,11 @@ class ApiService {
   /// Delete Appointment
   static Future<bool> deleteAppointment(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/appointments/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id',
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Delete appointment error: $e');
       return false;
@@ -443,34 +631,31 @@ class ApiService {
   }
 
   /// Fetch Admin Services Catalog
-  static Future<List<dynamic>> getAdminServices() async {
+  static Future<List<dynamic>?> getAdminServices() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/services'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/services');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Admin services error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Create New Service
   static Future<bool> createService(Map<String, dynamic> serviceData) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/services'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/admin/services',
         body: json.encode(serviceData),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Create service error: $e');
       return false;
@@ -480,12 +665,11 @@ class ApiService {
   /// Delete Service
   static Future<bool> deleteService(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/services/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/services/$id',
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Delete service error: $e');
       return false;
@@ -493,34 +677,31 @@ class ApiService {
   }
 
   /// Fetch Admin Employees List
-  static Future<List<dynamic>> getAdminEmployees() async {
+  static Future<List<dynamic>?> getAdminEmployees() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/employees'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/employees');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Admin employees error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Create Employee
   static Future<bool> createEmployee(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/employees'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/admin/employees',
         body: json.encode(data),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Create employee error: $e');
       return false;
@@ -530,12 +711,11 @@ class ApiService {
   /// Delete Employee
   static Future<bool> deleteEmployee(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/employees/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/employees/$id',
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Delete employee error: $e');
       return false;
@@ -543,34 +723,31 @@ class ApiService {
   }
 
   /// Fetch Admin Customers List
-  static Future<List<dynamic>> getAdminCustomers() async {
+  static Future<List<dynamic>?> getAdminCustomers() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/customers'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/customers');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Admin customers error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Create Customer
   static Future<bool> createCustomer(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/customers'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/admin/customers',
         body: json.encode(data),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Create customer error: $e');
       return false;
@@ -580,12 +757,11 @@ class ApiService {
   /// Delete Customer
   static Future<bool> deleteCustomer(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/customers/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/customers/$id',
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Delete customer error: $e');
       return false;
@@ -593,18 +769,14 @@ class ApiService {
   }
 
   /// Fetch Admin Transactions Ledger
-  static Future<List<dynamic>> getAdminTransactions() async {
+  static Future<List<dynamic>?> getAdminTransactions() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/transactions'), headers: headers)
-          .timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/transactions');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
@@ -621,15 +793,15 @@ class ApiService {
     payload['type'] = apiType;
 
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/transactions'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/admin/transactions',
         body: json.encode(payload),
-      ).timeout(const Duration(seconds: 4));
+      );
 
-      final isOk = response.statusCode == 200 || response.statusCode == 201;
-      if (isOk) return true;
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        return true;
+      }
     } catch (e) {
       debugPrint('[ApiService] Create transaction notice: $e');
     }
@@ -653,13 +825,12 @@ class ApiService {
   /// Delete Transaction
   static Future<bool> deleteTransaction(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/transactions/$id'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 4));
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/transactions/$id',
+      );
 
-      if (response.statusCode == 200) return true;
+      if (response != null && response.statusCode == 200) return true;
     } catch (e) {
       debugPrint('[ApiService] Delete transaction notice: $e');
     }
@@ -669,34 +840,31 @@ class ApiService {
   }
 
   /// Fetch Admin Enquiries
-  static Future<List<dynamic>> getAdminEnquiries() async {
+  static Future<List<dynamic>?> getAdminEnquiries() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/enquiries'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/enquiries');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Admin enquiries error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Update Enquiry Status
   static Future<bool> updateEnquiryStatus(String id, String status) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/enquiries/$id/status'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PATCH',
+        '${ApiConfig.baseUrl}/api/v1/admin/enquiries/$id/status',
         body: json.encode({'status': status}),
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Update enquiry error: $e');
       return false;
@@ -706,12 +874,11 @@ class ApiService {
   /// Delete Enquiry
   static Future<bool> deleteEnquiry(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.delete(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/enquiries/$id'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/admin/enquiries/$id',
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Delete enquiry error: $e');
       return false;
@@ -721,14 +888,10 @@ class ApiService {
   // --- LEAVE & ATTENDANCE ADMIN API METHODS ---
 
   /// Fetch Admin Leaves List from Backend / MongoDB
-  static Future<List<dynamic>> getAdminLeaves() async {
+  static Future<List<dynamic>?> getAdminLeaves() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves'), headers: headers)
-          .timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/leaves');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
         if (data is Map && data['data'] != null && data['data'] is List) {
@@ -738,18 +901,17 @@ class ApiService {
     } catch (e) {
       debugPrint('[ApiService] Admin leaves fetch error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Approve Leave Request in Backend / MongoDB
   static Future<bool> approveAdminLeave(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/approve'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PATCH',
+        '${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/approve',
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Approve leave error: $e');
       return false;
@@ -759,13 +921,12 @@ class ApiService {
   /// Reject Leave Request in Backend / MongoDB
   static Future<bool> rejectAdminLeave(String id, String rejectionReason) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.patch(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/reject'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PATCH',
+        '${ApiConfig.baseUrl}/api/v1/admin/leaves/$id/reject',
         body: json.encode({'rejectionReason': rejectionReason}),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Reject leave error: $e');
       return false;
@@ -773,14 +934,10 @@ class ApiService {
   }
 
   /// Fetch Admin Attendance Report from Backend / MongoDB
-  static Future<List<dynamic>> getAdminAttendanceReport() async {
+  static Future<List<dynamic>?> getAdminAttendanceReport() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/admin/attendance/report'), headers: headers)
-          .timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/admin/attendance/report');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
         if (data is Map && data['data'] != null && data['data'] is List) {
@@ -790,7 +947,7 @@ class ApiService {
     } catch (e) {
       debugPrint('[ApiService] Admin attendance report fetch error: $e');
     }
-    return [];
+    return null;
   }
 
   // --- PUBLIC METHODS WITH OFFLINE DEMO FALLBACKS ---
@@ -957,15 +1114,12 @@ class ApiService {
   /// Fetch all active services from `/api/v1/services`
   static Future<List<dynamic>> getServices() async {
     try {
-      final response = await http
-          .get(Uri.parse(ApiConfig.servicesUrl))
-          .timeout(const Duration(seconds: 3));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', ApiConfig.servicesUrl);
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
@@ -977,15 +1131,12 @@ class ApiService {
   /// Fetch specialists from `/api/v1/specialists`
   static Future<List<dynamic>> getSpecialists() async {
     try {
-      final response = await http
-          .get(Uri.parse(ApiConfig.specialistsUrl))
-          .timeout(const Duration(seconds: 3));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', ApiConfig.specialistsUrl);
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
@@ -997,15 +1148,12 @@ class ApiService {
   /// Fetch current offers from `/api/v1/offers`
   static Future<List<dynamic>> getOffers() async {
     try {
-      final response = await http
-          .get(Uri.parse(ApiConfig.offersUrl))
-          .timeout(const Duration(seconds: 3));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', ApiConfig.offersUrl);
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
@@ -1027,12 +1175,9 @@ class ApiService {
     String? notes,
   }) async {
     try {
-      final headers = await _getAuthHeaders();
-      headers['Content-Type'] = 'application/json';
-
-      final response = await http.post(
-        Uri.parse(ApiConfig.publicBookUrl),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        ApiConfig.publicBookUrl,
         body: json.encode({
           'customerName': customerName,
           'customerPhone': customerPhone,
@@ -1044,29 +1189,31 @@ class ApiService {
           'appointmentTime': appointmentTime,
           'notes': notes ?? '',
         }),
-      ).timeout(const Duration(seconds: 8));
+      );
 
-      final data = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true, 'data': data['data'] ?? data, 'message': data['message'] ?? 'Appointment booked successfully!'};
-      } else {
-        return {'success': false, 'message': data['message'] ?? 'Booking failed'};
+      if (response != null) {
+        final data = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': data['data'] ?? data, 'message': data['message'] ?? 'Appointment booked successfully!'};
+        } else {
+          return {'success': false, 'message': data['message'] ?? 'Booking failed'};
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Book appointment error: $e');
-      return {
-        'success': true,
-        'message': 'Appointment confirmed in Demo Mode!',
-        'data': {
-          'bookingId': 'SPY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-          'customerName': customerName,
-          'service': service,
-          'appointmentDate': appointmentDate,
-          'appointmentTime': appointmentTime,
-          'status': 'Confirmed',
-        }
-      };
     }
+    return {
+      'success': true,
+      'message': 'Appointment confirmed in Demo Mode!',
+      'data': {
+        'bookingId': 'SPY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
+        'customerName': customerName,
+        'service': service,
+        'appointmentDate': appointmentDate,
+        'appointmentTime': appointmentTime,
+        'status': 'Confirmed',
+      }
+    };
   }
 
   /// Fetch Booked / Unavailable Time Slots for a given Date & Specialist
@@ -1076,9 +1223,9 @@ class ApiService {
           ? '&specialist=${Uri.encodeComponent(specialist)}'
           : '';
       final url = '${ApiConfig.baseUrl}/api/v1/appointments/booked-slots?date=$date$specQuery';
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 4));
+      final response = await _requestWithRetry('GET', url);
 
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['bookedSlots'] is List) {
           return List<String>.from(data['bookedSlots'].map((s) => s.toString()));
@@ -1093,36 +1240,31 @@ class ApiService {
   // --- EMPLOYEE / STAFF REST API METHODS ---
 
   /// Fetch Assigned Appointments for Staff
-  static Future<List<dynamic>> getEmployeeAppointments() async {
+  static Future<List<dynamic>?> getEmployeeAppointments() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/appointments'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/appointments');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
-      } else if (response.statusCode == 401) {
-        await _handle401();
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Employee appointments error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Update Appointment Status (In Progress, Completed, Cancelled) & Notes
   static Future<bool> updateEmployeeAppointmentStatus(String id, Map<String, dynamic> body) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/status'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/status',
         body: json.encode(body),
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Update employee appointment error: $e');
       return false;
@@ -1132,184 +1274,192 @@ class ApiService {
   /// Seat Direct Walk-In Client by Staff
   static Future<Map<String, dynamic>> createEmployeeWalkIn(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/walk-in'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/walk-in',
         body: json.encode(data),
       );
 
-      final result = json.decode(response.body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return {'success': true, 'data': result['data'] ?? result};
+      if (response != null) {
+        final result = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': result['data'] ?? result};
+        }
+        return {'success': false, 'message': result['message'] ?? 'Failed to seat walk-in client'};
       }
-      return {'success': false, 'message': result['message'] ?? 'Failed to seat walk-in client'};
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 
   /// Shift Clock In
   static Future<Map<String, dynamic>> clockInAttendance() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/clock-in'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 4));
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/clock-in',
+      );
 
-      final data = json.decode(response.body);
-      final isSuccess = response.statusCode == 200 || response.statusCode == 201;
-      return {
-        'success': isSuccess,
-        'data': data['data'],
-        'message': data['message'] ?? (isSuccess ? 'Successfully clocked in!' : 'Clock-in failed')
-      };
-    } catch (e) {
-      final todayStr = DateTime.now().toString().split(' ')[0];
-      final now = DateTime.now();
-      final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
-      final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-      final existingIndex = _fallbackAttendanceLogs.indexWhere((l) => l['date'] == todayStr);
-      if (existingIndex >= 0) {
-        _fallbackAttendanceLogs[existingIndex]['attendanceState'] = 'CLOCKED_IN';
-        _fallbackAttendanceLogs[existingIndex]['clockIn'] = timeStr;
-      } else {
-        _fallbackAttendanceLogs.insert(0, {
-          '_id': 'att_${DateTime.now().millisecondsSinceEpoch}',
-          'date': todayStr,
-          'clockIn': timeStr,
-          'clockOut': null,
-          'attendanceState': 'CLOCKED_IN',
-          'status': 'Present',
-          'totalBreakDuration': 0,
-          'effectiveWorkingDuration': 0,
-        });
+      if (response != null) {
+        final data = json.decode(response.body);
+        final isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        return {
+          'success': isSuccess,
+          'data': data['data'],
+          'message': data['message'] ?? (isSuccess ? 'Successfully clocked in!' : 'Clock-in failed')
+        };
       }
-      return {
-        'success': true,
-        'message': 'Successfully clocked in at $timeStr',
-        'data': _fallbackAttendanceLogs.first
-      };
+    } catch (e) {
+      debugPrint('[ApiService] Clock-in error: $e');
     }
+
+    final todayStr = DateTime.now().toString().split(' ')[0];
+    final now = DateTime.now();
+    final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
+    final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+    final existingIndex = _fallbackAttendanceLogs.indexWhere((l) => l['date'] == todayStr);
+    if (existingIndex >= 0) {
+      _fallbackAttendanceLogs[existingIndex]['attendanceState'] = 'CLOCKED_IN';
+      _fallbackAttendanceLogs[existingIndex]['clockIn'] = timeStr;
+    } else {
+      _fallbackAttendanceLogs.insert(0, {
+        '_id': 'att_${DateTime.now().millisecondsSinceEpoch}',
+        'date': todayStr,
+        'clockIn': timeStr,
+        'clockOut': null,
+        'attendanceState': 'CLOCKED_IN',
+        'status': 'Present',
+        'totalBreakDuration': 0,
+        'effectiveWorkingDuration': 0,
+      });
+    }
+    return {
+      'success': true,
+      'message': 'Successfully clocked in at $timeStr',
+      'data': _fallbackAttendanceLogs.first
+    };
   }
 
   /// Start Duty Break
   static Future<Map<String, dynamic>> startBreakAttendance() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/start-break'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 4));
-
-      final data = json.decode(response.body);
-      final isSuccess = response.statusCode == 200 || response.statusCode == 201;
-      return {
-        'success': isSuccess,
-        'data': data['data'],
-        'message': data['message'] ?? (isSuccess ? 'Break started!' : 'Start break failed')
-      };
-    } catch (e) {
-      final todayStr = DateTime.now().toString().split(' ')[0];
-      final existing = _fallbackAttendanceLogs.firstWhere(
-        (l) => l['date'] == todayStr,
-        orElse: () => <String, dynamic>{},
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/start-break',
       );
-      if (existing.isNotEmpty) {
-        existing['attendanceState'] = 'ON_BREAK';
+
+      if (response != null) {
+        final data = json.decode(response.body);
+        final isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        return {
+          'success': isSuccess,
+          'data': data['data'],
+          'message': data['message'] ?? (isSuccess ? 'Break started!' : 'Start break failed')
+        };
       }
-      return {
-        'success': true,
-        'message': 'Break started',
-      };
+    } catch (e) {
+      debugPrint('[ApiService] Start break error: $e');
     }
+
+    final todayStr = DateTime.now().toString().split(' ')[0];
+    final existing = _fallbackAttendanceLogs.firstWhere(
+      (l) => l['date'] == todayStr,
+      orElse: () => <String, dynamic>{},
+    );
+    if (existing.isNotEmpty) {
+      existing['attendanceState'] = 'ON_BREAK';
+    }
+    return {
+      'success': true,
+      'message': 'Break started',
+    };
   }
 
   /// End Duty Break
   static Future<Map<String, dynamic>> endBreakAttendance() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/end-break'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 4));
-
-      final data = json.decode(response.body);
-      final isSuccess = response.statusCode == 200 || response.statusCode == 201;
-      return {
-        'success': isSuccess,
-        'data': data['data'],
-        'message': data['message'] ?? (isSuccess ? 'Break ended!' : 'End break failed')
-      };
-    } catch (e) {
-      final todayStr = DateTime.now().toString().split(' ')[0];
-      final existing = _fallbackAttendanceLogs.firstWhere(
-        (l) => l['date'] == todayStr,
-        orElse: () => <String, dynamic>{},
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/end-break',
       );
-      if (existing.isNotEmpty) {
-        existing['attendanceState'] = 'CLOCKED_IN';
+
+      if (response != null) {
+        final data = json.decode(response.body);
+        final isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        return {
+          'success': isSuccess,
+          'data': data['data'],
+          'message': data['message'] ?? (isSuccess ? 'Break ended!' : 'End break failed')
+        };
       }
-      return {
-        'success': true,
-        'message': 'Break ended',
-      };
+    } catch (e) {
+      debugPrint('[ApiService] End break error: $e');
     }
+
+    final todayStr = DateTime.now().toString().split(' ')[0];
+    final existing = _fallbackAttendanceLogs.firstWhere(
+      (l) => l['date'] == todayStr,
+      orElse: () => <String, dynamic>{},
+    );
+    if (existing.isNotEmpty) {
+      existing['attendanceState'] = 'CLOCKED_IN';
+    }
+    return {
+      'success': true,
+      'message': 'Break ended',
+    };
   }
 
   /// Shift Clock Out
   static Future<Map<String, dynamic>> clockOutAttendance() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/clock-out'),
-        headers: headers,
-      ).timeout(const Duration(seconds: 4));
-
-      final data = json.decode(response.body);
-      final isSuccess = response.statusCode == 200 || response.statusCode == 201;
-      return {
-        'success': isSuccess,
-        'data': data['data'],
-        'message': data['message'] ?? (isSuccess ? 'Successfully clocked out!' : 'Clock-out failed')
-      };
-    } catch (e) {
-      final todayStr = DateTime.now().toString().split(' ')[0];
-      final now = DateTime.now();
-      final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
-      final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-      final existing = _fallbackAttendanceLogs.firstWhere(
-        (l) => l['date'] == todayStr,
-        orElse: () => <String, dynamic>{},
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/clock-out',
       );
-      if (existing.isNotEmpty) {
-        existing['attendanceState'] = 'CLOCKED_OUT';
-        existing['clockOut'] = timeStr;
+
+      if (response != null) {
+        final data = json.decode(response.body);
+        final isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        return {
+          'success': isSuccess,
+          'data': data['data'],
+          'message': data['message'] ?? (isSuccess ? 'Successfully clocked out!' : 'Clock-out failed')
+        };
       }
-      return {
-        'success': true,
-        'message': 'Successfully clocked out at $timeStr',
-      };
+    } catch (e) {
+      debugPrint('[ApiService] Clock out error: $e');
     }
+
+    final todayStr = DateTime.now().toString().split(' ')[0];
+    final now = DateTime.now();
+    final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
+    final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+    final existing = _fallbackAttendanceLogs.firstWhere(
+      (l) => l['date'] == todayStr,
+      orElse: () => <String, dynamic>{},
+    );
+    if (existing.isNotEmpty) {
+      existing['attendanceState'] = 'CLOCKED_OUT';
+      existing['clockOut'] = timeStr;
+    }
+    return {
+      'success': true,
+      'message': 'Successfully clocked out at $timeStr',
+    };
   }
 
   /// Fetch Staff Attendance Log
-  static Future<List<dynamic>> getEmployeeAttendance() async {
+  static Future<List<dynamic>?> getEmployeeAttendance() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/attendance'), headers: headers)
-          .timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/attendance');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
-      } else if (response.statusCode == 401) {
-        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Attendance fetch error: $e');
@@ -1320,54 +1470,51 @@ class ApiService {
   /// Submit Leave Request
   static Future<Map<String, dynamic>> submitLeaveRequest(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/leaves'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/leaves',
         body: json.encode(data),
-      ).timeout(const Duration(seconds: 4));
+      );
 
-      final result = json.decode(response.body);
-      final isSuccess = response.statusCode == 200 || response.statusCode == 201;
-      return {
-        'success': isSuccess,
-        'data': result['data'],
-        'message': result['message'] ?? (isSuccess ? 'Leave request submitted!' : 'Failed to submit leave request')
-      };
+      if (response != null) {
+        final result = json.decode(response.body);
+        final isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        return {
+          'success': isSuccess,
+          'data': result['data'],
+          'message': result['message'] ?? (isSuccess ? 'Leave request submitted!' : 'Failed to submit leave request')
+        };
+      }
     } catch (e) {
-      final newLeave = {
-        '_id': 'leave_${DateTime.now().millisecondsSinceEpoch}',
-        'startDate': data['startDate'],
-        'endDate': data['endDate'],
-        'reason': data['reason'],
-        'status': 'Pending',
-        'createdAt': DateTime.now().toIso8601String(),
-      };
-      _fallbackLeaveLogs.insert(0, newLeave);
-      return {
-        'success': true,
-        'message': 'Leave application submitted successfully',
-        'data': newLeave,
-      };
+      debugPrint('[ApiService] Submit leave error: $e');
     }
+
+    final newLeave = {
+      '_id': 'leave_${DateTime.now().millisecondsSinceEpoch}',
+      'startDate': data['startDate'],
+      'endDate': data['endDate'],
+      'reason': data['reason'],
+      'status': 'Pending',
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+    _fallbackLeaveLogs.insert(0, newLeave);
+    return {
+      'success': true,
+      'message': 'Leave application submitted successfully',
+      'data': newLeave,
+    };
   }
 
   /// Fetch Staff Leaves List
-  static Future<List<dynamic>> getEmployeeLeaves() async {
+  static Future<List<dynamic>?> getEmployeeLeaves() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/leaves/my'), headers: headers)
-          .timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/leaves/my');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List && data.isNotEmpty) return data;
         if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
-          return data['data'];
+          return List<dynamic>.from(data['data']);
         }
-      } else if (response.statusCode == 401) {
-        await _handle401();
       }
     } catch (e) {
       debugPrint('[ApiService] Leaves fetch error: $e');
@@ -1376,36 +1523,31 @@ class ApiService {
   }
 
   /// Fetch Staff Payrolls & Commission Slips
-  static Future<List<dynamic>> getEmployeePayrolls() async {
+  static Future<List<dynamic>?> getEmployeePayrolls() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/payrolls'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/payrolls');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
-      } else if (response.statusCode == 401) {
-        await _handle401();
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Payrolls fetch error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Update Bank & UPI Account Details
   static Future<bool> updateEmployeeBankDetails(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/bank-details'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/employee/bank-details',
         body: json.encode(data),
       );
-      return response.statusCode == 200;
+      return response != null && response.statusCode == 200;
     } catch (e) {
       debugPrint('[ApiService] Update bank details error: $e');
       return false;
@@ -1413,50 +1555,46 @@ class ApiService {
   }
 
   /// Fetch Staff Client Directory
-  static Future<List<dynamic>> getEmployeeCustomers() async {
+  static Future<List<dynamic>?> getEmployeeCustomers() async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http
-          .get(Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/customers'), headers: headers)
-          .timeout(const Duration(seconds: 6));
-
-      if (response.statusCode == 200) {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/customers');
+      if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is List) return data;
-        if (data is Map && data['data'] != null) return data['data'];
-      } else if (response.statusCode == 401) {
-        await _handle401();
+        if (data is Map && data['data'] != null && data['data'] is List) {
+          return List<dynamic>.from(data['data']);
+        }
       }
     } catch (e) {
       debugPrint('[ApiService] Staff customers error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Add New Customer Profile by Staff
   static Future<Map<String, dynamic>> createEmployeeCustomer(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/employee/customers'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/employee/customers',
         body: json.encode(data),
       );
-      final result = json.decode(response.body);
-      return {'success': response.statusCode == 200 || response.statusCode == 201, 'data': result['data'], 'message': result['message'] ?? ''};
+      if (response != null) {
+        final result = json.decode(response.body);
+        return {'success': response.statusCode == 200 || response.statusCode == 201, 'data': result['data'], 'message': result['message'] ?? ''};
+      }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 
   // --- CUSTOMER / CLIENT REST API METHODS ---
 
   /// Fetch Client's Appointments History
-  static Future<List<dynamic>> getCustomerAppointments({Map<String, dynamic>? userParam}) async {
+  static Future<List<dynamic>?> getCustomerAppointments({Map<String, dynamic>? userParam}) async {
     try {
       final user = userParam ?? await getStoredUser();
-      final headers = await _getAuthHeaders();
-
       final queryParams = <String, String>{};
       if (user != null) {
         if (user['name'] != null && user['name'].toString().trim().isNotEmpty) {
@@ -1476,32 +1614,30 @@ class ApiService {
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/user/appointments')
           .replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
-      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 6));
+      final response = await _requestWithRetry('GET', uri.toString());
 
-      if (response.statusCode == 200) {
+      if (response != null && response.statusCode == 200) {
         final bodyData = json.decode(response.body);
         if (bodyData is List) return bodyData;
-        if (bodyData is Map && bodyData['data'] != null) {
-          final data = bodyData['data'];
-          if (data is List) return data;
+        if (bodyData is Map && bodyData['data'] != null && bodyData['data'] is List) {
+          return List<dynamic>.from(bodyData['data']);
         }
       }
     } catch (e) {
       debugPrint('[ApiService] Customer appointments error: $e');
     }
-    return [];
+    return null;
   }
 
   /// Cancel Customer Appointment
   static Future<bool> cancelCustomerAppointment(String id) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/appointments/$id/cancel'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/user/appointments/$id/cancel',
         body: json.encode({'reason': 'Cancelled by customer via Mobile App'}),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Cancel appointment error: $e');
       return false;
@@ -1511,17 +1647,16 @@ class ApiService {
   /// Reschedule Customer Appointment
   static Future<bool> rescheduleCustomerAppointment(String id, String date, String time) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/appointments/$id/reschedule'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/user/appointments/$id/reschedule',
         body: json.encode({
           'newDate': date,
           'newTime': time,
           'reason': 'Customer requested date/time change via Mobile App',
         }),
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      return response != null && (response.statusCode == 200 || response.statusCode == 201);
     } catch (e) {
       debugPrint('[ApiService] Reschedule appointment error: $e');
       return false;
@@ -1531,56 +1666,61 @@ class ApiService {
   /// Update Customer Profile (Name, Phone, Email, Gender, Address)
   static Future<Map<String, dynamic>> updateCustomerProfile(Map<String, dynamic> data) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/profile/details'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/user/profile/details',
         body: json.encode(data),
       );
-      final result = json.decode(response.body);
-      if (response.statusCode == 200 && result['user'] != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_data', json.encode(result['user']));
+      if (response != null) {
+        final result = json.decode(response.body);
+        if (response.statusCode == 200 && result['user'] != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_data', json.encode(result['user']));
+        }
+        return {'success': response.statusCode == 200, 'message': result['message'] ?? 'Profile updated', 'user': result['user']};
       }
-      return {'success': response.statusCode == 200, 'message': result['message'] ?? 'Profile updated', 'user': result['user']};
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 
   /// Change Customer Password
   static Future<Map<String, dynamic>> changeCustomerPassword(String currentPassword, String newPassword) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/user/profile/change-password'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/user/profile/change-password',
         body: json.encode({
           'currentPassword': currentPassword,
           'newPassword': newPassword,
         }),
       );
-      final result = json.decode(response.body);
-      return {'success': response.statusCode == 200, 'message': result['message'] ?? 'Password changed successfully'};
+      if (response != null) {
+        final result = json.decode(response.body);
+        return {'success': response.statusCode == 200, 'message': result['message'] ?? 'Password changed successfully'};
+      }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 
   /// Upgrade VIP Membership Tier
   static Future<Map<String, dynamic>> upgradeCustomerMembership(String tier) async {
     try {
-      final headers = await _getAuthHeaders();
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/v1/membership/purchase'),
-        headers: headers,
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/membership/purchase',
         body: json.encode({'tier': tier}),
       );
-      final result = json.decode(response.body);
-      return {'success': response.statusCode == 200 || response.statusCode == 201, 'message': result['message'] ?? 'Membership upgraded!'};
+      if (response != null) {
+        final result = json.decode(response.body);
+        return {'success': response.statusCode == 200 || response.statusCode == 201, 'message': result['message'] ?? 'Membership upgraded!'};
+      }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 }
-

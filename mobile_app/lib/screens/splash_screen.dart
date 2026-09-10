@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../services/fcm_service.dart';
 import '../services/realtime_service.dart';
 import '../utils/luxury_page_route.dart';
 import 'admin_dashboard_screen.dart';
@@ -56,6 +57,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     setState(() => _statusMessage = 'Connecting to Server...');
     await ApiService.checkHealth();
     await RealtimeService().init();
+    await FcmService.syncTokenWithBackend();
 
     // Ensure splash displays for ~2.3 seconds for smooth luxury launch experience
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;

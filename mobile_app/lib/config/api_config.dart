@@ -4,17 +4,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiConfig {
   static const int port = 5000;
   
-  // Workstation LAN IP discovered on local network
+  // Deployed Production HTTPS Backend URL
+  static const String productionUrl = 'https://hairsalon.speshway.site';
+
+  // Workstation LAN IP discovered on local network for development
   static const String lanIp = '192.168.1.6';
   
   static String? _activeBaseUrl;
 
-  /// Default fallback URL based on platform
+  /// Default fallback URL using production HTTPS endpoint
   static String get defaultBaseUrl {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:$port';
-    }
-    return 'http://$lanIp:$port';
+    return productionUrl;
   }
 
   /// Normalizes user-provided or env URL (strips trailing slashes & redundant /api/v1 suffixes)
@@ -106,7 +106,10 @@ class ApiConfig {
       list.add(_activeBaseUrl!.trim());
     }
 
-    // Workstation LAN IP first so physical devices connect immediately
+    // Deployed Production HTTPS Backend URL first
+    list.add(productionUrl);
+
+    // Development LAN IP fallback
     list.add('http://$lanIp:$port');
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {

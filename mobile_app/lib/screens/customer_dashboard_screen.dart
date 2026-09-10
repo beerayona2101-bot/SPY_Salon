@@ -11,7 +11,7 @@ class CustomerDashboardScreen extends StatefulWidget {
   State<CustomerDashboardScreen> createState() => _CustomerDashboardScreenState();
 }
 
-class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with SingleTickerProviderStateMixin {
+class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
@@ -22,6 +22,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -43,9 +44,18 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[CustomerDashboardScreen] App resumed from background/idle. Refreshing customer data...');
+      _loadCustomerData(quiet: true);
+    }
   }
 
   Future<void> _loadCustomerData({bool quiet = false}) async {
@@ -80,7 +90,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
     if (mounted) {
       setState(() {
         _user = storedUser;
-        _appointments = appointmentsList;
+        if (appointmentsList != null) _appointments = appointmentsList;
         _isLoading = false;
       });
     }

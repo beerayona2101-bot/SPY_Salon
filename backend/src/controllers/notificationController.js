@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const DeviceToken = require('../models/DeviceToken');
 const ApiResponse = require('../utils/apiResponse');
 const ApiError = require('../utils/apiError');
 
 /**
- * Universal Notification Dispatcher (Saves to Mongo + Emits Targeted Socket.io Event)
+ * Universal Notification Dispatcher (Saves to Mongo + Emits Targeted Socket.io Event + Triggers FCM Push)
  */
 const dispatchNotification = async (reqApp, notifData) => {
   try {
@@ -67,6 +68,42 @@ const dispatchNotification = async (reqApp, notifData) => {
       io.emit('notifications:updated', { role: payload.role, email: payload.email, userId: payload.userId });
     }
 
+    // Asynchronously dispatch FCM Mobile Push Notification (Non-blocking)
+    setImmediate(async () => {
+      try {
+        const firebaseNotificationService = require('../services/firebaseNotificationService');
+        const pushData = {
+          notificationId: notifObj.notificationId || '',
+          type: notifObj.type || 'system',
+          bookingId: notifObj.bookingId || '',
+          appointmentId: notifObj.appointmentId || '',
+          leaveRequestId: notifObj.leaveRequestId || '',
+          reviewId: notifObj.reviewId || '',
+          enquiryId: notifObj.enquiryId || '',
+          link: notifObj.link || ''
+        };
+
+        if (payload.userId || payload.email) {
+          await firebaseNotificationService.sendPushNotificationToUser({
+            userId: payload.userId,
+            email: payload.email,
+            title: payload.title,
+            body: payload.message,
+            data: pushData
+          });
+        } else if (payload.role && payload.role !== 'all' && payload.role !== 'public') {
+          await firebaseNotificationService.sendPushNotificationToRole({
+            role: payload.role,
+            title: payload.title,
+            body: payload.message,
+            data: pushData
+          });
+        }
+      } catch (fcmErr) {
+        console.error('[NotificationController] Non-blocking FCM dispatch warning:', fcmErr.message);
+      }
+    });
+
     return notifObj;
   } catch (error) {
     console.error('[NotificationController] Error dispatching notification:', error);
@@ -75,6 +112,53 @@ const dispatchNotification = async (reqApp, notifData) => {
 };
 
 exports.dispatchNotification = dispatchNotification;
+
+// POST /api/v1/notifications/device-token
+exports.registerDeviceToken = async (req, res, next) => {
+  try {
+    const { fcmToken, platform = 'android', deviceId = '', role = 'customer' } = req.body;
+    if (!fcmToken) {
+      throw ApiError.badRequest('fcmToken is required');
+    }
+
+    const userId = req.user ? String(req.user._id || req.user.id) : (req.body.userId || null);
+    const email = req.user ? req.user.email : (req.body.email || null);
+    const userRole = req.user ? req.user.role : role;
+
+    const updatedToken = await DeviceToken.findOneAndUpdate(
+      { fcmToken },
+      {
+        userId,
+        email: email ? String(email).toLowerCase().trim() : null,
+        role: userRole,
+        platform,
+        deviceId,
+        isActive: true,
+        lastUpdated: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    return ApiResponse.success(res, updatedToken, 'FCM Device token registered successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/v1/notifications/device-token
+exports.unregisterDeviceToken = async (req, res, next) => {
+  try {
+    const { fcmToken } = req.body;
+    if (!fcmToken) {
+      throw ApiError.badRequest('fcmToken is required');
+    }
+
+    await DeviceToken.updateMany({ fcmToken }, { isActive: false });
+    return ApiResponse.success(res, null, 'FCM Device token unregistered successfully');
+  } catch (error) {
+    next(error);
+  }
+};
 
 // GET /api/v1/notifications
 exports.getNotifications = async (req, res, next) => {

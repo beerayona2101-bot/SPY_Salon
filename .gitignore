@@ -28,3 +28,9 @@ backend/.mongodb_data/
 
 yarn-error.log*
 *.apk
+
+# Firebase & Secret Credentials
+google-services.json
+*service-account*.json
+firebase-*.json
+

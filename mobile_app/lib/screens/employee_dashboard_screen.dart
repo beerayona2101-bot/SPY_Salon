@@ -13,7 +13,7 @@ class EmployeeDashboardScreen extends StatefulWidget {
   State<EmployeeDashboardScreen> createState() => _EmployeeDashboardScreenState();
 }
 
-class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with SingleTickerProviderStateMixin {
+class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
 
@@ -30,6 +30,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
@@ -52,9 +53,18 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      debugPrint('[EmployeeDashboardScreen] App resumed from background/idle. Refreshing employee data...');
+      _loadStaffData(quiet: true);
+    }
   }
 
   Future<void> _loadStaffData({bool quiet = false}) async {
@@ -142,7 +152,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
       return;
     }
 
-    final attList = results[1];
+    final List<dynamic> attList = (results[1] != null) ? List<dynamic>.from(results[1] as List) : _attendance;
     String currentShift = 'NOT_CLOCKED_IN';
     if (attList.isNotEmpty) {
       final todayRec = attList.first;
@@ -157,11 +167,11 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
 
     setState(() {
       _user = currentUserCheck;
-      _appointments = results[0];
-      _attendance = attList;
-      _leaves = results[2];
-      _payrolls = results[3];
-      _customers = results[4];
+      if (results[0] != null) _appointments = results[0] as List<dynamic>;
+      if (results[1] != null) _attendance = attList;
+      if (results[2] != null) _leaves = results[2] as List<dynamic>;
+      if (results[3] != null) _payrolls = results[3] as List<dynamic>;
+      if (results[4] != null) _customers = results[4] as List<dynamic>;
       _shiftStatus = currentShift;
       _isLoading = false;
     });

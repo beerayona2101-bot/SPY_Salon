@@ -10,6 +10,8 @@
   --font-inter: var(--font-poppins), 'Poppins', sans-serif;
   --font-cinzel: var(--font-poppins), 'Poppins', sans-serif;
   --font-playfair: var(--font-poppins), 'Poppins', sans-serif;
+  --spy-btn-base-bg: linear-gradient(135deg, #E5B287 0%, #E0A96D 50%, #C8868F 100%);
+  --spy-btn-hover-shade: linear-gradient(135deg, #AA6B72 0%, #8C4757 50%, #4D1526 100%);
   color-scheme: dark;
 }
 
@@ -214,7 +216,58 @@ img, video {
 }
 
 .rosegold-gradient-bg {
-  background: linear-gradient(135deg, #E5B287 0%, #E0A96D 50%, #C8868F 100%);
+  background: var(--spy-btn-base-bg, linear-gradient(135deg, #E5B287 0%, #E0A96D 50%, #C8868F 100%));
+}
+
+/* ==========================================================================
+   SPY SALON MASTER BUTTON LEFT-TO-RIGHT HOVER OVERLAY FILL ANIMATION
+   ========================================================================== */
+
+.spy-btn-anim,
+.rosegold-gradient-bg,
+.hero-cta-btn,
+button.rosegold-gradient-bg,
+a.rosegold-gradient-bg {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.spy-btn-anim::before,
+.rosegold-gradient-bg::before,
+.hero-cta-btn::before,
+button.rosegold-gradient-bg::before,
+a.rosegold-gradient-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0%;
+  height: 100%;
+  background: var(--spy-btn-hover-shade, linear-gradient(135deg, #AA6B72 0%, #8C4757 50%, #4D1526 100%));
+  transition: width 0.3s ease;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.spy-btn-anim:hover::before,
+.rosegold-gradient-bg:hover::before,
+.hero-cta-btn:hover::before,
+button.rosegold-gradient-bg:hover::before,
+a.rosegold-gradient-bg:hover::before {
+  width: 100%;
+}
+
+/* Ensure button text and icons stay above expanding animation layer */
+.spy-btn-anim > *,
+.rosegold-gradient-bg > *,
+.hero-cta-btn > *,
+button.rosegold-gradient-bg > *,
+a.rosegold-gradient-bg > * {
+  position: relative;
+  z-index: 2;
 }
 
 .gold-gradient-text {
@@ -431,6 +484,8 @@ html, body, * {
   --white: #FFFFFF;
   --text-dark: #1E1B18; /* Rich Charcoal-Black for crisp readability */
   --text-muted: #4A443E; /* Warm Muted Charcoal for descriptions */
+  --spy-btn-base-bg: linear-gradient(135deg, #390614 0%, #4D1526 50%, #B8860B 100%);
+  --spy-btn-hover-shade: linear-gradient(135deg, #1C070E 0%, #2B0C15 50%, #8C6228 100%);
 
   /* Standard Tailwind colors mapped to custom palette */
   --color-dark-950: #FFFFFF; /* Pure White Card background */

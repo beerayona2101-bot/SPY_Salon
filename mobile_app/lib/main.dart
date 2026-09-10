@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'services/fcm_service.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  FcmService.setNavigatorKey(appNavigatorKey);
+  await FcmService.initialize();
   runApp(const SpySalonApp());
 }
 
@@ -11,6 +17,7 @@ class SpySalonApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       title: 'Spy_Salon',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
