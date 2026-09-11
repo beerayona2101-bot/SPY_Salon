@@ -162,7 +162,7 @@ class RealtimeService with WidgetsBindingObserver {
     }
   }
 
-  /// Manually join authorized Socket.IO room (e.g. room:customer, room:admin)
+  /// Manually join authorized Socket.IO room (e.g. room:customer, room:employee)
   void joinRoom(String roomName) {
     if (_socket != null && _isConnected) {
       _socket!.emit('join_room', roomName);

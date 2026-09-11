@@ -140,7 +140,7 @@ function ResetPasswordPageInner() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer mt-2"
+              className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer mt-2"
             >
               <span>{isSubmitting ? 'Updating Password...' : 'Save New Password & Sign In'}</span>
               <KeyRound className="w-4 h-4" />

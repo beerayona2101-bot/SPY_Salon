@@ -48,13 +48,13 @@ export const AnimatedButton: React.FC<AnimatedButtonProps> = ({
       )}
     >
       {/* Solid Crisp Text Layer (Zero Ghosting/Double-Text) */}
-      <span className="relative z-10 flex items-center justify-center w-full h-full">
+      <span className="button-content relative z-10 flex items-center justify-center w-full h-full text-center pointer-events-none">
         {children}
       </span>
 
       {/* Border shine effect uses the --shine variable */}
       <motion.span
-        className="block absolute inset-0 rounded-[inherit] p-px pointer-events-none z-20"
+        className="block absolute inset-0 rounded-[inherit] p-px pointer-events-none z-0"
         style={{
           background:
             "linear-gradient(-75deg, transparent 30%, var(--shine) 50%, transparent 70%)",

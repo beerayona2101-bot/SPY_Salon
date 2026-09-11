@@ -382,12 +382,22 @@ export default function Navbar() {
 
               {/* Desktop Nav Links */}
               <div className={`hidden md:flex items-center space-x-1 p-1.5 rounded-full border backdrop-blur-xl shadow-inner ${theme === 'light' ? 'bg-white/90 border-amber-900/20' : 'bg-dark-800/80 border-rosegold-500/20'}`}>
-                <Link href="/" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Home</Link>
-                <Link href="/services" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/services' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Services</Link>
-                <Link href="/pricing" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${isPricingOrOffersActive ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Pricing</Link>
-                <Link href="/contact" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/contact' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>Contact</Link>
+                <Link href="/" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                  <span className="relative z-10 pointer-events-none">Home</span>
+                </Link>
+                <Link href="/services" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/services' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                  <span className="relative z-10 pointer-events-none">Services</span>
+                </Link>
+                <Link href="/pricing" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${isPricingOrOffersActive ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                  <span className="relative z-10 pointer-events-none">Pricing</span>
+                </Link>
+                <Link href="/contact" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/contact' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                  <span className="relative z-10 pointer-events-none">Contact</span>
+                </Link>
                 {isCustomerUser && (
-                  <Link href="/history" className={`px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 ${pathname === '/history' ? 'rosegold-gradient-bg text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>History</Link>
+                  <Link href="/history" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/history' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                    <span className="relative z-10 pointer-events-none">History</span>
+                  </Link>
                 )}
               </div>
 
@@ -618,46 +628,46 @@ export default function Navbar() {
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold relative overflow-hidden ${pathname === '/' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
               >
-                Home
+                <span className="relative z-10 pointer-events-none">Home</span>
               </Link>
               <Link
                 href="/services"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/services' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold relative overflow-hidden ${pathname === '/services' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
               >
-                Services & Treatments
+                <span className="relative z-10 pointer-events-none">Services & Treatments</span>
               </Link>
               <Link
                 href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${isPricingOrOffersActive ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold relative overflow-hidden ${isPricingOrOffersActive ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
               >
-                Pricing & Offers
+                <span className="relative z-10 pointer-events-none">Pricing & Offers</span>
               </Link>
               <Link
                 href="/contact"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/contact' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                className={`block px-4 py-2.5 rounded-xl text-xs font-semibold relative overflow-hidden ${pathname === '/contact' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
               >
-                Contact Us
+                <span className="relative z-10 pointer-events-none">Contact Us</span>
               </Link>
               {isCustomerUser && (
                 <Link
                   href="/history"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-4 py-2.5 rounded-xl text-xs font-semibold ${pathname === '/history' ? 'rosegold-gradient-bg text-dark-900 font-bold' : 'text-gray-300 hover:bg-white/5'}`}
+                  className={`block px-4 py-2.5 rounded-xl text-xs font-semibold relative overflow-hidden ${pathname === '/history' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:bg-white/10 hover:text-white'}`}
                 >
-                  History
+                  <span className="relative z-10 pointer-events-none">History</span>
                 </Link>
               )}
               <Link
                 href="/book"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block w-full py-3 text-center rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold mt-2"
+                className="block w-full py-3 text-center rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold mt-2 relative overflow-hidden"
               >
-                Book Online Appointment
+                <span className="relative z-10 pointer-events-none">Book Online Appointment</span>
               </Link>
             </div>
           )}

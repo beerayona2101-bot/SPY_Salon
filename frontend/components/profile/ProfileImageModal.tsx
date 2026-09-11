@@ -318,7 +318,7 @@ export default function ProfileImageModal({
               <button
                 onClick={handleSave}
                 disabled={!previewUrl || isSaving}
-                className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
+                className="px-6 py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
               >
                 <Check className="w-4 h-4" />
                 <span>{isSaving ? 'Saving...' : 'Save Profile Photo'}</span>

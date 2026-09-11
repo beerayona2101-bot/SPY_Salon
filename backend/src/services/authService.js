@@ -109,10 +109,10 @@ class AuthService {
     });
   }
 
-  // Login Authentication Handler (Email or Mobile Phone Number)
+  // Login Authentication Handler (Email Address Only or Employee Code mapped to Email)
   async login(identifier, password, role, reqMeta = {}) {
     if (!identifier || !password) {
-      throw ApiError.badRequest('Please provide your email address, employee code, or mobile number and password');
+      throw ApiError.badRequest('Please provide your email address and password');
     }
 
     const input = String(identifier).trim().toLowerCase();
@@ -126,19 +126,17 @@ class AuthService {
       }
     }
     
-    // Find User in MongoDB (Include password for checking)
+    // Find User in MongoDB strictly by Email Address
     let user = await User.findOne({
       $or: [
         { email: searchEmail },
-        { email: input },
-        { phone: input },
-        { phone: new RegExp(input.replace(/[^0-9]/g, '') + '$') }
+        { email: input }
       ]
     }).select('+password');
 
     // If user account is not found in MongoDB users collection, deny access
     if (!user) {
-      throw ApiError.badRequest('No registered account found with these credentials. Please check your login details or contact Admin.');
+      throw ApiError.badRequest('No registered account found with this email address. Please check your email address or contact Admin.');
     }
 
     // Verify Password
@@ -413,19 +411,13 @@ class AuthService {
   // Send OTP for Login (Auto-registers new clients seamlessly if not found)
   async sendLoginOtp(identifier) {
     if (!identifier) {
-      throw ApiError.badRequest('Please provide your email address or mobile number');
+      throw ApiError.badRequest('Please provide your email address');
     }
 
     const input = String(identifier).trim().toLowerCase();
     
-    // Find User in MongoDB
-    let user = await User.findOne({
-      $or: [
-        { email: input },
-        { phone: input },
-        { phone: new RegExp(input.replace(/[^0-9]/g, '') + '$') }
-      ]
-    });
+    // Find User in MongoDB strictly by Email Address
+    let user = await User.findOne({ email: input });
 
     // If user is not found, seamlessly auto-create Customer profile so OTP login auto-registers them!
     if (!user) {

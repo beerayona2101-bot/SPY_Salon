@@ -4,7 +4,6 @@ import '../services/api_service.dart';
 import '../services/fcm_service.dart';
 import '../services/realtime_service.dart';
 import '../utils/luxury_page_route.dart';
-import 'admin_dashboard_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
 import 'onboarding_screen.dart';
@@ -68,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (!mounted) return;
 
-    Widget targetScreen;
+    Widget? targetDashboard;
 
     if (user != null) {
       final role = (user['role'] ?? 'customer').toString().toLowerCase();
@@ -76,19 +75,24 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
 
       if (isAdmin) {
-        targetScreen = const AdminDashboardScreen();
+        await ApiService.clearSession();
+        targetDashboard = null;
       } else if (isStaff) {
-        targetScreen = const EmployeeDashboardScreen();
+        targetDashboard = const EmployeeDashboardScreen();
       } else {
-        targetScreen = const CustomerDashboardScreen();
+        targetDashboard = const CustomerDashboardScreen();
       }
     } else {
-      targetScreen = const OnboardingScreen();
+      targetDashboard = null;
     }
+
+    if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
-      LuxuryPageRoute(page: targetScreen),
+      LuxuryPageRoute(
+        page: OnboardingScreen(targetDashboard: targetDashboard),
+      ),
     );
   }
 

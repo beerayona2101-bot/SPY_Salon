@@ -159,8 +159,8 @@ function ServicesContent() {
               onClick={() => handleCategoryChange(cat)}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === cat
-                  ? 'rosegold-gradient-bg text-dark-900 shadow-md'
-                  : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
+                  ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md'
+                  : 'bg-dark-800 text-gray-300 hover:text-white hover:bg-dark-700 border border-white/10'
               }`}
             >
               {cat}
@@ -251,13 +251,16 @@ function ServicesContent() {
                     </button>
 
                     <AnimatedButton
-                      onClick={(e: React.MouseEvent) => {
+                      onClick={(e) => {
                         e.stopPropagation();
-                        router.push(`/book?service=${encodeURIComponent(service.title)}`);
+                        router.push(`/services/${service.id}`);
                       }} 
-                      className="px-3.5 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md cursor-pointer"
+                      className="px-4 py-2.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-md cursor-pointer"
                     >
-                      Book Slot
+                      <span className="!text-white font-extrabold text-xs tracking-wide flex items-center space-x-1">
+                        <span>View Details</span>
+                        <span>→</span>
+                      </span>
                     </AnimatedButton>
                   </div>
                 </div>
@@ -308,7 +311,7 @@ function ServicesContent() {
               <button
                 onClick={() => setBillingCycle('monthly')}
                 className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  billingCycle === 'monthly' ? 'rosegold-gradient-bg text-dark-900 shadow-md' : 'text-gray-400 hover:text-white'
+                  billingCycle === 'monthly' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Monthly Plans
@@ -316,7 +319,7 @@ function ServicesContent() {
               <button
                 onClick={() => setBillingCycle('yearly')}
                 className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                  billingCycle === 'yearly' ? 'rosegold-gradient-bg text-dark-900 shadow-md' : 'text-gray-400 hover:text-white'
+                  billingCycle === 'yearly' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Yearly Plans <span className="text-[10px] bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded-full ml-1">Save 17%</span>
@@ -344,7 +347,7 @@ function ServicesContent() {
                 }`}
               >
                 {isGold && (
-                  <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full rosegold-gradient-bg text-dark-900 text-[10px] font-extrabold uppercase shadow-sm">
+                  <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full rosegold-gradient-bg !text-white text-[10px] font-extrabold uppercase shadow-sm">
                     Most Popular VIP
                   </div>
                 )}
@@ -379,13 +382,13 @@ function ServicesContent() {
                 <div className="space-y-2 pt-4 border-t border-white/10">
                   <button
                     onClick={() => router.push(`/membership/${m.code || m._id}`)}
-                    className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:border-rosegold-400 transition-all cursor-pointer"
+                    className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:bg-rosegold-500/25 hover:border-rosegold-400 transition-all cursor-pointer"
                   >
                     View Details
                   </button>
                   <button
                     onClick={() => router.push(`/membership/${m.code || m._id}`)}
-                    className="w-full py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
+                    className="w-full py-3 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer"
                   >
                     Buy {m.name} ({m.discountPercentage}% Off)
                   </button>

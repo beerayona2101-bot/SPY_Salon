@@ -77,7 +77,7 @@ export default function PriceTable({ services, onSelectService, selectedServiceI
                       <button
                         type="button"
                         onClick={() => onSelectService(srv)}
-                        className="px-3 py-1.5 rounded-full bg-dark-800 border border-white/10 hover:border-rosegold-500/40 text-gray-300 hover:text-white font-bold text-[11px] inline-flex items-center space-x-1 cursor-pointer transition-all"
+                        className="px-3 py-1.5 rounded-full bg-dark-800 border border-white/10 hover:border-rosegold-500/40 text-gray-300 hover:text-white hover:bg-dark-700 font-bold text-[11px] inline-flex items-center space-x-1 cursor-pointer transition-all"
                       >
                         <Eye className="w-3.5 h-3.5 text-rosegold-400" />
                         <span>View</span>
@@ -87,7 +87,7 @@ export default function PriceTable({ services, onSelectService, selectedServiceI
                     <td className="p-3.5 text-right whitespace-nowrap">
                       <Link
                         href={`/book?service=${encodeURIComponent(srv.name)}`}
-                        className="px-4 py-1.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-[11px] inline-flex items-center space-x-1 shadow-md hover:scale-105 transition-transform cursor-pointer"
+                        className="px-4 py-1.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-[11px] inline-flex items-center space-x-1 shadow-md hover:scale-105 transition-transform cursor-pointer"
                       >
                         <span>Book</span>
                         <ArrowRight className="w-3 h-3" />

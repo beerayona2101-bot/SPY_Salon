@@ -231,7 +231,7 @@ a.rosegold-gradient-bg {
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
 
 .spy-btn-anim::before,
@@ -247,7 +247,7 @@ a.rosegold-gradient-bg::before {
   height: 100%;
   background: var(--spy-btn-hover-shade, linear-gradient(135deg, #AA6B72 0%, #8C4757 50%, #4D1526 100%));
   transition: width 0.3s ease;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
   border-radius: inherit;
 }
@@ -260,14 +260,69 @@ a.rosegold-gradient-bg:hover::before {
   width: 100%;
 }
 
-/* Ensure button text and icons stay above expanding animation layer */
+/* Ensure button text and icons stay above expanding animation layer and stay crisp white on hover */
 .spy-btn-anim > *,
 .rosegold-gradient-bg > *,
+.gold-gradient-bg > *,
+.purple-gradient-bg > *,
 .hero-cta-btn > *,
 button.rosegold-gradient-bg > *,
-a.rosegold-gradient-bg > * {
-  position: relative;
-  z-index: 2;
+a.rosegold-gradient-bg > *,
+span.rosegold-gradient-bg,
+.rosegold-gradient-bg span,
+button.rosegold-gradient-bg span,
+a.rosegold-gradient-bg span,
+.button-content {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* MASTER HIGH CONTRAST HOVER TEXT & ICON COLOR RECTIFICATION (LIGHT & DARK MODE) */
+header nav a.rosegold-gradient-bg,
+header nav a.rosegold-gradient-bg *,
+header nav a.rosegold-gradient-bg span,
+header nav a.rosegold-gradient-bg:hover,
+header nav a.rosegold-gradient-bg:hover *,
+header nav a.rosegold-gradient-bg:hover span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+.spy-btn-anim:hover,
+.spy-btn-anim:hover *,
+.rosegold-gradient-bg:hover,
+.rosegold-gradient-bg:hover *,
+.gold-gradient-bg:hover,
+.gold-gradient-bg:hover *,
+.purple-gradient-bg:hover,
+.purple-gradient-bg:hover *,
+.hero-cta-btn:hover,
+.hero-cta-btn:hover *,
+button.rosegold-gradient-bg:hover,
+button.rosegold-gradient-bg:hover *,
+a.rosegold-gradient-bg:hover,
+a.rosegold-gradient-bg:hover *,
+.group:hover .rosegold-gradient-bg,
+.group:hover .rosegold-gradient-bg *,
+.glass-card:hover .rosegold-gradient-bg,
+.glass-card:hover .rosegold-gradient-bg *,
+html.light .spy-btn-anim:hover,
+html.light .spy-btn-anim:hover *,
+html.light .rosegold-gradient-bg:hover,
+html.light .rosegold-gradient-bg:hover *,
+html.light .hero-cta-btn:hover,
+html.light .hero-cta-btn:hover *,
+html.light button.rosegold-gradient-bg:hover,
+html.light button.rosegold-gradient-bg:hover *,
+html.light a.rosegold-gradient-bg:hover,
+html.light a.rosegold-gradient-bg:hover *,
+html.light .group:hover .rosegold-gradient-bg,
+html.light .group:hover .rosegold-gradient-bg *,
+html.light .glass-card:hover .rosegold-gradient-bg,
+html.light .glass-card:hover .rosegold-gradient-bg * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  fill: none;
 }
 
 .gold-gradient-text {
@@ -1092,7 +1147,7 @@ html.light form .quick-template-btn.selected {
   border-color: var(--gold) !important;
 }
 
-/* NAVBAR LIGHT MODE OVERRIDES */
+/* NAVBAR LIGHT & DARK MODE HOVER OVERRIDES */
 .light header nav {
   background-color: var(--white) !important;
   border-color: var(--champagne) !important;
@@ -1103,12 +1158,24 @@ html.light form .quick-template-btn.selected {
 }
 
 .light header nav a:hover {
-  color: var(--burgundy-light) !important;
+  color: #390614 !important;
+  -webkit-text-fill-color: #390614 !important;
+  background-color: rgba(77, 21, 38, 0.08) !important;
 }
 
-.light header nav a[class*="rosegold-gradient-bg"] {
+.light header nav a[class*="rosegold-gradient-bg"],
+.light header nav a.rosegold-gradient-bg {
   background: var(--burgundy) !important;
-  color: var(--white) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+.light header nav a[class*="rosegold-gradient-bg"]:hover,
+.light header nav a.rosegold-gradient-bg:hover {
+  background: #2B0C15 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  box-shadow: 0 4px 15px rgba(57, 6, 20, 0.3) !important;
 }
 
 .light header nav button {
@@ -1162,23 +1229,37 @@ html.light form .quick-template-btn.selected {
   box-shadow: 0 25px 50px -12px rgba(77, 21, 38, 0.15) !important;
 }
 
-.light .glass-card:hover *,
+.light .glass-card:hover h1,
+.light .glass-card:hover h2,
 .light .glass-card:hover h3,
+.light .glass-card:hover h4,
+.light .glass-card:hover h5,
+.light .glass-card:hover h6,
 .light .glass-card:hover p,
-.light .glass-card:hover span,
-.light .glass-card:hover div {
-  color: var(--text-dark) !important;
+.light .glass-card:hover td,
+.light .glass-card:hover th {
+  color: #111827 !important;
+}
+
+.light .glass-card:hover span:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(button *):not(a *):not(.force-text-white),
+.light .glass-card:hover div:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(button *):not(a *):not(.force-text-white) {
+  color: #111827;
 }
 
 .light .glass-card:hover .rosegold-gradient-bg,
 .light .glass-card:hover .rosegold-gradient-bg *,
 .light .glass-card:hover .gold-gradient-bg,
-.light .glass-card:hover .gold-gradient-bg * {
-  color: var(--white) !important;
-}
-
-.light .glass-card:hover svg {
-  color: var(--gold) !important;
+.light .glass-card:hover .gold-gradient-bg *,
+.light .glass-card:hover .purple-gradient-bg,
+.light .glass-card:hover .purple-gradient-bg *,
+.light .glass-card:hover button.rosegold-gradient-bg,
+.light .glass-card:hover button.rosegold-gradient-bg *,
+.light .glass-card:hover a.rosegold-gradient-bg,
+.light .glass-card:hover a.rosegold-gradient-bg *,
+.light .glass-card:hover button[type="submit"],
+.light .glass-card:hover button[type="submit"] * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 /* ABOUT LIGHT MODE OVERRIDES */
@@ -1527,20 +1608,31 @@ html.light .text-gray-400 {
   color: #111827 !important;
 }
 
-/* PRESERVE PURE WHITE TEXT ONLY FOR GRADIENT & PRIMARY BUTTONS IN LIGHT MODE */
+/* PRESERVE PURE WHITE TEXT FOR GRADIENT, SUBMIT & DARK BUTTONS IN LIGHT MODE */
 html.light .rosegold-gradient-bg,
 html.light .rosegold-gradient-bg *,
+html.light .gold-gradient-bg,
+html.light .gold-gradient-bg *,
+html.light .purple-gradient-bg,
+html.light .purple-gradient-bg *,
 html.light button.rosegold-gradient-bg,
 html.light button.rosegold-gradient-bg *,
-html.light button[type="submit"].rosegold-gradient-bg,
-html.light button[type="submit"].rosegold-gradient-bg *,
+html.light button[type="submit"],
+html.light button[type="submit"] *,
+html.light .hero-cta-btn,
+html.light .hero-cta-btn *,
+html.light .btn-primary,
+html.light .btn-primary *,
 html.light .force-text-white,
 html.light .force-text-white * {
   color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
-html.light button:not(.rosegold-gradient-bg):not(.bg-amber-900):not(.bg-red-500):not(.bg-green-600):not(.force-text-white) {
-  color: #111827 !important;
+html.light button:hover,
+html.light a.button:hover,
+html.light .btn:hover {
+  transition: all 0.2s ease-in-out;
 }
 
 html.light .text-rosegold-400,

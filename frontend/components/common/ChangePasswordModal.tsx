@@ -178,7 +178,7 @@ export default function ChangePasswordModal({ isOpen, onClose, userName, userRol
             <button
               type="button"
               onClick={() => setIsPhotoModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md hover:scale-105 transition-all cursor-pointer flex items-center space-x-1.5"
+              className="px-3.5 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-md hover:scale-105 transition-all cursor-pointer flex items-center space-x-1.5"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>{user?.avatar ? 'Change Photo' : 'Upload Photo'}</span>
@@ -258,7 +258,7 @@ export default function ChangePasswordModal({ isOpen, onClose, userName, userRol
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? 'Updating...' : 'Update Password →'}
               </button>

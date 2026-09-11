@@ -143,7 +143,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+                className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <span>{isSubmitting ? 'Verifying Email & Dispatching OTP...' : 'Send 6-Digit Reset OTP'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -219,7 +219,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+                className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
               >
                 <span>{isSubmitting ? 'Updating Password...' : 'Verify OTP & Reset Password'}</span>
                 <CheckCircle2 className="w-4 h-4" />

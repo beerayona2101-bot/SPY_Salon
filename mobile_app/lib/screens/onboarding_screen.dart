@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import 'admin_dashboard_screen.dart';
+import '../utils/luxury_page_route.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
 import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final Widget? targetDashboard;
+
+  const OnboardingScreen({super.key, this.targetDashboard});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -15,6 +18,8 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  Timer? _autoPlayTimer;
+  bool _isNavigating = false;
 
   final List<Map<String, String>> _onboardingData = [
     {
@@ -38,12 +43,58 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.targetDashboard != null) {
+      _startAutoPlay();
+    }
+  }
+
+  void _startAutoPlay() {
+    _autoPlayTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      if (!mounted || _isNavigating) return;
+
+      if (_currentPage < _onboardingData.length - 1) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeInOutCubic,
+        );
+      } else {
+        _autoPlayTimer?.cancel();
+        _completeAutoPlay();
+      }
+    });
+  }
+
+  void _completeAutoPlay() {
+    if (_isNavigating || !mounted) return;
+    _isNavigating = true;
+    _autoPlayTimer?.cancel();
+
+    if (widget.targetDashboard != null) {
+      Navigator.pushReplacement(
+        context,
+        LuxuryPageRoute(page: widget.targetDashboard!),
+      );
+    }
+  }
+
+  @override
   void dispose() {
+    _autoPlayTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
-  void _navigateToLogin() {
+  void _navigateToLoginOrDashboard() {
+    if (_isNavigating || !mounted) return;
+    _autoPlayTimer?.cancel();
+
+    if (widget.targetDashboard != null) {
+      _completeAutoPlay();
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -57,12 +108,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (!mounted) return;
 
             if (isAdmin) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (c) => const AdminDashboardScreen()),
-                (route) => false,
+              await ApiService.clearSession();
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  backgroundColor: Color(0xFFC8868F),
+                  content: Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
+                ),
               );
-            } else if (isStaff) {
+              return;
+            }
+
+            if (isStaff) {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
@@ -88,7 +145,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         curve: Curves.easeInOutCubic,
       );
     } else {
-      _navigateToLogin();
+      _navigateToLoginOrDashboard();
     }
   }
 
@@ -197,7 +254,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   ],
                                 ),
                                 TextButton(
-                                  onPressed: _navigateToLogin,
+                                  onPressed: _navigateToLoginOrDashboard,
                                   child: const Text(
                                     'Skip',
                                     style: TextStyle(

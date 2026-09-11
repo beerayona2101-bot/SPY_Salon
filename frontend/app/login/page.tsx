@@ -75,8 +75,9 @@ function LoginPageInner() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const isEmpCode = formData.email.trim().toLowerCase().startsWith('emp');
     const { isValid, errors } = validateForm(formData, {
-      email: [validateRequired('Email or Mobile')],
+      email: isEmpCode ? [validateRequired('Email Address or Employee Code')] : [validateRequired('Email Address')],
       password: [validatePassword(6)]
     });
 
@@ -84,7 +85,7 @@ function LoginPageInner() {
 
     if (!isValid) {
       const firstErr = Object.values(errors)[0];
-      setErrorMessage(firstErr || 'Please provide valid credentials.');
+      setErrorMessage(firstErr || 'Please provide a valid email address.');
       return;
     }
 
@@ -163,15 +164,15 @@ function LoginPageInner() {
           {/* Password Login Form */}
           <form onSubmit={handlePasswordSubmit} className="space-y-5">
             
-            {/* Email or Mobile */}
+            {/* Email Address */}
             <div className="space-y-1.5 text-left">
-              <label className={`text-xs uppercase font-bold block ${theme === 'light' ? 'text-gray-900' : 'text-gray-200'}`}>Email or Mobile *</label>
+              <label className={`text-xs uppercase font-bold block ${theme === 'light' ? 'text-gray-900' : 'text-gray-200'}`}>Email Address *</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-rosegold-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   required
-                  placeholder="Email or Mobile"
+                  placeholder="Enter your registered email address"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-bold transition-colors focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-gray-100 text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800/90 border-white/20 text-white placeholder-gray-400'}`}

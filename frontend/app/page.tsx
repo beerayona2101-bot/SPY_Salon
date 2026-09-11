@@ -310,8 +310,8 @@ export default function Home() {
       <section className="hero-section-container relative pt-2 sm:pt-2 pb-4 overflow-hidden">
 
         {/* Subtle Ambient Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[320px] sm:w-[600px] h-[180px] sm:h-[300px] bg-rosegold-500/20 blur-[100px] sm:blur-[140px] rounded-full pointer-events-none animate-ambient-glow" />
-        <div className="absolute bottom-0 right-4 w-[200px] sm:w-[400px] h-[160px] sm:h-[260px] bg-purple-600/15 blur-[90px] sm:blur-[120px] rounded-full pointer-events-none animate-ambient-glow" />
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[320px] sm:w-[500px] h-[160px] sm:h-[240px] bg-rosegold-500/10 blur-[80px] sm:blur-[100px] rounded-full pointer-events-none animate-ambient-glow" />
+        <div className="absolute bottom-0 right-4 w-[200px] sm:w-[350px] h-[140px] sm:h-[220px] bg-purple-600/10 blur-[80px] sm:blur-[100px] rounded-full pointer-events-none animate-ambient-glow" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <SharedAxisZ>
@@ -610,9 +610,12 @@ export default function Home() {
                       <span className="text-gray-500 text-xs line-through ml-1.5">{service.oldPrice}</span>
                     </div>
 
-                    <span className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs group-hover:opacity-90 transition-opacity shadow-sm">
-                      View Details →
-                    </span>
+                    <AnimatedButton className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-sm">
+                      <span className="!text-white font-extrabold text-xs flex items-center space-x-1">
+                        <span>View Details</span>
+                        <span>→</span>
+                      </span>
+                    </AnimatedButton>
                   </div>
                 </Link>
               </motion.div>
@@ -767,7 +770,7 @@ export default function Home() {
               >
                 {/* Top Badge */}
                 <div className="absolute top-4 right-4 z-10">
-                  <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full rosegold-gradient-bg text-dark-900 shadow-sm">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full rosegold-gradient-bg !text-white shadow-sm">
                     {item.badge}
                   </span>
                 </div>
@@ -850,7 +853,7 @@ export default function Home() {
             <div className="pt-2">
               <Link
                 href="/book"
-                className="w-full sm:w-auto inline-flex items-center justify-center space-x-3 px-8 py-4 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-sm sm:text-base shadow-glow-rosegold-lg hover:scale-105 transition-all relative overflow-hidden group"
+                className="w-full sm:w-auto inline-flex items-center justify-center space-x-3 px-8 py-4 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm sm:text-base shadow-glow-rosegold-lg hover:scale-105 transition-all relative overflow-hidden group"
               >
                 <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity" />
                 <Calendar className="w-5 h-5" />

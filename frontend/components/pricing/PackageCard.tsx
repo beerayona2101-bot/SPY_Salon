@@ -103,7 +103,7 @@ export default function PackageCard({ packageData, serviceName, onEnquireClick }
             <button
               type="button"
               onClick={() => onEnquireClick(packageData)}
-              className="w-full py-3 px-5 rounded-full bg-white/80 dark:bg-dark-900 border border-white/15 hover:border-rosegold-500/40 text-gray-900 dark:text-gray-300 hover:text-white font-bold text-xs transition-colors cursor-pointer text-center"
+              className="w-full py-3 px-5 rounded-full bg-dark-800/10 dark:bg-dark-900 border border-rosegold-500/30 hover:border-rosegold-400 text-gray-800 dark:text-gray-300 hover:bg-rosegold-500/20 hover:text-rosegold-500 dark:hover:text-white font-bold text-xs transition-all cursor-pointer text-center"
             >
               Inquire Package
             </button>

@@ -131,7 +131,7 @@ export default function ServiceDetails({
             <div className="flex items-center space-x-3">
               <Link
                 href={`/book?serviceId=${encodeURIComponent(service.id)}&category=${encodeURIComponent(service.gender || '')}&subcategory=${encodeURIComponent(service.subCategory || '')}&service=${encodeURIComponent(service.name)}`}
-                className="px-6 py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-serif font-bold text-xs shadow-glow-rosegold hover:scale-105 transition-all flex items-center space-x-2 cursor-pointer"
+                className="px-6 py-3.5 rounded-full rosegold-gradient-bg !text-white font-serif font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all flex items-center space-x-2 cursor-pointer"
               >
                 <Calendar className="w-4 h-4" />
                 <span>Book Appointment Now</span>

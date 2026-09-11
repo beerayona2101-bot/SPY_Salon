@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
-import 'admin_dashboard_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'login_screen.dart';
 
@@ -96,7 +95,29 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
     }
 
     final role = (storedUser['role'] ?? 'customer').toString().toLowerCase();
-    final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber' || role == 'admin' || role == 'manager';
+    final isAdmin = role == 'admin' || role == 'manager';
+    final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+    if (isAdmin) {
+      await ApiService.clearSession();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color(0xFFC8868F),
+          content: Text('Admin access is not available in the mobile app. Please log in via the Web Admin Portal.'),
+        ),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (ctx) => LoginScreen(
+            onLoginSuccess: () {},
+          ),
+        ),
+        (route) => false,
+      );
+      return;
+    }
 
     if (!isStaff) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -654,12 +675,18 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> with 
                             if (!ctx.mounted) return;
 
                             if (isAdmin) {
-                              Navigator.pushAndRemoveUntil(
-                                ctx,
-                                MaterialPageRoute(builder: (c) => const AdminDashboardScreen()),
-                                (route) => false,
+                              await ApiService.clearSession();
+                              if (!ctx.mounted) return;
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  backgroundColor: Color(0xFFC8868F),
+                                  content: Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
+                                ),
                               );
-                            } else if (isStaff) {
+                              return;
+                            }
+
+                            if (isStaff) {
                               Navigator.pushAndRemoveUntil(
                                 ctx,
                                 MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
