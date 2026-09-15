@@ -544,7 +544,14 @@ exports.getLeaveById = async (req, res, next) => {
 exports.getEmployeePayrolls = async (req, res, next) => {
   try {
     const employeeId = req.user._id.toString();
-    const list = await Payroll.find({ employeeId }).sort({ createdAt: -1 });
+    const { month } = req.query;
+    const query = { employeeId };
+
+    if (month && month !== 'ALL' && month !== 'All') {
+      query.month = new RegExp(month.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    }
+
+    const list = await Payroll.find(query).sort({ createdAt: -1 });
     return ApiResponse.success(res, list, 'Personal salary slips retrieved');
   } catch (error) {
     next(error);

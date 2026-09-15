@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
+import '../theme/app_colors.dart';
 import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
@@ -202,9 +203,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showSnackBar(String message, {bool isError = true}) {
     if (!mounted) return;
+    final themeColors = AppColors.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: isError ? Colors.red[900] : const Color(0xFF1B4D3E),
+        backgroundColor: isError ? themeColors.error : themeColors.success,
         content: Text(message, style: const TextStyle(color: Colors.white)),
       ),
     );
@@ -223,6 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _showForgotPasswordDialog() {
     final emailCtrl = TextEditingController(text: _loginIdentifierCtrl.text.trim());
     bool isSending = false;
+    final themeColors = AppColors.of(context);
 
     showModalBottomSheet(
       context: context,
@@ -231,9 +234,9 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (modalCtx, setModalState) {
-            const goldColor = Color(0xFFE0A96D);
-            const darkBg = Color(0xFF13100E);
-            const cardBg = Color(0xFF191512);
+            final primaryColor = themeColors.primary;
+            final cardBg = themeColors.cardSurface;
+            final bg = themeColors.deepestBackground;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -241,10 +244,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               child: Container(
                 padding: const EdgeInsets.all(24),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: cardBg,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                  border: Border(top: BorderSide(color: goldColor, width: 1.5)),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  border: Border(top: BorderSide(color: primaryColor, width: 1.5)),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -253,44 +256,44 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Reset Password',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFFF6F2EB),
+                            color: themeColors.textPrimary,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white54),
+                          icon: Icon(Icons.close, color: themeColors.textMuted),
                           onPressed: () => Navigator.pop(modalCtx),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       'Enter your registered email address below to receive password reset instructions.',
-                      style: TextStyle(fontSize: 12, color: Colors.white60),
+                      style: TextStyle(fontSize: 12, color: themeColors.textSecondary),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: emailCtrl,
                       keyboardType: TextInputType.emailAddress,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.w600),
                       decoration: InputDecoration(
                         labelText: 'Email Address *',
-                        labelStyle: const TextStyle(color: Colors.white70, fontSize: 13),
-                        prefixIcon: const Icon(Icons.email_outlined, color: goldColor, size: 20),
+                        labelStyle: TextStyle(color: themeColors.textMuted, fontSize: 13),
+                        prefixIcon: Icon(Icons.email_outlined, color: primaryColor, size: 20),
                         filled: true,
-                        fillColor: darkBg.withValues(alpha: 0.7),
+                        fillColor: bg,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide(color: goldColor.withValues(alpha: 0.2)),
+                          borderSide: BorderSide(color: themeColors.cardBorder),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: goldColor, width: 1.5),
+                          borderSide: BorderSide(color: primaryColor, width: 1.5),
                         ),
                       ),
                     ),
@@ -299,8 +302,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       height: 48,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: goldColor,
-                          foregroundColor: darkBg,
+                          backgroundColor: primaryColor,
+                          foregroundColor: themeColors.buttonTextPrimary,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                         ),
                         onPressed: isSending
@@ -319,7 +322,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                 _showSnackBar(res['message'] ?? 'Password reset OTP sent to your email.', isError: res['success'] != true);
                               },
                         child: isSending
-                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: darkBg))
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: themeColors.buttonTextPrimary,
+                                ),
+                              )
                             : const Text('SEND RESET CODE', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0)),
                       ),
                     ),
@@ -336,12 +346,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const goldColor = Color(0xFFE0A96D);
-    const darkBg = Color(0xFF13100E);
-    const cardBg = Color(0xFF191512);
+    final themeColors = AppColors.of(context);
+    final primaryColor = themeColors.primary;
+    final bg = themeColors.deepestBackground;
+    final cardBg = themeColors.cardSurface;
 
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: bg,
       body: Stack(
         children: [
           // Background luxury salon photo (matching SplashScreen)
@@ -349,11 +360,11 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Image.asset(
               'assets/images/splash_bg.png',
               fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => Container(color: darkBg),
+              errorBuilder: (ctx, err, stack) => Container(color: bg),
             ),
           ),
 
-          // Dark Overlay Gradient (matching SplashScreen)
+          // Overlay Gradient (matching SplashScreen)
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
@@ -361,8 +372,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   center: Alignment.center,
                   radius: 0.95,
                   colors: [
-                    darkBg.withValues(alpha: 0.80),
-                    darkBg.withValues(alpha: 0.96),
+                    bg.withValues(alpha: 0.80),
+                    bg.withValues(alpha: 0.96),
                   ],
                 ),
               ),
@@ -398,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   if (Navigator.canPop(context))
                                     IconButton(
                                       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                                      icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
+                                      icon: Icon(Icons.arrow_back_ios_new, color: primaryColor, size: 20),
                                       onPressed: () {
                                         if (Navigator.canPop(context)) {
                                           Navigator.pop(context);
@@ -410,7 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   IconButton(
                                     constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                                     tooltip: 'Backend Settings',
-                                    icon: const Icon(Icons.settings_outlined, color: goldColor, size: 22),
+                                    icon: Icon(Icons.settings_outlined, color: primaryColor, size: 22),
                                     onPressed: _openBackendSettings,
                                   ),
                                 ],
@@ -426,11 +437,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 80,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white,
-                                border: Border.all(color: goldColor.withValues(alpha: 0.5), width: 2),
+                                color: themeColors.cardSurface,
+                                border: Border.all(color: primaryColor.withValues(alpha: 0.5), width: 2),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: goldColor.withValues(alpha: 0.45),
+                                    color: primaryColor.withValues(alpha: 0.45),
                                     blurRadius: 28,
                                     spreadRadius: 4,
                                   ),
@@ -440,11 +451,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: Image.asset(
                                   'assets/images/logo.png',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (ctx, err, stack) => const Center(
+                                  errorBuilder: (ctx, err, stack) => Center(
                                     child: Text(
                                       'S',
                                       style: TextStyle(
-                                        color: goldColor,
+                                        color: primaryColor,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 36,
                                       ),
@@ -458,8 +469,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             // Page Title
                             Text(
                               _isRegisterMode ? 'Join SPY Salon' : 'Sign In to SPY Salon',
-                              style: const TextStyle(
-                                color: Color(0xFFF6F2EB),
+                              style: TextStyle(
+                                color: themeColors.textPrimary,
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 0.5,
@@ -473,8 +484,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               _isRegisterMode
                                   ? 'Create an account to book treatments effortlessly'
                                   : 'Enter your credentials below to access your account',
-                              style: const TextStyle(
-                                color: Colors.white60,
+                              style: TextStyle(
+                                color: themeColors.textSecondary,
                                 fontSize: 12,
                                 height: 1.4,
                               ),
@@ -482,24 +493,24 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 22),
 
-                            // Main Rounded Glassmorphism Login Card (Matching Web Reference)
+                            // Main Rounded Login Card
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
                               decoration: BoxDecoration(
                                 color: cardBg.withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(24),
-                                border: Border.all(color: goldColor.withValues(alpha: 0.3)),
+                                border: Border.all(color: themeColors.cardBorder),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.55),
+                                    color: Colors.black.withValues(alpha: 0.25),
                                     blurRadius: 24,
                                     spreadRadius: 2,
                                   ),
                                 ],
                               ),
                               child: _isRegisterMode
-                                  ? _buildRegisterForm(goldColor, darkBg)
-                                  : _buildSignInForm(goldColor, darkBg),
+                                  ? _buildRegisterForm(themeColors)
+                                  : _buildSignInForm(themeColors),
                             ),
 
                             // Flexible bottom spacer
@@ -508,11 +519,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 8),
                             TextButton.icon(
                               onPressed: _openBackendSettings,
-                              icon: const Icon(Icons.tune_rounded, color: Colors.white30, size: 15),
-                              label: const Text(
+                              icon: Icon(Icons.tune_rounded, color: themeColors.textMuted, size: 15),
+                              label: Text(
                                 'Backend Settings',
                                 style: TextStyle(
-                                  color: Colors.white30,
+                                  color: themeColors.textMuted,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -533,18 +544,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSignInForm(Color goldColor, Color darkBg) {
+  Widget _buildSignInForm(AppColors themeColors) {
+    final primaryColor = themeColors.primary;
+    final buttonTextColor = themeColors.buttonTextPrimary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
         // EMAIL ADDRESS *
-        const Text(
+        Text(
           'EMAIL ADDRESS *',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
-            color: Color(0xFFF6F2EB),
+            color: themeColors.textPrimary,
             letterSpacing: 1.0,
           ),
         ),
@@ -552,21 +566,21 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: _loginIdentifierCtrl,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: 'Enter registered email address',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-            prefixIcon: Icon(Icons.email_outlined, color: goldColor, size: 20),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 13),
+            prefixIcon: Icon(Icons.email_outlined, color: primaryColor, size: 20),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25)),
+              borderSide: BorderSide(color: themeColors.cardBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: goldColor, width: 1.5),
+              borderSide: BorderSide(color: primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -576,12 +590,12 @@ class _LoginScreenState extends State<LoginScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'PASSWORD *',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFFF6F2EB),
+                color: themeColors.textPrimary,
                 letterSpacing: 1.0,
               ),
             ),
@@ -590,7 +604,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 'Forgot password?',
                 style: TextStyle(
-                  color: goldColor,
+                  color: primaryColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -602,30 +616,30 @@ class _LoginScreenState extends State<LoginScreen> {
         TextField(
           controller: _loginPasswordCtrl,
           obscureText: _loginObscure,
-          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: '••••••••',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 13),
-            prefixIcon: Icon(Icons.lock_outline, color: goldColor, size: 20),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 13),
+            prefixIcon: Icon(Icons.lock_outline, color: primaryColor, size: 20),
             suffixIcon: IconButton(
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               icon: Icon(
                 _loginObscure ? Icons.visibility_off : Icons.visibility,
-                color: Colors.white54,
+                color: themeColors.textMuted,
                 size: 20,
               ),
               onPressed: () => setState(() => _loginObscure = !_loginObscure),
             ),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25)),
+              borderSide: BorderSide(color: themeColors.cardBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: goldColor, width: 1.5),
+              borderSide: BorderSide(color: primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -636,10 +650,10 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 50,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: goldColor,
-              foregroundColor: darkBg,
+              backgroundColor: primaryColor,
+              foregroundColor: buttonTextColor,
               elevation: 6,
-              shadowColor: goldColor.withValues(alpha: 0.45),
+              shadowColor: primaryColor.withValues(alpha: 0.45),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(25),
               ),
@@ -649,25 +663,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 ? SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: darkBg),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: buttonTextColor),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
                         'SIGN IN',
                         style: TextStyle(
-                          color: Color(0xFF13100E),
+                          color: buttonTextColor,
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
                           letterSpacing: 1.2,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Icon(
                         Icons.arrow_forward_rounded,
                         size: 18,
-                        color: Color(0xFF13100E),
+                        color: buttonTextColor,
                       ),
                     ],
                   ),
@@ -676,17 +690,17 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 20),
 
         // Divider
-        const Divider(color: Colors.white12, height: 1),
+        Divider(color: themeColors.divider, height: 1),
         const SizedBox(height: 16),
 
         // New client? Create Account →
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'New client?  ',
               style: TextStyle(
-                color: Colors.white60,
+                color: themeColors.textSecondary,
                 fontSize: 13,
               ),
             ),
@@ -695,7 +709,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Text(
                 'Create Account →',
                 style: TextStyle(
-                  color: goldColor,
+                  color: primaryColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -707,127 +721,130 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildRegisterForm(Color goldColor, Color darkBg) {
+  Widget _buildRegisterForm(AppColors themeColors) {
+    final primaryColor = themeColors.primary;
+    final buttonTextColor = themeColors.buttonTextPrimary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
+        Text(
           'FULL NAME *',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF6F2EB), letterSpacing: 1.0),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: themeColors.textPrimary, letterSpacing: 1.0),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: _regNameCtrl,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: 'Enter your full name',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-            prefixIcon: Icon(Icons.badge_outlined, color: goldColor, size: 18),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+            prefixIcon: Icon(Icons.badge_outlined, color: primaryColor, size: 18),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor, width: 1.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'EMAIL ADDRESS *',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF6F2EB), letterSpacing: 1.0),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: themeColors.textPrimary, letterSpacing: 1.0),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: _regEmailCtrl,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: 'Enter email address',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-            prefixIcon: Icon(Icons.email_outlined, color: goldColor, size: 18),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+            prefixIcon: Icon(Icons.email_outlined, color: primaryColor, size: 18),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor, width: 1.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'MOBILE PHONE *',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF6F2EB), letterSpacing: 1.0),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: themeColors.textPrimary, letterSpacing: 1.0),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: _regPhoneCtrl,
           keyboardType: TextInputType.phone,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: 'Enter 10-digit mobile number',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-            prefixIcon: Icon(Icons.phone_outlined, color: goldColor, size: 18),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+            prefixIcon: Icon(Icons.phone_outlined, color: primaryColor, size: 18),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor, width: 1.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'PASSWORD *',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF6F2EB), letterSpacing: 1.0),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: themeColors.textPrimary, letterSpacing: 1.0),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: _regPasswordCtrl,
           obscureText: _regObscure,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: '••••••••',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-            prefixIcon: Icon(Icons.lock_outline, color: goldColor, size: 18),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+            prefixIcon: Icon(Icons.lock_outline, color: primaryColor, size: 18),
             suffixIcon: IconButton(
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              icon: Icon(_regObscure ? Icons.visibility_off : Icons.visibility, color: Colors.white54, size: 18),
+              icon: Icon(_regObscure ? Icons.visibility_off : Icons.visibility, color: themeColors.textMuted, size: 18),
               onPressed: () => setState(() => _regObscure = !_regObscure),
             ),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor, width: 1.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           'CONFIRM PASSWORD *',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFF6F2EB), letterSpacing: 1.0),
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: themeColors.textPrimary, letterSpacing: 1.0),
         ),
         const SizedBox(height: 6),
         TextField(
           controller: _regConfirmPasswordCtrl,
           obscureText: _regConfirmObscure,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
           decoration: InputDecoration(
             hintText: '••••••••',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
-            prefixIcon: Icon(Icons.lock_reset_outlined, color: goldColor, size: 18),
+            hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+            prefixIcon: Icon(Icons.lock_reset_outlined, color: primaryColor, size: 18),
             suffixIcon: IconButton(
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-              icon: Icon(_regConfirmObscure ? Icons.visibility_off : Icons.visibility, color: Colors.white54, size: 18),
+              icon: Icon(_regConfirmObscure ? Icons.visibility_off : Icons.visibility, color: themeColors.textMuted, size: 18),
               onPressed: () => setState(() => _regConfirmObscure = !_regConfirmObscure),
             ),
             filled: true,
-            fillColor: darkBg.withValues(alpha: 0.7),
+            fillColor: themeColors.inputBackground,
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor.withValues(alpha: 0.25))),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: goldColor, width: 1.5)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
         const SizedBox(height: 20),
@@ -835,35 +852,35 @@ class _LoginScreenState extends State<LoginScreen> {
           height: 50,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: goldColor,
-              foregroundColor: darkBg,
+              backgroundColor: primaryColor,
+              foregroundColor: buttonTextColor,
               elevation: 6,
-              shadowColor: goldColor.withValues(alpha: 0.45),
+              shadowColor: primaryColor.withValues(alpha: 0.45),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
             ),
             onPressed: _isSubmittingRegister ? null : _handleRegister,
             child: _isSubmittingRegister
-                ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: darkBg))
-                : const Row(
+                ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: buttonTextColor))
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('CREATE ACCOUNT', style: TextStyle(color: Color(0xFF13100E), fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1.2)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, size: 18, color: Color(0xFF13100E)),
+                      Text('CREATE ACCOUNT', style: TextStyle(color: buttonTextColor, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1.2)),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded, size: 18, color: buttonTextColor),
                     ],
                   ),
           ),
         ),
         const SizedBox(height: 18),
-        const Divider(color: Colors.white12, height: 1),
+        Divider(color: themeColors.divider, height: 1),
         const SizedBox(height: 14),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Already have an account?  ', style: TextStyle(color: Colors.white60, fontSize: 13)),
+            Text('Already have an account?  ', style: TextStyle(color: themeColors.textSecondary, fontSize: 13)),
             GestureDetector(
               onTap: () => setState(() => _isRegisterMode = false),
-              child: Text('Sign In →', style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 13)),
+              child: Text('Sign In →', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13)),
             ),
           ],
         ),
@@ -871,3 +888,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

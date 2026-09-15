@@ -658,10 +658,6 @@ class ApiService {
     },
   ];
 
-  static final List<Map<String, dynamic>> _fallbackAttendanceLogs = [];
-
-  static final List<Map<String, dynamic>> _fallbackLeaveLogs = [];
-
   /// Fetch all active services from `/api/v1/services`
   static Future<List<dynamic>> getServices() async {
     try {
@@ -865,30 +861,9 @@ class ApiService {
       debugPrint('[ApiService] Clock-in error: $e');
     }
 
-    final todayStr = DateTime.now().toString().split(' ')[0];
-    final now = DateTime.now();
-    final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
-    final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-    final existingIndex = _fallbackAttendanceLogs.indexWhere((l) => l['date'] == todayStr);
-    if (existingIndex >= 0) {
-      _fallbackAttendanceLogs[existingIndex]['attendanceState'] = 'CLOCKED_IN';
-      _fallbackAttendanceLogs[existingIndex]['clockIn'] = timeStr;
-    } else {
-      _fallbackAttendanceLogs.insert(0, {
-        '_id': 'att_${DateTime.now().millisecondsSinceEpoch}',
-        'date': todayStr,
-        'clockIn': timeStr,
-        'clockOut': null,
-        'attendanceState': 'CLOCKED_IN',
-        'status': 'Present',
-        'totalBreakDuration': 0,
-        'effectiveWorkingDuration': 0,
-      });
-    }
     return {
-      'success': true,
-      'message': 'Successfully clocked in at $timeStr',
-      'data': _fallbackAttendanceLogs.first
+      'success': false,
+      'message': 'Network error: Connection to server failed.',
     };
   }
 
@@ -913,17 +888,9 @@ class ApiService {
       debugPrint('[ApiService] Start break error: $e');
     }
 
-    final todayStr = DateTime.now().toString().split(' ')[0];
-    final existing = _fallbackAttendanceLogs.firstWhere(
-      (l) => l['date'] == todayStr,
-      orElse: () => <String, dynamic>{},
-    );
-    if (existing.isNotEmpty) {
-      existing['attendanceState'] = 'ON_BREAK';
-    }
     return {
-      'success': true,
-      'message': 'Break started',
+      'success': false,
+      'message': 'Network error: Connection to server failed.',
     };
   }
 
@@ -948,17 +915,9 @@ class ApiService {
       debugPrint('[ApiService] End break error: $e');
     }
 
-    final todayStr = DateTime.now().toString().split(' ')[0];
-    final existing = _fallbackAttendanceLogs.firstWhere(
-      (l) => l['date'] == todayStr,
-      orElse: () => <String, dynamic>{},
-    );
-    if (existing.isNotEmpty) {
-      existing['attendanceState'] = 'CLOCKED_IN';
-    }
     return {
-      'success': true,
-      'message': 'Break ended',
+      'success': false,
+      'message': 'Network error: Connection to server failed.',
     };
   }
 
@@ -983,21 +942,9 @@ class ApiService {
       debugPrint('[ApiService] Clock out error: $e');
     }
 
-    final todayStr = DateTime.now().toString().split(' ')[0];
-    final now = DateTime.now();
-    final hourStr = now.hour > 12 ? (now.hour - 12).toString() : (now.hour == 0 ? '12' : now.hour.toString());
-    final timeStr = "$hourStr:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-    final existing = _fallbackAttendanceLogs.firstWhere(
-      (l) => l['date'] == todayStr,
-      orElse: () => <String, dynamic>{},
-    );
-    if (existing.isNotEmpty) {
-      existing['attendanceState'] = 'CLOCKED_OUT';
-      existing['clockOut'] = timeStr;
-    }
     return {
-      'success': true,
-      'message': 'Successfully clocked out at $timeStr',
+      'success': false,
+      'message': 'Network error: Connection to server failed.',
     };
   }
 
@@ -1007,15 +954,15 @@ class ApiService {
       final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/attendance');
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data is List && data.isNotEmpty) return data;
-        if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
+        if (data is List) return data;
+        if (data is Map && data['data'] != null && data['data'] is List) {
           return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
       debugPrint('[ApiService] Attendance fetch error: $e');
     }
-    return _fallbackAttendanceLogs;
+    return null;
   }
 
   /// Submit Leave Request
@@ -1040,19 +987,9 @@ class ApiService {
       debugPrint('[ApiService] Submit leave error: $e');
     }
 
-    final newLeave = {
-      '_id': 'leave_${DateTime.now().millisecondsSinceEpoch}',
-      'startDate': data['startDate'],
-      'endDate': data['endDate'],
-      'reason': data['reason'],
-      'status': 'Pending',
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-    _fallbackLeaveLogs.insert(0, newLeave);
     return {
-      'success': true,
-      'message': 'Leave application submitted successfully',
-      'data': newLeave,
+      'success': false,
+      'message': 'Network error: Connection to server failed.',
     };
   }
 
@@ -1062,15 +999,15 @@ class ApiService {
       final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/leaves/my');
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data is List && data.isNotEmpty) return data;
-        if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
+        if (data is List) return data;
+        if (data is Map && data['data'] != null && data['data'] is List) {
           return List<dynamic>.from(data['data']);
         }
       }
     } catch (e) {
       debugPrint('[ApiService] Leaves fetch error: $e');
     }
-    return _fallbackLeaveLogs;
+    return null;
   }
 
   /// Fetch Staff Payrolls & Commission Slips
@@ -1090,20 +1027,7 @@ class ApiService {
     return null;
   }
 
-  /// Update Bank & UPI Account Details
-  static Future<bool> updateEmployeeBankDetails(Map<String, dynamic> data) async {
-    try {
-      final response = await _requestWithRetry(
-        'PUT',
-        '${ApiConfig.baseUrl}/api/v1/employee/bank-details',
-        body: json.encode(data),
-      );
-      return response != null && response.statusCode == 200;
-    } catch (e) {
-      debugPrint('[ApiService] Update bank details error: $e');
-      return false;
-    }
-  }
+
 
   /// Fetch Staff Client Directory
   static Future<List<dynamic>?> getEmployeeCustomers() async {

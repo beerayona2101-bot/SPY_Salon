@@ -3,6 +3,7 @@ import '../config/api_config.dart';
 import '../services/api_service.dart';
 import '../services/fcm_service.dart';
 import '../services/realtime_service.dart';
+import '../theme/app_colors.dart';
 import '../utils/luxury_page_route.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
@@ -98,11 +99,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    const goldColor = Color(0xFFE0A96D);
-    const darkBg = Color(0xFF13100E);
+    final themeColors = AppColors.of(context);
+    final primaryColor = themeColors.primary;
+    final bg = themeColors.deepestBackground;
 
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: bg,
       body: Stack(
         children: [
           // Background luxury salon photo
@@ -110,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             child: Image.asset(
               'assets/images/splash_bg.png',
               fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => Container(color: darkBg),
+              errorBuilder: (ctx, err, stack) => Container(color: bg),
             ),
           ),
 
@@ -122,8 +124,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   center: Alignment.center,
                   radius: 0.95,
                   colors: [
-                    darkBg.withValues(alpha: 0.75),
-                    darkBg.withValues(alpha: 0.95),
+                    bg.withValues(alpha: 0.75),
+                    bg.withValues(alpha: 0.95),
                   ],
                 ),
               ),
@@ -143,10 +145,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: goldColor, width: 2),
+                        border: Border.all(color: primaryColor, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: goldColor.withValues(alpha: 0.45),
+                            color: primaryColor.withValues(alpha: 0.45),
                             blurRadius: 32,
                             spreadRadius: 4,
                           ),
@@ -156,11 +158,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                         child: Image.asset(
                           'assets/images/logo.png',
                           fit: BoxFit.cover,
-                          errorBuilder: (ctx, err, stack) => const Center(
+                          errorBuilder: (ctx, err, stack) => Center(
                             child: Text(
                               'S',
                               style: TextStyle(
-                                color: goldColor,
+                                color: primaryColor,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 48,
                               ),
@@ -170,39 +172,39 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'SPY SALON',
                       style: TextStyle(
-                        color: Color(0xFFF6F2EB),
+                        color: themeColors.textPrimary,
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 3.2,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'LUXURY BEAUTY STUDIO & BOTANICAL SPA',
                       style: TextStyle(
-                        color: goldColor,
+                        color: primaryColor,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.6,
                       ),
                     ),
                     const SizedBox(height: 48),
-                    const SizedBox(
+                    SizedBox(
                       width: 24,
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        color: goldColor,
+                        color: primaryColor,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       _statusMessage,
-                      style: const TextStyle(
-                        color: Colors.white54,
+                      style: TextStyle(
+                        color: themeColors.textMuted,
                         fontSize: 12,
                         letterSpacing: 0.8,
                       ),
@@ -221,7 +223,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               child: Text(
                 'BEAUTY  |  STYLE  |  CONFIDENCE',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
+                  color: themeColors.textMuted.withValues(alpha: 0.5),
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 2.0,
@@ -234,3 +236,4 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
   }
 }
+

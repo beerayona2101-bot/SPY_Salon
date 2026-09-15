@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
+import '../theme/app_colors.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -246,6 +247,7 @@ class FcmService {
       final context = _navigatorKey?.currentContext;
       if (context == null) return;
 
+      final colors = AppColors.of(context);
       // Routing logic based on payload data type
       switch (type) {
         case 'appointment':
@@ -254,8 +256,11 @@ class FcmService {
           // Existing screens handle detailed view or dashboard tab switching
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Appointment Details...'),
-              backgroundColor: const Color(0xFFE0A96D),
+              content: Text(
+                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Appointment Details...',
+                style: TextStyle(color: colors.buttonTextPrimary),
+              ),
+              backgroundColor: colors.goldPrimary,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -264,8 +269,11 @@ class FcmService {
         case 'attendance':
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Staff Management...'),
-              backgroundColor: const Color(0xFFC8868F),
+              content: Text(
+                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Staff Management...',
+                style: TextStyle(color: colors.buttonTextPrimary),
+              ),
+              backgroundColor: colors.roseSecondary,
               duration: const Duration(seconds: 4),
             ),
           );
@@ -273,8 +281,11 @@ class FcmService {
         default:
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Notification received'),
-              backgroundColor: const Color(0xFF191512),
+              content: Text(
+                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Notification received',
+                style: TextStyle(color: colors.textPrimary),
+              ),
+              backgroundColor: colors.cardSurface,
               duration: const Duration(seconds: 3),
             ),
           );

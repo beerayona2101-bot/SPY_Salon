@@ -217,6 +217,35 @@ interface ActivityLog {
   user: string;
 }
 
+const getCurrentYearMonthStr = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+const formatMonthYear = (ym: string) => {
+  if (!ym) return '';
+  if (ym.includes('-') && ym.length === 7) {
+    const [y, m] = ym.split('-');
+    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  return ym;
+};
+
+const parseToYearMonth = (monthStr: string) => {
+  if (!monthStr) return getCurrentYearMonthStr();
+  if (monthStr.includes('-') && monthStr.length === 7) return monthStr;
+  const d = new Date(monthStr + ' 1');
+  if (!isNaN(d.getTime())) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  }
+  return getCurrentYearMonthStr();
+};
+
 function AdminDashboardContent() {
   const { user, isLoading, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -909,14 +938,13 @@ function AdminDashboardContent() {
     employeeName: '',
     employeeId: '',
     empCode: '',
-    month: 'July 2026',
+    month: formatMonthYear(getCurrentYearMonthStr()),
     baseSalary: 25000,
     eligibleAmount: 0,
     commissionPercentage: 20,
     commissionAmount: 0,
     incentives: 0,
-    deductions: 0,
-    paymentMethod: 'Bank Transfer (HDFC)'
+    deductions: 0
   });
 
 
@@ -2415,8 +2443,7 @@ function AdminDashboardContent() {
                       commissionPercentage: commPct,
                       commissionAmount: commAmt,
                       incentives: 0,
-                      deductions: 0,
-                      paymentMethod: 'Bank Transfer (HDFC)'
+                      deductions: 0
                     });
                     setModalType('addPay');
                   }}
@@ -5246,6 +5273,7 @@ function AdminDashboardContent() {
                 <div className="flex items-center space-x-3 shrink-0">
                   <button
                     onClick={() => {
+                      fetchAdminData();
                       const firstEmp = employees[0];
                       const empRev = firstEmp ? appointments
                         .filter((a: any) => (a.specialistId === firstEmp._id || a.specialistName?.toLowerCase().includes(firstEmp.name.toLowerCase())) && (a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid'))
@@ -5257,21 +5285,20 @@ function AdminDashboardContent() {
                         employeeName: firstEmp?.name || '',
                         employeeId: firstEmp?._id || '',
                         empCode: firstEmp?.empCode || 'EMP-1001',
-                        month: 'July 2026',
+                        month: formatMonthYear(getCurrentYearMonthStr()),
                         baseSalary: firstEmp?.baseSalary || 25000,
                         eligibleAmount: empRev,
                         commissionPercentage: commPct,
                         commissionAmount: commAmt,
                         incentives: 0,
-                        deductions: 0,
-                        paymentMethod: 'Bank Transfer (HDFC)'
+                        deductions: 0
                       });
                       setModalType('addPay');
                     }}
-                    className="px-5 py-3 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold flex items-center space-x-2 hover:scale-105 transition-all cursor-pointer"
+                    className="px-5 py-3 rounded-2xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold flex items-center space-x-2 hover:scale-105 transition-all cursor-pointer"
                   >
-                    <Plus className="w-4 h-4 text-dark-900" />
-                    <span>+ Process Staff Salary Slip / Commission</span>
+                    <Plus className="w-4 h-4 text-white" />
+                    <span>Process Staff Salary Slip / Commission</span>
                   </button>
                 </div>
               </div>
@@ -5327,15 +5354,12 @@ function AdminDashboardContent() {
                           <th className="p-3.5 text-right">Service Sales</th>
                           <th className="p-3.5 text-right">Commission</th>
                           <th className="p-3.5 text-right">Net Disbursed</th>
-                          <th className="p-3.5">Bank Payout Info</th>
                           <th className="p-3.5 text-center">Status</th>
                           <th className="p-3.5 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/10 font-mono">
                         {payrolls.map((p) => {
-                          const empMatch = employees.find(e => e.name === p.employeeName || e._id === p.employeeId);
-                          const bank = empMatch?.bankDetails;
                           return (
                             <tr key={p._id} className="hover:bg-white/5 transition-colors">
                               <td className="p-3.5 font-bold text-rosegold-400">{p.slipId}</td>
@@ -5352,17 +5376,6 @@ function AdminDashboardContent() {
                               </td>
                               <td className="p-3.5 text-right font-bold text-rosegold-300 text-sm">
                                 ₹{(p.netPay || 0).toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-3.5 font-sans text-[11px]">
-                                {bank && (bank.accountNumber || bank.upiId) ? (
-                                  <div className="space-y-0.5">
-                                    <span className="text-white font-bold block">{bank.bankName || 'Bank Account'}</span>
-                                    <span className="text-rosegold-400 font-mono text-[10px] block">A/C: {bank.accountNumber}</span>
-                                    <span className="text-gray-400 font-mono text-[9px] block">IFSC: {bank.ifscCode}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-gray-500 italic">No Bank Details</span>
-                                )}
                               </td>
                               <td className="p-3.5 text-center">
                                 <span className="bg-green-500/20 text-green-400 border border-green-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
@@ -6573,8 +6586,8 @@ function AdminDashboardContent() {
                     </div>
                   </div>
 
-                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs cursor-pointer">
-                    Close Breakdown Modal
+                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-all cursor-pointer">
+                    <span>Close Breakdown Modal</span>
                   </button>
                 </div>
               );
@@ -6604,7 +6617,7 @@ function AdminDashboardContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">Expense Audit</span>
                       <h3 className="text-xl font-serif font-bold text-white mt-0.5">Total Payroll & Payout Breakdown</h3>
                     </div>
-                    <button onClick={() => setBreakdownModal(null)} className="text-gray-400 text-lg cursor-pointer">✕</button>
+                    <button onClick={() => setBreakdownModal(null)} className="p-1.5 rounded-xl bg-dark-800 text-gray-400 hover:text-white border border-white/10 hover:border-rosegold-500/30 transition-all cursor-pointer" title="Close Modal">✕</button>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-purple-500/15 border border-purple-500/40 flex justify-between items-center">
@@ -6650,8 +6663,8 @@ function AdminDashboardContent() {
                     </div>
                   </div>
 
-                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs cursor-pointer">
-                    Close Breakdown Modal
+                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-all cursor-pointer">
+                    <span>Close Breakdown Modal</span>
                   </button>
                 </div>
               );
@@ -6675,7 +6688,7 @@ function AdminDashboardContent() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Profitability Audit</span>
                       <h3 className="text-xl font-serif font-bold text-white mt-0.5">Net Studio Profit & Margin Analysis</h3>
                     </div>
-                    <button onClick={() => setBreakdownModal(null)} className="text-gray-400 text-lg cursor-pointer">✕</button>
+                    <button onClick={() => setBreakdownModal(null)} className="p-1.5 rounded-xl bg-dark-800 text-gray-400 hover:text-white border border-white/10 hover:border-rosegold-500/30 transition-all cursor-pointer" title="Close Modal">✕</button>
                   </div>
 
                   <div className="p-5 rounded-2xl bg-green-500/15 border border-green-500/40 text-center space-y-1">
@@ -6703,8 +6716,8 @@ function AdminDashboardContent() {
                     </div>
                   </div>
 
-                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs cursor-pointer">
-                    Close Breakdown Modal
+                  <button onClick={() => setBreakdownModal(null)} className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-all cursor-pointer">
+                    <span>Close Breakdown Modal</span>
                   </button>
                 </div>
               );
@@ -6896,62 +6909,24 @@ function AdminDashboardContent() {
                   </select>
                 </div>
 
-                {/* Bank Account & UPI Payout Info Card */}
-                {(() => {
-                  const selectedEmp = employees.find(e => e.name === payForm.employeeName || e._id === payForm.employeeId);
-                  const bank = selectedEmp?.bankDetails;
-                  return (
-                    <div className="p-3.5 rounded-2xl bg-dark-850 border border-rosegold-500/30 space-y-1.5 text-xs">
-                      <div className="flex items-center justify-between border-b border-white/10 pb-1">
-                        <span className="text-rosegold-400 font-bold uppercase text-[10px]">Employee Bank & UPI Payout Target</span>
-                        <span className="text-[10px] text-green-400 font-mono">Verified Account</span>
-                      </div>
-                      {bank && (bank.accountNumber || bank.upiId) ? (
-                        <div className="grid grid-cols-2 gap-2 pt-1 font-mono text-[11px]">
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase">Account Name</span>
-                            <span className="text-white font-bold">{bank.accountName || selectedEmp?.name}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase">Bank Name</span>
-                            <span className="text-white font-bold">{bank.bankName || 'N/A'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase">Account Number</span>
-                            <span className="text-rosegold-300 font-bold">{bank.accountNumber || 'N/A'}</span>
-                          </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase">IFSC Code</span>
-                            <span className="text-rosegold-300 font-bold">{bank.ifscCode || 'N/A'}</span>
-                          </div>
-                          {bank.upiId && (
-                            <div className="col-span-2 pt-0.5">
-                              <span className="text-gray-400 block text-[9px] uppercase">UPI Direct ID</span>
-                              <span className="text-green-400 font-bold">{bank.upiId}</span>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-amber-400/90 italic text-[11px] py-1">
-                          ⚠️ Employee has not updated bank details yet in their portal. Transfer will be recorded in company ledger.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
+                  <input 
+                    type="month" 
+                    required 
+                    max={getCurrentYearMonthStr()}
+                    value={parseToYearMonth(payForm.month)} 
+                    onChange={e => {
+                      const selectedYm = e.target.value;
+                      if (selectedYm && selectedYm <= getCurrentYearMonthStr()) {
+                        setPayForm({ ...payForm, month: formatMonthYear(selectedYm) });
+                      }
+                    }}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold cursor-pointer" 
+                  />
+                </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={payForm.month} 
-                      onChange={e => setPayForm({ ...payForm, month: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
-                    />
-                  </div>
-
                   <div>
                     <label className="text-gray-300 font-semibold block mb-1">Base Fixed Salary (₹) *</label>
                     <input 
@@ -6959,12 +6934,10 @@ function AdminDashboardContent() {
                       required 
                       value={payForm.baseSalary} 
                       onChange={e => setPayForm({ ...payForm, baseSalary: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono font-bold" 
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 font-semibold block mb-1">Service Revenue Handled (₹)</label>
                     <input 
@@ -6978,7 +6951,9 @@ function AdminDashboardContent() {
                       className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 font-semibold block mb-1">Commission Rate (%)</label>
                     <input 
@@ -6992,9 +6967,7 @@ function AdminDashboardContent() {
                       className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-gray-300 font-semibold block mb-1">Commission Amount (₹)</label>
                     <input 
@@ -7004,30 +6977,16 @@ function AdminDashboardContent() {
                       className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-green-400" 
                     />
                   </div>
-
-                  <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Deductions / Taxes (₹)</label>
-                    <input 
-                      type="number" 
-                      value={payForm.deductions} 
-                      onChange={e => setPayForm({ ...payForm, deductions: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400" 
-                    />
-                  </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Disbursal Payment Method</label>
-                  <select 
-                    value={payForm.paymentMethod} 
-                    onChange={e => setPayForm({ ...payForm, paymentMethod: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
-                  >
-                    <option value="Bank Transfer (HDFC)">Bank Transfer (HDFC)</option>
-                    <option value="Bank Transfer (ICICI)">Bank Transfer (ICICI)</option>
-                    <option value="UPI Direct Disbursal">UPI Direct Disbursal</option>
-                    <option value="Cash Payroll">Cash Cheque</option>
-                  </select>
+                  <label className="text-gray-300 font-semibold block mb-1">Deductions / Taxes (₹)</label>
+                  <input 
+                    type="number" 
+                    value={payForm.deductions} 
+                    onChange={e => setPayForm({ ...payForm, deductions: Number(e.target.value) })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400" 
+                  />
                 </div>
 
                 <div className="p-3 rounded-xl bg-dark-800 border border-white/10 flex justify-between items-center text-xs">
@@ -7037,8 +6996,8 @@ function AdminDashboardContent() {
                   </span>
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
-                  Disburse & Issue Salary Slip 💳
+                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-all cursor-pointer">
+                  <span>Disburse & Issue Salary Slip</span>
                 </button>
               </form>
             )}
@@ -7163,14 +7122,13 @@ function AdminDashboardContent() {
                         commissionAmount: commAmt,
                         incentives: 0,
                         deductions: 0,
-                        paymentMethod: 'Bank Transfer (HDFC)'
                       });
                       setModalType('addPay');
                     }}
-                    className="w-full py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs flex items-center justify-center space-x-1.5 mt-2 cursor-pointer shadow-glow-rosegold"
+                    className="w-full py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs flex items-center justify-center space-x-1.5 mt-2 cursor-pointer shadow-glow-rosegold"
                   >
-                    <DollarSign className="w-3.5 h-3.5" />
-                    <span>Pay Salary Through Portal 💳</span>
+                    <DollarSign className="w-3.5 h-3.5 text-white" />
+                    <span>Issue Salary Slip</span>
                   </button>
                 </div>
 

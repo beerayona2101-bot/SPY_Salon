@@ -260,7 +260,7 @@ export default function ChangePasswordModal({ isOpen, onClose, userName, userRol
                 disabled={isSubmitting}
                 className="px-6 py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all disabled:opacity-50 cursor-pointer"
               >
-                {isSubmitting ? 'Updating...' : 'Update Password →'}
+                <span>{isSubmitting ? 'Updating...' : 'Update Password →'}</span>
               </button>
             </div>
           </form>

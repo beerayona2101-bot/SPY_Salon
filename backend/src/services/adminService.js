@@ -164,10 +164,10 @@ class AdminService {
 
       // Merge bankDetails and financial params from User collection
       const matchingUser = users.find(u => u._id.toString() === emp._id.toString() || (u.email && doc.email && u.email.toLowerCase() === doc.email.toLowerCase()));
-      if (matchingUser) {
-        if (matchingUser.bankDetails && matchingUser.bankDetails.accountNumber) {
-          doc.bankDetails = matchingUser.bankDetails;
-        }
+      if (matchingUser && matchingUser.bankDetails && (matchingUser.bankDetails.accountNumber || matchingUser.bankDetails.upiId || matchingUser.bankDetails.bankName)) {
+        doc.bankDetails = matchingUser.bankDetails;
+      } else if (emp.bankDetails && (emp.bankDetails.accountNumber || emp.bankDetails.upiId || emp.bankDetails.bankName)) {
+        doc.bankDetails = emp.bankDetails;
       }
       doc.baseSalary = doc.baseSalary || 25000;
       doc.commissionPercentage = doc.commissionPercentage !== undefined ? doc.commissionPercentage : 20;
@@ -184,8 +184,10 @@ class AdminService {
     const doc = employee.toObject();
 
     const matchingUser = await User.findOne({ $or: [{ _id: id }, { email: employee.email }] });
-    if (matchingUser && matchingUser.bankDetails && matchingUser.bankDetails.accountNumber) {
+    if (matchingUser && matchingUser.bankDetails && (matchingUser.bankDetails.accountNumber || matchingUser.bankDetails.upiId || matchingUser.bankDetails.bankName)) {
       doc.bankDetails = matchingUser.bankDetails;
+    } else if (employee.bankDetails && (employee.bankDetails.accountNumber || employee.bankDetails.upiId || employee.bankDetails.bankName)) {
+      doc.bankDetails = employee.bankDetails;
     }
     doc.baseSalary = doc.baseSalary || 25000;
     doc.commissionPercentage = doc.commissionPercentage !== undefined ? doc.commissionPercentage : 20;

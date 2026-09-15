@@ -267,6 +267,23 @@ a.rosegold-gradient-bg:hover::before {
 .purple-gradient-bg > *,
 .hero-cta-btn > *,
 button.rosegold-gradient-bg > *,
+.spy-btn-anim,
+.rosegold-gradient-bg,
+.gold-gradient-bg,
+.purple-gradient-bg,
+.hero-cta-btn,
+button.rosegold-gradient-bg,
+a.rosegold-gradient-bg {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+.spy-btn-anim > *,
+.rosegold-gradient-bg > *,
+.gold-gradient-bg > *,
+.purple-gradient-bg > *,
+.hero-cta-btn > *,
+button.rosegold-gradient-bg > *,
 a.rosegold-gradient-bg > *,
 span.rosegold-gradient-bg,
 .rosegold-gradient-bg span,
@@ -275,6 +292,8 @@ a.rosegold-gradient-bg span,
 .button-content {
   position: relative !important;
   z-index: 10 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 /* MASTER HIGH CONTRAST HOVER TEXT & ICON COLOR RECTIFICATION (LIGHT & DARK MODE) */
@@ -323,6 +342,40 @@ html.light .glass-card:hover .rosegold-gradient-bg * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   fill: none;
+}
+
+/* MASTER INTERACTIVE ACCESSIBILITY & FOCUS VISIBILITY RULES */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #E0A96D !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 12px rgba(224, 169, 109, 0.4) !important;
+}
+
+button:disabled,
+a.disabled,
+input:disabled,
+select:disabled,
+button[disabled] {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+select option {
+  background-color: #191512 !important;
+  color: #FFFFFF !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #2F2722 !important;
+  color: #E0A96D !important;
 }
 
 .gold-gradient-text {
@@ -1597,7 +1650,7 @@ html.light th,
 html.light div.text-white,
 html.light p.text-white,
 html.light label.text-white,
-html.light span.text-white:not(.force-text-white) {
+html.light span.text-white:not(.force-text-white):not(button *):not(a *):not([role="button"] *) {
   color: #111827 !important;
 }
 
@@ -1879,90 +1932,63 @@ html.light section.hero-section-container a.hero-secondary-btn span,
    ======================================================== */
 @media print {
   @page {
-    margin: 12mm 15mm;
     size: A4 portrait;
-  }
-
-  *, *:before, *:after {
-    box-shadow: none !important;
-    text-shadow: none !important;
+    margin: 0;
   }
 
   html, body {
     background: #ffffff !important;
-    color: #111111 !important;
-    font-family: 'Poppins', Arial, Helvetica, sans-serif !important;
-    font-size: 11pt !important;
-    line-height: 1.4 !important;
+    color: #0e0b09 !important;
+    width: 210mm !important;
+    height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide non-printable UI elements */
-  header, nav, footer, aside, button,
-  .no-print,
-  .print\:hidden,
-  [role="dialog"] button {
-    display: none !important;
+  /* Hide everything on screen by default during print */
+  body * {
     visibility: hidden !important;
   }
 
-  /* Reset fixed modal overlay positioning for print */
-  .fixed.inset-0 {
-    position: static !important;
-    background: #ffffff !important;
-    padding: 0 !important;
+  /* Expose the printable payslip document & its children */
+  .printable-payslip-root,
+  .printable-payslip-root * {
+    visibility: visible !important;
+  }
+
+  .printable-payslip-root {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    box-sizing: border-box !important;
+    padding: 14mm 16mm !important;
     margin: 0 !important;
-    display: block !important;
-    width: 100% !important;
-    height: auto !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  /* Force printable document cards to expand neatly to full printable page */
-  .printable-document,
-  .fixed.inset-0 > div {
-    max-width: 100% !important;
-    width: 100% !important;
-    box-shadow: none !important;
-    border: 1px solid #e5e7eb !important;
-    border-radius: 8px !important;
     background: #ffffff !important;
-    color: #111111 !important;
-    padding: 24px !important;
-    margin: 0 auto !important;
-    position: static !important;
+    color: #0e0b09 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    z-index: 999999 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  /* Clean text contrast for printable documents */
-  p, span, div, h1, h2, h3, h4, h5, h6, td, th, label {
-    color: #111111 !important;
-  }
-
-  .text-gray-400, .text-gray-500, .text-gray-600 {
-    color: #4b5563 !important;
-  }
-
-  .text-rosegold-500, .text-rosegold-400 {
-    color: #92400e !important;
-  }
-
-  .text-green-600, .text-green-700, .text-emerald-700 {
-    color: #047857 !important;
-  }
-
-  .text-red-500, .text-red-600 {
-    color: #b91c1c !important;
-  }
-
-  .bg-green-100 {
-    background-color: #d1fae5 !important;
+  /* Controls and buttons with no-print class */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
   }
 }
+
 

@@ -858,7 +858,7 @@ exports.createPayroll = async (req, res, next) => {
       incentives: inc,
       deductions: ded,
       netPay: net,
-      paymentMethod: req.body.paymentMethod || 'Bank Transfer (HDFC)',
+      paymentMethod: req.body.paymentMethod || 'Standard Disbursal',
       paymentDate: new Date().toISOString().split('T')[0],
       status: 'Paid',
       branchId
@@ -871,7 +871,7 @@ exports.createPayroll = async (req, res, next) => {
       category: 'Staff Payroll Disbursal',
       description: `Monthly Salary Disbursal - ${slip.employeeName} (${slip.empCode})`,
       amount: net,
-      paymentMethod: slip.paymentMethod,
+      paymentMethod: slip.paymentMethod || 'Standard Disbursal',
       status: 'Settled',
       date: new Date().toISOString(),
       branchId

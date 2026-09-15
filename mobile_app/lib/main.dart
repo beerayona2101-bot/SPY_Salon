@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'services/fcm_service.dart';
 import 'screens/splash_screen.dart';
+import 'theme/app_theme.dart';
+import 'theme/theme_controller.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -8,7 +11,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FcmService.setNavigatorKey(appNavigatorKey);
   await FcmService.initialize();
-  runApp(const SpySalonApp());
+
+  final themeController = await ThemeController.loadInitial();
+
+  runApp(
+    ChangeNotifierProvider<ThemeController>.value(
+      value: themeController,
+      child: const SpySalonApp(),
+    ),
+  );
 }
 
 class SpySalonApp extends StatelessWidget {
@@ -16,23 +27,18 @@ class SpySalonApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: appNavigatorKey,
-      title: 'Spy_Salon',
-      debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFFE0A96D),
-        scaffoldBackgroundColor: const Color(0xFF13100E),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFE0A96D),
-          secondary: Color(0xFFC8868F),
-          surface: Color(0xFF191512),
-        ),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
+    return Consumer<ThemeController>(
+      builder: (context, themeController, child) {
+        return MaterialApp(
+          navigatorKey: appNavigatorKey,
+          title: 'Spy_Salon',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeController.themeMode,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }

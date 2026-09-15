@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
 import '../utils/luxury_page_route.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
@@ -95,6 +96,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
 
+    final themeColors = AppColors.of(context);
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -111,9 +114,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               await ApiService.clearSession();
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Color(0xFFC8868F),
-                  content: Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
+                SnackBar(
+                  backgroundColor: themeColors.error,
+                  content: const Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
                 ),
               );
               return;
@@ -151,14 +154,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const goldColor = Color(0xFFE0A96D);
-    const darkBg = Color(0xFF13100E);
-    const cardBg = Color(0xFF191512);
+    final themeColors = AppColors.of(context);
+    final primaryColor = themeColors.primary;
+    final bg = themeColors.deepestBackground;
+    final cardBg = themeColors.cardSurface;
 
     final isLastPage = _currentPage == _onboardingData.length - 1;
 
     return Scaffold(
-      backgroundColor: darkBg,
+      backgroundColor: bg,
       body: Stack(
         children: [
           // Onboarding PageView
@@ -189,8 +193,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (ctx, err, stack) => Container(
                                 color: cardBg,
-                                child: const Center(
-                                  child: Icon(Icons.spa, color: goldColor, size: 64),
+                                child: Center(
+                                  child: Icon(Icons.spa, color: primaryColor, size: 64),
                                 ),
                               ),
                             ),
@@ -209,8 +213,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 colors: [
                                   Colors.black.withValues(alpha: 0.6),
                                   Colors.transparent,
-                                  darkBg.withValues(alpha: 0.95),
-                                  darkBg,
+                                  bg.withValues(alpha: 0.95),
+                                  bg,
                                 ],
                                 stops: const [0.0, 0.45, 0.88, 1.0],
                               ),
@@ -231,8 +235,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       height: 32,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: goldColor, width: 1.5),
-                                        color: Colors.white,
+                                        border: Border.all(color: primaryColor, width: 1.5),
+                                        color: themeColors.cardSurface,
                                       ),
                                       child: ClipOval(
                                         child: Image.asset(
@@ -242,10 +246,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Text(
+                                    Text(
                                       'SPY SALON',
                                       style: TextStyle(
-                                        color: Color(0xFFF6F2EB),
+                                        color: themeColors.textPrimary,
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1.5,
@@ -255,10 +259,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 ),
                                 TextButton(
                                   onPressed: _navigateToLoginOrDashboard,
-                                  child: const Text(
+                                  child: Text(
                                     'Skip',
                                     style: TextStyle(
-                                      color: goldColor,
+                                      color: primaryColor,
                                       fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.5,
@@ -284,14 +288,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: goldColor.withValues(alpha: 0.15),
+                              color: primaryColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: goldColor.withValues(alpha: 0.3)),
+                              border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
                             ),
                             child: Text(
                               data['tagline']!,
-                              style: const TextStyle(
-                                color: goldColor,
+                              style: TextStyle(
+                                color: primaryColor,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
@@ -301,10 +305,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           const SizedBox(height: 12),
                           Text(
                             data['title']!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 28,
                               fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              color: themeColors.textPrimary,
                               letterSpacing: 0.3,
                               height: 1.2,
                             ),
@@ -312,9 +316,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           const SizedBox(height: 10),
                           Text(
                             data['description']!,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
-                              color: Colors.white70,
+                              color: themeColors.textSecondary,
                               height: 1.5,
                             ),
                           ),
@@ -336,12 +340,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(4),
                                       color: _currentPage == dotIndex
-                                          ? goldColor
-                                          : Colors.white24,
+                                          ? primaryColor
+                                          : themeColors.cardBorder,
                                       boxShadow: _currentPage == dotIndex
                                           ? [
                                               BoxShadow(
-                                                color: goldColor.withValues(alpha: 0.5),
+                                                color: primaryColor.withValues(alpha: 0.5),
                                                 blurRadius: 8,
                                                 spreadRadius: 1,
                                               )
@@ -355,10 +359,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               // Primary Action Pill Button (NEXT / GET STARTED)
                               ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: goldColor,
-                                  foregroundColor: darkBg,
+                                  backgroundColor: primaryColor,
+                                  foregroundColor: themeColors.buttonTextPrimary,
                                   elevation: 6,
-                                  shadowColor: goldColor.withValues(alpha: 0.5),
+                                  shadowColor: primaryColor.withValues(alpha: 0.5),
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(28),
@@ -377,10 +381,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Icon(
+                                    Icon(
                                       Icons.arrow_forward_rounded,
                                       size: 18,
-                                      color: darkBg,
+                                      color: themeColors.buttonTextPrimary,
                                     ),
                                   ],
                                 ),
@@ -401,3 +405,4 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 }
+

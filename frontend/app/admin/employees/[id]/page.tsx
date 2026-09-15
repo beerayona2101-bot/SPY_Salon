@@ -275,16 +275,42 @@ export default function EmployeeDetailPage() {
 function SalaryPortalSection({ employee, credentials }: { employee: any, credentials: any }) {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [disbursedSuccess, setDisbursedSuccess] = useState(false);
+
+  const getCurrentYearMonthStr = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const formatMonthYear = (ymStr: string) => {
+    if (!ymStr) return 'September 2026';
+    const [y, m] = ymStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const parseToYearMonth = (str: string) => {
+    if (!str) return getCurrentYearMonthStr();
+    try {
+      const d = new Date(str);
+      if (isNaN(d.getTime())) return getCurrentYearMonthStr();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    } catch {
+      return getCurrentYearMonthStr();
+    }
+  };
+
   const [payForm, setPayForm] = useState({
-    month: 'July 2026',
+    month: formatMonthYear(getCurrentYearMonthStr()),
     baseSalary: 45000,
     incentives: 7500,
-    deductions: 1500,
-    paymentMethod: 'Bank Transfer (HDFC)'
+    deductions: 1500
   });
 
   const empCode = credentials?.empCode || employee.empCode || 'EMP-1001';
-  const cleanName = (employee.name || 'employee').toLowerCase().replace(/[^a-z0-9]/g, '');
 
   const netPayable = payForm.baseSalary + payForm.incentives - payForm.deductions;
 
@@ -299,8 +325,7 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
           month: payForm.month,
           baseSalary: payForm.baseSalary,
           incentives: payForm.incentives,
-          deductions: payForm.deductions,
-          paymentMethod: payForm.paymentMethod
+          deductions: payForm.deductions
         })
       });
       const data = await res.json();
@@ -324,10 +349,10 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
 
         <button
           onClick={() => setPayModalOpen(true)}
-          className="px-5 py-3 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs flex items-center justify-center space-x-2 shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
+          className="px-5 py-3 rounded-2xl rosegold-gradient-bg !text-white font-extrabold text-xs flex items-center justify-center space-x-2 shadow-glow-rosegold hover:scale-105 transition-all cursor-pointer"
         >
-          <Sparkles className="w-4 h-4" />
-          <span>Pay Salary Through Portal 💳</span>
+          <Sparkles className="w-4 h-4 text-white" />
+          <span>Issue Salary Slip</span>
         </button>
       </div>
 
@@ -364,32 +389,13 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
         </div>
       </div>
 
-      {/* Employee Bank Account Details */}
-      <div className="p-5 rounded-2xl bg-dark-800/80 border border-white/10 space-y-3">
-        <h4 className="text-white font-serif font-bold text-sm">Authorized Employee Bank Account & Payout Details</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-300">
-          <div>
-            <span className="text-gray-500 text-[10px] uppercase block font-semibold">Bank Name</span>
-            <strong className="text-white font-mono">HDFC Bank Flagship</strong>
-          </div>
-          <div>
-            <span className="text-gray-500 text-[10px] uppercase block font-semibold">Account Number</span>
-            <strong className="text-white font-mono">XXXX-XXXX-4821</strong>
-          </div>
-          <div>
-            <span className="text-gray-500 text-[10px] uppercase block font-semibold">IFSC Code & UPI ID</span>
-            <strong className="text-rosegold-400 font-mono">HDFC0001824 | {cleanName}@okhdfc</strong>
-          </div>
-        </div>
-      </div>
-
       {/* Salary Disbursal Modal */}
       {payModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
           <div className="w-full max-w-md glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <h3 className="text-lg font-serif font-bold text-white">Salary Disbursal Portal</h3>
-              <button onClick={() => setPayModalOpen(false)} className="text-gray-400 text-lg cursor-pointer">✕</button>
+              <button onClick={() => setPayModalOpen(false)} className="p-1.5 rounded-xl bg-dark-800 text-gray-400 hover:text-white border border-white/10 hover:border-rosegold-500/30 cursor-pointer">✕</button>
             </div>
 
             <form onSubmit={handleDisburseSalary} className="space-y-3 text-xs">
@@ -399,13 +405,19 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
               </div>
 
               <div>
-                <label className="text-gray-300 font-semibold block mb-1">Pay Month / Cycle *</label>
+                <label className="text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
                 <input
-                  type="text"
+                  type="month"
                   required
-                  value={payForm.month}
-                  onChange={(e) => setPayForm({ ...payForm, month: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-dark-800 text-white border border-white/10"
+                  max={getCurrentYearMonthStr()}
+                  value={parseToYearMonth(payForm.month)}
+                  onChange={(e) => {
+                    const selectedYm = e.target.value;
+                    if (selectedYm && selectedYm <= getCurrentYearMonthStr()) {
+                      setPayForm({ ...payForm, month: formatMonthYear(selectedYm) });
+                    }
+                  }}
+                  className="w-full p-2.5 rounded-xl bg-dark-800 text-white border border-white/10 font-bold cursor-pointer"
                 />
               </div>
 
@@ -431,27 +443,13 @@ function SalaryPortalSection({ employee, credentials }: { employee: any, credent
                 </div>
               </div>
 
-              <div>
-                <label className="text-gray-300 font-semibold block mb-1">Payout Channel / Gateway</label>
-                <select
-                  value={payForm.paymentMethod}
-                  onChange={(e) => setPayForm({ ...payForm, paymentMethod: e.target.value })}
-                  className="w-full p-2.5 rounded-xl bg-dark-800 text-white border border-white/10"
-                >
-                  <option value="Bank Transfer (HDFC)">Bank Transfer (HDFC Direct)</option>
-                  <option value="Bank Transfer (ICICI)">Bank Transfer (ICICI Direct)</option>
-                  <option value="Razorpay Salary Payout">Razorpay Instant Payout Portal</option>
-                  <option value="UPI Transfer">UPI Transfer</option>
-                </select>
-              </div>
-
               <div className="p-3.5 rounded-xl bg-rosegold-500/15 border border-rosegold-500/40 flex justify-between items-center font-bold">
                 <span className="text-rosegold-300">Final Net Disbursal:</span>
                 <span className="text-rosegold-400 font-serif text-lg">₹{netPayable.toLocaleString('en-IN')}</span>
               </div>
 
-              <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
-                Confirm & Disburse Salary Now 🚀
+              <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
+                <span>Disburse & Issue Salary Slip</span>
               </button>
             </form>
           </div>

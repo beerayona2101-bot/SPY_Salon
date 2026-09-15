@@ -52,11 +52,13 @@ const payrollSchema = new mongoose.Schema({
   },
   paymentMethod: { 
     type: String, 
-    required: true 
+    required: false,
+    default: 'Standard Disbursal'
   },
   paymentDate: { 
     type: String, 
-    required: true 
+    required: false,
+    default: () => new Date().toISOString().split('T')[0]
   },
   status: { 
     type: String, 

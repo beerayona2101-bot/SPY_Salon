@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
 
 class BackendSettingsScreen extends StatefulWidget {
   const BackendSettingsScreen({super.key});
@@ -68,6 +69,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
   }
 
   Future<void> _handleSave() async {
+    final colors = AppColors.of(context);
     final rawInput = _urlController.text.trim();
 
     if (rawInput.isEmpty) {
@@ -101,34 +103,34 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
       final confirm = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF191512),
+          backgroundColor: colors.cardSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE0A96D), width: 1.5),
+            side: BorderSide(color: colors.primary, width: 1.5),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
-              SizedBox(width: 10),
+              Icon(Icons.warning_amber_rounded, color: colors.warning, size: 24),
+              const SizedBox(width: 10),
               Text(
                 'Unreachable Server',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           content: Text(
             'The connection test to "$normalized" failed (${testRes['message']}).\n\nDo you still want to save this backend URL?',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: colors.textSecondary, fontSize: 13),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+              child: Text('CANCEL', style: TextStyle(color: colors.textMuted)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFE0A96D),
-                foregroundColor: const Color(0xFF13100E),
+                backgroundColor: colors.primary,
+                foregroundColor: colors.buttonTextPrimary,
               ),
               onPressed: () => Navigator.pop(ctx, true),
               child: const Text('SAVE ANYWAY', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -148,30 +150,31 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
   }
 
   Future<void> _handleReset() async {
+    final colors = AppColors.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF191512),
+        backgroundColor: colors.cardSurface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFE0A96D), width: 1),
+          side: BorderSide(color: colors.primary, width: 1),
         ),
-        title: const Text(
+        title: Text(
           'Reset Backend Configuration?',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         content: Text(
           'This will restore the default configuration (${ApiConfig.defaultBaseUrl}).',
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
+          style: TextStyle(color: colors.textSecondary, fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(color: Colors.white54)),
+            child: Text('CANCEL', style: TextStyle(color: colors.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFC8868F),
+              backgroundColor: colors.roseSecondary,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -191,10 +194,11 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
 
   void _showSnackBar(String message, {bool isError = true}) {
     if (!mounted) return;
+    final colors = AppColors.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: isError ? Colors.red[900] : const Color(0xFF1B4D3E),
-        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: isError ? colors.error : colors.success,
+        content: Text(message, style: TextStyle(color: colors.buttonTextPrimary)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -202,9 +206,10 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const goldColor = Color(0xFFE0A96D);
-    const darkBg = Color(0xFF13100E);
-    const cardBg = Color(0xFF191512);
+    final colors = AppColors.of(context);
+    final goldColor = colors.primary;
+    final darkBg = colors.background;
+    final cardBg = colors.cardSurface;
 
     final currentNormalized = ApiConfig.normalizeUrl(_urlController.text);
     final isHttpOnly = currentNormalized.startsWith('http://') &&
@@ -219,15 +224,15 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
         backgroundColor: cardBg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new, color: goldColor, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Backend Settings',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
               'REST API & Realtime Server Configuration',
@@ -238,7 +243,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
         actions: [
           IconButton(
             tooltip: 'Reset to Default',
-            icon: const Icon(Icons.restart_alt_rounded, color: Colors.white60),
+            icon: Icon(Icons.restart_alt_rounded, color: colors.textMuted),
             onPressed: _handleReset,
           ),
         ],
@@ -262,9 +267,9 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.dns_outlined, color: goldColor, size: 20),
+                        Icon(Icons.dns_outlined, color: goldColor, size: 20),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Active Backend Endpoint',
                           style: TextStyle(color: goldColor, fontWeight: FontWeight.bold, fontSize: 13),
                         ),
@@ -277,7 +282,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                           ),
                           child: Text(
                             ApiConfig.baseUrl == ApiConfig.defaultBaseUrl ? 'SYSTEM DEFAULT' : 'CUSTOM',
-                            style: const TextStyle(color: goldColor, fontSize: 9, fontWeight: FontWeight.w800),
+                            style: TextStyle(color: goldColor, fontSize: 9, fontWeight: FontWeight.w800),
                           ),
                         ),
                       ],
@@ -285,8 +290,8 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                     const SizedBox(height: 10),
                     Text(
                       ApiConfig.displayApiUrl,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: colors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'monospace',
@@ -304,10 +309,10 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: goldColor.withValues(alpha: 0.2)),
+                  border: Border.all(color: colors.cardBorder),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 16,
                       spreadRadius: 2,
                     ),
@@ -316,24 +321,24 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
+                    Text(
                       'Server Backend URL',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: colors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'Enter domain, IP, or full endpoint (e.g. https://hairsalon.speshway.site)',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                      style: TextStyle(color: colors.textSecondary, fontSize: 11),
                     ),
                     const SizedBox(height: 14),
 
                     TextField(
                       controller: _urlController,
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+                      style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
                       onChanged: (_) {
                         setState(() {
                           _testResult = null;
@@ -341,11 +346,11 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                       },
                       decoration: InputDecoration(
                         labelText: 'Backend Address *',
-                        labelStyle: const TextStyle(color: Colors.white70, fontSize: 13),
-                        prefixIcon: const Icon(Icons.link_rounded, color: goldColor, size: 20),
+                        labelStyle: TextStyle(color: colors.textSecondary, fontSize: 13),
+                        prefixIcon: Icon(Icons.link_rounded, color: goldColor, size: 20),
                         suffixIcon: _urlController.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.cancel, color: Colors.white38, size: 18),
+                                icon: Icon(Icons.cancel, color: colors.textMuted, size: 18),
                                 onPressed: () {
                                   _urlController.clear();
                                   setState(() => _testResult = null);
@@ -353,7 +358,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: darkBg,
+                        fillColor: colors.inputBackground,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
@@ -361,7 +366,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: goldColor, width: 1.5),
+                          borderSide: BorderSide(color: goldColor, width: 1.5),
                         ),
                       ),
                     ),
@@ -373,8 +378,8 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                       padding: const EdgeInsets.only(left: 4),
                       child: Text(
                         'Will connect to: $currentNormalized/api/v1',
-                        style: const TextStyle(
-                          color: Colors.white38,
+                        style: TextStyle(
+                          color: colors.textMuted,
                           fontSize: 11,
                           fontFamily: 'monospace',
                         ),
@@ -386,18 +391,18 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.12),
+                          color: colors.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
+                          border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.shield_outlined, color: Colors.amber, size: 18),
-                            SizedBox(width: 8),
+                            Icon(Icons.shield_outlined, color: colors.warning, size: 18),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'HTTP is unencrypted. HTTPS is strongly recommended for production servers.',
-                                style: TextStyle(color: Colors.amber, fontSize: 11),
+                                style: TextStyle(color: colors.warning, fontSize: 11),
                               ),
                             ),
                           ],
@@ -413,14 +418,14 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: goldColor,
-                          side: const BorderSide(color: goldColor, width: 1.2),
+                          side: BorderSide(color: goldColor, width: 1.2),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22),
                           ),
                         ),
                         onPressed: _isTesting ? null : () => _handleTestConnection(silent: false),
                         icon: _isTesting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: goldColor),
@@ -444,13 +449,13 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: _testResult!['connected'] == true
-                        ? const Color(0xFF1B4D3E).withValues(alpha: 0.4)
-                        : Colors.red[900]!.withValues(alpha: 0.3),
+                        ? colors.success.withValues(alpha: 0.15)
+                        : colors.error.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: _testResult!['connected'] == true
-                          ? const Color(0xFF2ECC71)
-                          : Colors.redAccent,
+                          ? colors.success
+                          : colors.error,
                       width: 1.2,
                     ),
                   ),
@@ -464,8 +469,8 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                                 ? Icons.check_circle_rounded
                                 : Icons.error_rounded,
                             color: _testResult!['connected'] == true
-                                ? const Color(0xFF2ECC71)
-                                : Colors.redAccent,
+                                ? colors.success
+                                : colors.error,
                             size: 22,
                           ),
                           const SizedBox(width: 10),
@@ -473,8 +478,8 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                             _testResult!['connected'] == true ? '✓ Backend Connected' : '✕ Connection Failed',
                             style: TextStyle(
                               color: _testResult!['connected'] == true
-                                  ? const Color(0xFF2ECC71)
-                                  : Colors.redAccent,
+                                  ? colors.success
+                                  : colors.error,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -483,20 +488,20 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                           if (_testResult!['latencyMs'] != null)
                             Text(
                               '${_testResult!['latencyMs']} ms',
-                              style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+                              style: TextStyle(color: colors.textSecondary, fontSize: 11, fontFamily: 'monospace'),
                             ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       Text(
                         _testResult!['message'] ?? '',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: TextStyle(color: colors.textPrimary, fontSize: 12),
                       ),
                       if (_testResult!['service'] != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           'Service: ${_testResult!['service']}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                          style: TextStyle(color: colors.textMuted, fontSize: 11),
                         ),
                       ],
                     ],
@@ -511,7 +516,7 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: goldColor,
-                    foregroundColor: darkBg,
+                    foregroundColor: colors.buttonTextPrimary,
                     elevation: 4,
                     shadowColor: goldColor.withValues(alpha: 0.4),
                     shape: RoundedRectangleBorder(
@@ -520,10 +525,10 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
                   ),
                   onPressed: _isSaving ? null : _handleSave,
                   icon: _isSaving
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: darkBg),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: colors.buttonTextPrimary),
                         )
                       : const Icon(Icons.save_rounded, size: 20),
                   label: const Text(
@@ -542,10 +547,10 @@ class _BackendSettingsScreenState extends State<BackendSettingsScreen> {
               Center(
                 child: TextButton.icon(
                   onPressed: _handleReset,
-                  icon: const Icon(Icons.settings_backup_restore_rounded, color: Colors.white54, size: 16),
-                  label: const Text(
+                  icon: Icon(Icons.settings_backup_restore_rounded, color: colors.textMuted, size: 16),
+                  label: Text(
                     'Reset to Default Configuration',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    style: TextStyle(color: colors.textMuted, fontSize: 12),
                   ),
                 ),
               ),
