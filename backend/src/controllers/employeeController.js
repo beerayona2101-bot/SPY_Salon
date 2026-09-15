@@ -662,7 +662,7 @@ exports.getCustomersForStaff = async (req, res, next) => {
 // Add Walk-In appointment directly from employee dashboard
 exports.createEmployeeWalkIn = async (req, res, next) => {
   try {
-    const { customerName, customerPhone, service, specialistName, appointmentTime, paymentMethod, notes } = req.body;
+    const { customerName, customerPhone, service, specialistName, appointmentDate, appointmentTime, paymentMethod, notes } = req.body;
 
     if (!customerName || !service) {
       throw ApiError.badRequest('Customer name and service are required');
@@ -670,6 +670,7 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
 
     const bookingId = `SPY-WI-${Math.floor(100000 + Math.random() * 900000)}`;
     const todayStr = new Date().toISOString().split('T')[0];
+    const targetDateStr = appointmentDate ? appointmentDate.trim() : todayStr;
     const now = new Date();
     const bookingDateTime = now.toISOString();
     const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -697,9 +698,9 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       branch: 'Jubilee Hills Flagship',
       branchId: req.user.branchId,
       bookingDateTime,
-      bookingDate: todayStr,
-      bookingTimeFormatted: bookingTimeFormattedStr,
-      appointmentDate: todayStr,
+      bookingDate: targetDateStr,
+      bookingTimeFormatted: appointmentTime || bookingTimeFormattedStr,
+      appointmentDate: targetDateStr,
       appointmentTime: appointmentTime || 'Immediate Walk-In',
       paymentMethod: paymentMethod || 'Cash',
       paymentStatus: 'Paid',

@@ -323,6 +323,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final serviceCtrl = TextEditingController(text: 'Hair Cut & Styling');
+    final dateCtrl = TextEditingController(text: DateTime.now().toString().split(' ')[0]);
+    final timeCtrl = TextEditingController(text: '11:30 AM');
     final notesCtrl = TextEditingController(text: 'Direct Walk-In Client');
     final themeColors = AppColors.of(context);
     final primaryColor = themeColors.primary;
@@ -333,69 +335,120 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
       isScrollControlled: true,
       backgroundColor: themeColors.cardSurface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (ctx) => StatefulBuilder(
+        builder: (modalCtx, setModalState) => Padding(
+          padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Seat Walk-In Client ✂️', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
-                IconButton(icon: Icon(Icons.close, color: themeColors.textMuted), onPressed: () => Navigator.pop(ctx)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Seat Walk-In Client ✂️', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                    IconButton(icon: Icon(Icons.close, color: themeColors.textMuted), onPressed: () => Navigator.pop(modalCtx)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameCtrl,
+                  style: TextStyle(color: themeColors.textPrimary),
+                  decoration: InputDecoration(labelText: 'Customer Name *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.person_outline, color: primaryColor)),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  style: TextStyle(color: themeColors.textPrimary),
+                  decoration: InputDecoration(labelText: 'Mobile Phone *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.phone_outlined, color: primaryColor)),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: serviceCtrl,
+                  style: TextStyle(color: themeColors.textPrimary),
+                  decoration: InputDecoration(labelText: 'Service Name *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.content_cut, color: primaryColor)),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: modalCtx,
+                            initialDate: DateTime.tryParse(dateCtrl.text) ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                            lastDate: DateTime.now().add(const Duration(days: 180)),
+                          );
+                          if (picked != null) {
+                            setModalState(() {
+                              dateCtrl.text = picked.toString().split(' ')[0];
+                            });
+                          }
+                        },
+                        child: IgnorePointer(
+                          child: TextField(
+                            controller: dateCtrl,
+                            style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'Appointment Date *',
+                              labelStyle: TextStyle(color: themeColors.textMuted),
+                              prefixIcon: Icon(Icons.calendar_today, color: primaryColor, size: 18),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: timeCtrl,
+                        style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                        decoration: InputDecoration(
+                          labelText: 'Time Slot *',
+                          labelStyle: TextStyle(color: themeColors.textMuted),
+                          prefixIcon: Icon(Icons.access_time, color: primaryColor, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: notesCtrl,
+                  style: TextStyle(color: themeColors.textPrimary),
+                  decoration: InputDecoration(labelText: 'Service Notes', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.note_alt_outlined, color: primaryColor)),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor),
+                    onPressed: () async {
+                      if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty || serviceCtrl.text.trim().isEmpty) return;
+                      final res = await ApiService.createEmployeeWalkIn({
+                        'customerName': nameCtrl.text.trim(),
+                        'customerPhone': phoneCtrl.text.trim(),
+                        'service': serviceCtrl.text.trim(),
+                        'appointmentDate': dateCtrl.text.trim(),
+                        'appointmentTime': timeCtrl.text.trim(),
+                        'notes': notesCtrl.text.trim(),
+                      });
+                      if (modalCtx.mounted) {
+                        Navigator.pop(modalCtx);
+                        if (res['success'] == true) {
+                          _loadStaffData();
+                        }
+                      }
+                    },
+                    child: Text('Seat & Start Service', style: TextStyle(color: buttonTextColor, fontWeight: FontWeight.bold)),
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nameCtrl,
-              style: TextStyle(color: themeColors.textPrimary),
-              decoration: InputDecoration(labelText: 'Customer Name *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.person_outline, color: primaryColor)),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              style: TextStyle(color: themeColors.textPrimary),
-              decoration: InputDecoration(labelText: 'Mobile Phone *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.phone_outlined, color: primaryColor)),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: serviceCtrl,
-              style: TextStyle(color: themeColors.textPrimary),
-              decoration: InputDecoration(labelText: 'Service Name *', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.content_cut, color: primaryColor)),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: notesCtrl,
-              style: TextStyle(color: themeColors.textPrimary),
-              decoration: InputDecoration(labelText: 'Service Notes', labelStyle: TextStyle(color: themeColors.textMuted), prefixIcon: Icon(Icons.note_alt_outlined, color: primaryColor)),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 46,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor),
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) return;
-                  final res = await ApiService.createEmployeeWalkIn({
-                    'customerName': nameCtrl.text.trim(),
-                    'customerPhone': phoneCtrl.text.trim(),
-                    'service': serviceCtrl.text.trim(),
-                    'notes': notesCtrl.text.trim(),
-                  });
-                  if (ctx.mounted) {
-                    Navigator.pop(ctx);
-                    if (res['success'] == true) {
-                      _loadStaffData();
-                    }
-                  }
-                },
-                child: Text('Seat & Start Service', style: TextStyle(color: buttonTextColor, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

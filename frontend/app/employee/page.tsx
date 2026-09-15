@@ -192,6 +192,8 @@ function EmployeeDashboardContent() {
     customerName: '',
     customerPhone: '+91 98765 43210',
     service: 'Signature Keratin Hair Spa & Mask',
+    appointmentDate: getTodayISTStr(),
+    appointmentTime: '11:30 AM',
     paymentMethod: 'Cash',
     notes: 'Direct Walk-In Client added by Stylist Desk.'
   });
@@ -700,6 +702,8 @@ function EmployeeDashboardContent() {
           customerName: walkInForm.customerName,
           customerPhone: walkInForm.customerPhone,
           service: walkInForm.service,
+          appointmentDate: walkInForm.appointmentDate,
+          appointmentTime: walkInForm.appointmentTime,
           paymentMethod: walkInForm.paymentMethod,
           notes: walkInForm.notes
         })
@@ -712,6 +716,8 @@ function EmployeeDashboardContent() {
           customerName: '',
           customerPhone: '+91 98765 43210',
           service: 'Signature Keratin Hair Spa & Mask',
+          appointmentDate: getTodayISTStr(),
+          appointmentTime: '11:30 AM',
           paymentMethod: 'Cash',
           notes: 'Direct Walk-In Client added by Stylist Desk.'
         });
@@ -2183,6 +2189,30 @@ function EmployeeDashboardContent() {
                   onChange={(e) => setWalkInForm({ ...walkInForm, service: e.target.value })}
                   className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1">Appointment Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={walkInForm.appointmentDate}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, appointmentDate: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-300 font-semibold block mb-1">Appointment Time *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 11:30 AM"
+                    value={walkInForm.appointmentTime}
+                    onChange={(e) => setWalkInForm({ ...walkInForm, appointmentTime: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500"
+                  />
+                </div>
               </div>
 
               <div>
