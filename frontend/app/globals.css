@@ -398,108 +398,116 @@ button[disabled] {
 }
 
 /* ==========================================================================
-   MASTER PERMANENT DARK-MODE INTERACTIVE HOVER & CONTRAST CONTRACT
+   UNIVERSAL THEME CONTRACT - HOVER & INTERACTIVE CONTRAST RULES
    ========================================================================== */
 
-/* Guaranteed Dark-Mode Button & Control Hover Contrast (Pure White / Rosegold Text & Icons) */
-html:not(.light) button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.bg-red-500\/15):not(.notif-bell-btn):hover,
-html:not(.light) a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.bg-red-500\/15):not(.notif-bell-btn):hover,
-html:not(.light) [role="button"]:hover {
-  background-color: var(--spy-surface-hover, #2B0C15) !important;
-  border-color: var(--spy-border-hover, #E0A96D) !important;
-  color: #FFFFFF !important;
-  -webkit-text-fill-color: #FFFFFF !important;
-}
-
-html:not(.light) button:hover span:not(.brand-profile-avatar *),
-html:not(.light) button:hover p,
-html:not(.light) button:hover h1,
-html:not(.light) button:hover h2,
-html:not(.light) button:hover h3,
-html:not(.light) button:hover h4,
-html:not(.light) a:hover span:not(.brand-profile-avatar *),
-html:not(.light) a:hover p,
-html:not(.light) a:hover h1,
-html:not(.light) a:hover h2,
-html:not(.light) a:hover h3,
-html:not(.light) a:hover h4,
-html:not(.light) [role="button"]:hover span,
-html:not(.light) .glass-card:hover button span:not(.brand-profile-avatar *) {
+/* 1. Primary Gradient Buttons (Always White Foreground in Normal, Hover, Active & Focus) */
+.spy-btn-anim,
+.rosegold-gradient-bg,
+.gold-gradient-bg,
+.purple-gradient-bg,
+.hero-cta-btn,
+button.rosegold-gradient-bg,
+a.rosegold-gradient-bg,
+.spy-btn-anim *,
+.rosegold-gradient-bg *,
+.gold-gradient-bg *,
+.purple-gradient-bg *,
+.hero-cta-btn *,
+button.rosegold-gradient-bg *,
+a.rosegold-gradient-bg *,
+.spy-btn-anim:hover *,
+.rosegold-gradient-bg:hover *,
+.gold-gradient-bg:hover *,
+.purple-gradient-bg:hover *,
+.hero-cta-btn:hover *,
+button.rosegold-gradient-bg:hover *,
+a.rosegold-gradient-bg:hover *,
+html.light .spy-btn-anim,
+html.light .rosegold-gradient-bg,
+html.light .gold-gradient-bg,
+html.light .purple-gradient-bg,
+html.light .hero-cta-btn,
+html.light button.rosegold-gradient-bg,
+html.light a.rosegold-gradient-bg,
+html.light .spy-btn-anim *,
+html.light .rosegold-gradient-bg *,
+html.light .gold-gradient-bg *,
+html.light .purple-gradient-bg *,
+html.light .hero-cta-btn *,
+html.light button.rosegold-gradient-bg *,
+html.light a.rosegold-gradient-bg * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-html:not(.light) button:hover svg:not(.brand-profile-avatar *),
-html:not(.light) a:hover svg:not(.brand-profile-avatar *),
-html:not(.light) [role="button"]:hover svg,
-html:not(.light) .glass-card:hover button svg:not(.brand-profile-avatar *) {
+.spy-btn-anim svg,
+.rosegold-gradient-bg svg,
+.gold-gradient-bg svg,
+.purple-gradient-bg svg,
+.hero-cta-btn svg,
+button.rosegold-gradient-bg svg,
+a.rosegold-gradient-bg svg {
   color: #FFFFFF !important;
   stroke: #FFFFFF !important;
-  opacity: 1 !important;
-  visibility: visible !important;
 }
 
-/* ==========================================================================
-   MASTER NOTIFICATION BELL BUTTON CONTRAST & HOVER CONTRACT
-   ========================================================================== */
-
-/* Dark Mode Notification Bell Button */
-html:not(.light) .notif-bell-btn {
-  background-color: #1E1A18 !important;
-  border-color: rgba(224, 169, 109, 0.3) !important;
-  color: #E0A96D !important;
+/* 2. Notification Bell Button - Guaranteed Light/Dark Contrast Contract */
+.notif-bell-btn {
+  background-color: var(--interactive-bg-default) !important;
+  border-color: var(--interactive-border-default) !important;
+  color: var(--interactive-icon-default) !important;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-html:not(.light) .notif-bell-btn:hover {
-  background-color: #2F2420 !important;
-  border-color: #E0A96D !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 15px rgba(224, 169, 109, 0.4) !important;
+.notif-bell-btn .notif-bell-icon,
+.notif-bell-btn svg {
+  color: var(--interactive-icon-default) !important;
+  stroke: var(--interactive-icon-default) !important;
+  transition: color 0.2s ease, stroke 0.2s ease, transform 0.2s ease;
 }
 
-html:not(.light) .notif-bell-btn:hover svg,
-html:not(.light) .notif-bell-btn:hover .notif-bell-icon {
-  color: #FFFFFF !important;
-  stroke: #FFFFFF !important;
+.notif-bell-btn:hover {
+  background-color: var(--interactive-bg-hover) !important;
+  border-color: var(--interactive-border-hover) !important;
+  color: var(--interactive-icon-hover) !important;
+  box-shadow: 0 4px 14px rgba(224, 169, 109, 0.25) !important;
+}
+
+.notif-bell-btn:hover .notif-bell-icon,
+.notif-bell-btn:hover svg {
+  color: var(--interactive-icon-hover) !important;
+  stroke: var(--interactive-icon-hover) !important;
   transform: scale(1.1);
-  transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
 }
 
-/* Light Mode Notification Bell Button */
-html.light .notif-bell-btn,
-.light .notif-bell-btn {
+html.light .notif-bell-btn {
   background-color: #FFFFFF !important;
   border-color: rgba(184, 134, 11, 0.35) !important;
   color: #390614 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
 }
 
-html.light .notif-bell-btn:hover,
-.light .notif-bell-btn:hover {
+html.light .notif-bell-btn .notif-bell-icon,
+html.light .notif-bell-btn svg {
+  color: #390614 !important;
+  stroke: #390614 !important;
+}
+
+html.light .notif-bell-btn:hover {
   background-color: #F8F1E7 !important;
   border-color: #B8860B !important;
   color: #390614 !important;
   box-shadow: 0 4px 14px rgba(184, 134, 11, 0.25) !important;
 }
 
-html.light .notif-bell-btn svg,
-html.light .notif-bell-btn .notif-bell-icon,
-.light .notif-bell-btn svg,
-.light .notif-bell-btn .notif-bell-icon {
-  color: #390614 !important;
-  stroke: #390614 !important;
-}
-
-html.light .notif-bell-btn:hover svg,
 html.light .notif-bell-btn:hover .notif-bell-icon,
-.light .notif-bell-btn:hover svg,
-.light .notif-bell-btn:hover .notif-bell-icon {
+html.light .notif-bell-btn:hover svg {
   color: #6B152B !important;
   stroke: #6B152B !important;
   transform: scale(1.1);
-  transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
 }
 
 /* NATIVE SELECT & DROPDOWN OPTION LIST CONTRAST (DARK & LIGHT MODE) */
@@ -735,6 +743,16 @@ html, body, * {
   --spy-icon-hover: #FFFFFF;
   --spy-surface-hover: #2B0C15;
   --spy-border-hover: #E0A96D;
+
+  /* Universal Theme Contract Tokens (Dark Theme) */
+  --interactive-bg-default: rgba(34, 28, 24, 0.8);
+  --interactive-bg-hover: #2B0C15;
+  --interactive-text-default: #F8F3EC;
+  --interactive-text-hover: #FFFFFF;
+  --interactive-border-default: rgba(224, 169, 109, 0.25);
+  --interactive-border-hover: #E0A96D;
+  --interactive-icon-default: #E0A96D;
+  --interactive-icon-hover: #FFFFFF;
 }
 
 .light {
@@ -767,6 +785,25 @@ html, body, * {
   --font-sans: var(--font-poppins), 'Poppins', sans-serif;
   --font-serif: var(--font-poppins), 'Poppins', sans-serif;
   --font-mono: var(--font-poppins), 'Poppins', sans-serif;
+
+  /* Universal Theme Contract Tokens (Light Theme) */
+  --spy-text-primary: #1E1B18;
+  --spy-text-secondary: #4A443E;
+  --spy-text-muted: #7A7269;
+  --spy-text-hover: #390614;
+  --spy-icon-primary: #8C6228;
+  --spy-icon-hover: #390614;
+  --spy-surface-hover: #F4ECE1;
+  --spy-border-hover: #B8860B;
+
+  --interactive-bg-default: #FFFFFF;
+  --interactive-bg-hover: #F4ECE1;
+  --interactive-text-default: #2B0C15;
+  --interactive-text-hover: #390614;
+  --interactive-border-default: rgba(184, 134, 11, 0.3);
+  --interactive-border-hover: #B8860B;
+  --interactive-icon-default: #8C6228;
+  --interactive-icon-hover: #390614;
 }
 
 .light body {

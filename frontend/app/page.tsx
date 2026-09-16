@@ -793,28 +793,28 @@ export default function Home() {
 
                   {/* Info */}
                   <div className="space-y-1.5 mt-3">
-                    <h3 className="text-lg font-serif font-bold text-white group-hover:text-rosegold-300 transition-colors">
+                    <h3 className="text-lg font-serif font-bold text-white light:text-gray-900 group-hover:text-rosegold-300 light:group-hover:text-amber-800 transition-colors">
                       {item.name}
                     </h3>
-                    <p className="text-xs text-rosegold-400 font-semibold font-sans">
+                    <p className="text-xs text-rosegold-400 light:text-amber-800 font-semibold font-sans">
                       {item.role}
                     </p>
 
                     {/* Master in box */}
-                    <div className="bg-dark-800/90 rounded-2xl p-2.5 border border-white/10 mt-3 space-y-1 text-left">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Master Specialty:</span>
-                      <p className="text-xs text-gray-200 font-medium leading-snug">
+                    <div className="bg-dark-800/90 light:bg-amber-50/80 rounded-2xl p-2.5 border border-white/10 light:border-amber-900/20 mt-3 space-y-1 text-left">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 light:text-gray-600 block">Master Specialty:</span>
+                      <p className="text-xs text-gray-200 light:text-gray-900 font-medium leading-snug">
                         ✨ {item.mastery}
                       </p>
                     </div>
 
                     {/* Rating & Experience Tag */}
-                    <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-gray-300 font-medium">
-                      <span className="flex items-center space-x-1 text-amber-400 font-bold">
+                    <div className="flex items-center justify-between pt-2 px-1 text-[11px] text-gray-300 light:text-gray-700 font-medium">
+                      <span className="flex items-center space-x-1 text-amber-400 light:text-amber-600 font-bold">
                         <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-400" />
                         <span>{item.rating}</span>
                       </span>
-                      <span className="text-rosegold-400 font-semibold bg-rosegold-500/10 px-2 py-0.5 rounded-full border border-rosegold-500/20">
+                      <span className="text-rosegold-400 light:text-amber-800 font-semibold bg-rosegold-500/10 light:bg-amber-100/80 px-2 py-0.5 rounded-full border border-rosegold-500/20 light:border-amber-900/20">
                         {item.exp}
                       </span>
                     </div>
@@ -822,12 +822,12 @@ export default function Home() {
                 </div>
 
                 {/* Action Link */}
-                <div className="pt-4 mt-4 border-t border-white/10">
+                <div className="pt-4 mt-4 border-t border-white/10 light:border-amber-900/20">
                   <Link
                     href={`/book?specialist=${encodeURIComponent(item.name)}`}
-                    className="w-full py-2.5 px-3 rounded-xl bg-dark-800 hover:bg-rosegold-500/20 text-gray-200 hover:text-white border border-rosegold-500/30 text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+                    className="w-full py-2.5 px-3 rounded-xl bg-dark-800 light:bg-white hover:bg-rosegold-500/20 light:hover:bg-amber-100/80 text-gray-200 light:text-gray-900 hover:text-white light:hover:text-amber-950 border border-rosegold-500/30 light:border-amber-900/30 text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-rosegold-400" />
+                    <Calendar className="w-3.5 h-3.5 text-rosegold-400 light:text-amber-700" />
                     <span>Book Appointment</span>
                   </Link>
                 </div>
