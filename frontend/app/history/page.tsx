@@ -306,9 +306,9 @@ function CustomerHistoryContent() {
 
           <Link
             href="/book"
-            className="px-6 py-3.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all text-center"
+            className="px-6 py-3.5 rounded-2xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all text-center flex items-center justify-center relative overflow-hidden"
           >
-            + Book New Session
+            <span className="relative z-10 pointer-events-none">+ Book New Session</span>
           </Link>
         </div>
       </div>
@@ -329,7 +329,7 @@ function CustomerHistoryContent() {
           <button
             onClick={() => { setActiveTab('schedules'); setStatusFilter('all'); }}
             className={`flex-1 sm:flex-initial px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
-              activeTab === 'schedules' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
+              activeTab === 'schedules' ? 'rosegold-gradient-bg !text-white font-bold shadow-md' : 'hover:text-white'
             }`}
           >
             <Calendar className="w-3.5 h-3.5 shrink-0" />
@@ -339,7 +339,7 @@ function CustomerHistoryContent() {
           <button
             onClick={() => { setActiveTab('past-orders'); setStatusFilter('all'); }}
             className={`flex-1 sm:flex-initial px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer whitespace-nowrap text-[11px] sm:text-xs ${
-              activeTab === 'past-orders' ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'hover:text-white'
+              activeTab === 'past-orders' ? 'rosegold-gradient-bg !text-white font-bold shadow-md' : 'hover:text-white'
             }`}
           >
             <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
@@ -401,7 +401,7 @@ function CustomerHistoryContent() {
           <p className="text-xs text-gray-400 max-w-sm mx-auto">{errorMsg}</p>
           <button
             onClick={fetchCustomerHistory}
-            className="px-6 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md"
+            className="px-6 py-2.5 rounded-full rosegold-gradient-bg !text-white font-bold text-xs shadow-md"
           >
             Retry Loading →
           </button>
@@ -421,7 +421,7 @@ function CustomerHistoryContent() {
           </div>
           <Link
             href="/book"
-            className="inline-block px-6 py-3 rounded-full rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all"
+            className="inline-block px-6 py-3 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-105 transition-all"
           >
             Book a Service Now →
           </Link>
@@ -574,7 +574,7 @@ function CustomerHistoryContent() {
                   {isCompletedOrEnded(item.status) && (
                     <button
                       onClick={() => router.push(`/book?service=${encodeURIComponent(item.service)}`)}
-                      className="w-full py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold flex items-center justify-center space-x-1.5 cursor-pointer"
+                      className="w-full py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold flex items-center justify-center space-x-1.5 cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Book Again</span>
@@ -641,7 +641,7 @@ function CustomerHistoryContent() {
                 <button
                   type="submit"
                   disabled={isSubmittingReschedule}
-                  className="px-6 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold cursor-pointer"
+                  className="px-6 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold cursor-pointer"
                 >
                   {isSubmittingReschedule ? 'Submitting...' : 'Submit Request'}
                 </button>

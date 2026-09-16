@@ -414,16 +414,20 @@ export default function Navbar() {
                 <div className="relative" ref={notifRef}>
                     <button
                       onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-                      className={`p-1.5 sm:p-2 rounded-full bg-dark-800 border text-rosegold-400 hover:text-white transition-all cursor-pointer relative ${
-                        user && unreadCount > 0 
-                          ? 'border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
-                          : 'border-white/10 hover:border-rosegold-500/40'
+                      className={`p-1.5 sm:p-2 rounded-full border notif-bell-btn transition-all cursor-pointer relative shadow-sm ${
+                        theme === 'light'
+                          ? (user && unreadCount > 0 
+                              ? 'bg-amber-100 border-amber-600 text-[#390614] ring-2 ring-amber-500/40 shadow-md' 
+                              : 'bg-white border-amber-900/20 text-[#390614] hover:bg-amber-50 hover:border-amber-700/50')
+                          : (user && unreadCount > 0 
+                              ? 'bg-dark-800 border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
+                              : 'bg-dark-800 border-white/10 text-rosegold-400 hover:border-rosegold-500/40 hover:text-white')
                       }`}
                       title="Real-Time Notifications & System Alerts"
                     >
-                      <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 notif-bell-icon transition-transform duration-200" />
                       {user && unreadCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-dark-900 font-extrabold text-[9px] flex items-center justify-center shadow-md animate-bounce">
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-dark-900 font-extrabold text-[9px] flex items-center justify-center shadow-md animate-bounce z-10">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
@@ -487,7 +491,7 @@ export default function Navbar() {
                               <Link
                                 href="/login"
                                 onClick={() => setNotifDropdownOpen(false)}
-                                className="inline-block w-full py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold transition-transform active:scale-95 text-center mt-1"
+                                className="inline-block w-full py-2.5 rounded-xl rosegold-gradient-bg !text-white font-bold text-xs shadow-glow-rosegold transition-transform active:scale-95 text-center mt-1"
                               >
                                 Sign In to Account →
                               </Link>

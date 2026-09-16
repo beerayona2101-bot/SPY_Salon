@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
 import 'backend_settings_screen.dart';
+import 'customer_dashboard_screen.dart';
+import 'employee_dashboard_screen.dart';
+import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'update_password_screen.dart';
 
@@ -390,6 +394,135 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             ],
+
+            const SizedBox(height: 24),
+
+            // --- SECTION: ACCOUNT ACTIONS & SIGN OUT ---
+            _buildSectionHeader(context, 'ACCOUNT ACTIONS'),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: colors.cardSurface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colors.error.withValues(alpha: 0.3)),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colors.error.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colors.error.withValues(alpha: 0.4)),
+                  ),
+                  child: Icon(Icons.logout_rounded, color: colors.error, size: 20),
+                ),
+                title: Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    color: colors.error,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                subtitle: Text(
+                  'Sign out of your session on this device',
+                  style: TextStyle(color: colors.textMuted, fontSize: 12),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios_rounded, color: colors.error, size: 16),
+                onTap: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogCtx) => AlertDialog(
+                      backgroundColor: colors.cardSurface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: colors.primary, width: 0.8),
+                      ),
+                      title: Row(
+                        children: [
+                          Icon(Icons.logout_rounded, color: colors.error, size: 22),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Sign Out',
+                            style: TextStyle(color: colors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      content: Text(
+                        'Are you sure you want to sign out from SPY Salon?',
+                        style: TextStyle(color: colors.textSecondary, fontSize: 14),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, false),
+                          child: Text('Cancel', style: TextStyle(color: colors.textMuted)),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.error,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: () => Navigator.pop(dialogCtx, true),
+                          child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    await ApiService.logout();
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (ctx) => LoginScreen(
+                            onLoginSuccess: () async {
+                              final user = await ApiService.getStoredUser();
+                              final role = (user?['role'] ?? 'customer').toString().toLowerCase();
+                              final isAdmin = role == 'admin' || role == 'manager';
+                              final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+                              if (!ctx.mounted) return;
+
+                              if (isAdmin) {
+                                await ApiService.clearSession();
+                                if (!ctx.mounted) return;
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(
+                                    backgroundColor: colors.error,
+                                    content: const Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              if (isStaff) {
+                                Navigator.pushAndRemoveUntil(
+                                  ctx,
+                                  MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
+                                  (route) => false,
+                                );
+                              } else {
+                                Navigator.pushAndRemoveUntil(
+                                  ctx,
+                                  MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
+                                  (route) => false,
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),

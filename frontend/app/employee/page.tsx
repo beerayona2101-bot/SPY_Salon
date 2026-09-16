@@ -1264,6 +1264,8 @@ function EmployeeDashboardContent() {
                           customerName: '',
                           customerPhone: '+91 98765 43210',
                           service: 'Signature Keratin Hair Spa & Mask',
+                          appointmentDate: getTodayISTStr(),
+                          appointmentTime: '11:30 AM',
                           paymentMethod: 'Cash',
                           notes: 'Direct Walk-In Client added by Stylist Desk.'
                         });

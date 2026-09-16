@@ -451,15 +451,12 @@ function UserProfileContent() {
   const completenessScore = useMemo(() => {
     let score = 0;
     const missing: string[] = [];
-    if (user?.name) score += 15; else missing.push('Full Name');
-    if (user?.email) score += 15; else missing.push('Email Address');
-    if (user?.phone) score += 15; else missing.push('Mobile Phone');
+    if (user?.name) score += 20; else missing.push('Full Name');
+    if (user?.email) score += 20; else missing.push('Email Address');
+    if (user?.phone) score += 20; else missing.push('Mobile Phone');
     if (user?.avatar) score += 20; else missing.push('Profile Photo');
     if (user?.dob || editForm.dob) score += 10; else missing.push('Date of Birth');
-    if (user?.gender || editForm.gender) score += 5; else missing.push('Gender');
-    if (user?.address || editForm.address) score += 10; else missing.push('Address');
-    if (user?.emergencyContact || editForm.emergencyContact) score += 5; else missing.push('Emergency Contact');
-    if (user?.anniversary || editForm.anniversary) score += 5; else missing.push('Anniversary');
+    if (user?.gender || editForm.gender) score += 10; else missing.push('Gender');
     return { percentage: Math.min(score, 100), missing };
   }, [user, editForm]);
 
@@ -713,39 +710,9 @@ function UserProfileContent() {
                 />
               </div>
 
-              <div>
-                <label className="text-gray-300 font-bold block mb-1">Anniversary Date (Optional)</label>
-                <input
-                  type="date"
-                  value={editForm.anniversary}
-                  onChange={e => setEditForm({ ...editForm, anniversary: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none"
-                />
-              </div>
             </div>
 
-            <div>
-              <label className="text-gray-300 font-bold block mb-1">Saved Address / Studio Delivery</label>
-              <textarea
-                rows={2}
-                value={editForm.address}
-                onChange={e => setEditForm({ ...editForm, address: e.target.value })}
-                placeholder="Enter your street address, apartment, and city"
-                className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label className="text-gray-300 font-bold block mb-1">Emergency Contact Number</label>
-                <input
-                  type="tel"
-                  value={editForm.emergencyContact}
-                  onChange={e => setEditForm({ ...editForm, emergencyContact: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-dark-850 border border-white/15 text-white focus:border-rosegold-400 focus:outline-none"
-                />
-              </div>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-gray-300 font-bold block mb-1">Preferred Language</label>
                 <select

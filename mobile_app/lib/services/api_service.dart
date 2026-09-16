@@ -527,6 +527,25 @@ class ApiService {
     return null;
   }
 
+  /// Fetch current user profile live from backend (GET /api/v1/auth/me) and synchronize local cache
+  static Future<Map<String, dynamic>?> fetchCurrentUserProfile() async {
+    try {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/auth/me');
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final userObj = data['data']?['user'] ?? data['user'] ?? data['data'];
+        if (userObj != null && userObj is Map<String, dynamic>) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_data', json.encode(userObj));
+          return userObj;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Fetch current user profile error: $e');
+    }
+    return await getStoredUser();
+  }
+
   /// Get stored session token
   static Future<String?> getStoredToken() async {
     try {
@@ -1161,13 +1180,12 @@ class ApiService {
   }
 
   /// Change Customer Password
-  static Future<Map<String, dynamic>> changeCustomerPassword(String currentPassword, String newPassword) async {
+  static Future<Map<String, dynamic>> changeCustomerPassword(String newPassword) async {
     try {
       final response = await _requestWithRetry(
         'PUT',
         '${ApiConfig.baseUrl}/api/v1/user/profile/change-password',
         body: json.encode({
-          'currentPassword': currentPassword,
           'newPassword': newPassword,
         }),
       );

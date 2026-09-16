@@ -6817,7 +6817,7 @@ function AdminDashboardContent() {
                   </div>
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
                   Save & Log Transaction Record 💾
                 </button>
               </form>
@@ -6863,7 +6863,7 @@ function AdminDashboardContent() {
                   />
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
                   Send Reschedule Request & Note to Client
                 </button>
               </form>
@@ -7042,7 +7042,7 @@ function AdminDashboardContent() {
                   </div>
                 </div>
 
-                <button onClick={() => setModalType(null)} className="w-full py-3 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs cursor-pointer">
+                <button onClick={() => setModalType(null)} className="w-full py-3 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs cursor-pointer">
                   Close Salary Slip
                 </button>
               </div>

@@ -9,6 +9,7 @@ import 'login_screen.dart';
 import 'settings_screen.dart';
 import '../utils/payslip_pdf_generator.dart';
 import '../widgets/payslip_document_widget.dart';
+import '../widgets/spy_salon_bottom_navigation.dart';
 
 class EmployeeDashboardScreen extends StatefulWidget {
   const EmployeeDashboardScreen({super.key});
@@ -35,7 +36,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tabController = TabController(length: 6, vsync: this);
+    _tabController = TabController(length: 5, initialIndex: 2, vsync: this);
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -454,250 +455,41 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     );
   }
 
-  Widget _buildStaffDrawer(AppColors themeColors, Color shiftColor, String shiftText) {
-    final primaryColor = themeColors.primary;
-    final cardBg = themeColors.cardSurface;
+  Widget _buildStaffBottomNav(AppColors themeColors) {
     final activeQueueCount = _appointments.where((a) => a['status'] != 'Completed' && a['status'] != 'Cancelled').length;
 
-    // TARGET 6 STAFF DASHBOARD NAVIGATION ITEMS
     final navItems = [
-      {'title': "Today's Service Queue", 'icon': Icons.content_cut, 'badge': activeQueueCount > 0 ? '$activeQueueCount' : ''},
-      {'title': 'Check-In & Attendance', 'icon': Icons.access_time_filled_rounded, 'badge': ''},
-      {'title': 'My Salary Slips & Payouts', 'icon': Icons.payments_outlined, 'badge': ''},
-      {'title': 'Leave Requests', 'icon': Icons.event_note_rounded, 'badge': ''},
-      {'title': 'My Shift & Breaktime', 'icon': Icons.free_breakfast_rounded, 'badge': ''},
-      {'title': 'Commission & Performance', 'icon': Icons.trending_up_rounded, 'badge': ''},
+      const SpySalonNavItem(
+        title: 'Attendance', 
+        icon: Icons.access_time_filled_rounded,
+      ),
+      const SpySalonNavItem(
+        title: 'Leaves', 
+        icon: Icons.event_note_rounded,
+      ),
+      SpySalonNavItem(
+        title: 'Queue', 
+        icon: Icons.content_cut, 
+        badge: activeQueueCount > 0 ? '$activeQueueCount' : '',
+      ),
+      const SpySalonNavItem(
+        title: 'Commission', 
+        icon: Icons.trending_up_rounded,
+      ),
+      const SpySalonNavItem(
+        title: 'Salary Slips', 
+        icon: Icons.payments_outlined,
+      ),
     ];
 
-    final staffName = _user?['name'] ?? 'Staff Member';
-    final staffRole = _user?['role'] ?? 'Specialist';
-
-    return Drawer(
-      backgroundColor: themeColors.deepestBackground,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
-            decoration: BoxDecoration(
-              color: cardBg,
-              border: Border(bottom: BorderSide(color: themeColors.cardBorder)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: primaryColor.withValues(alpha: 0.2),
-                  child: Text(
-                    staffName.isNotEmpty ? staffName[0].toUpperCase() : 'S',
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        staffName,
-                        style: TextStyle(color: themeColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: shiftColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: shiftColor.withValues(alpha: 0.5)),
-                            ),
-                            child: Text(
-                              shiftText,
-                              style: TextStyle(color: shiftColor, fontSize: 9, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              staffRole.toString().toUpperCase(),
-                              style: TextStyle(color: themeColors.textMuted, fontSize: 10),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'STAFF NAVIGATION',
-                style: TextStyle(color: themeColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2),
-              ),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              itemCount: navItems.length,
-              itemBuilder: (ctx, index) {
-                final item = navItems[index];
-                final isSelected = _tabController.index == index;
-                final String badge = item['badge'] as String;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected ? primaryColor.withValues(alpha: 0.15) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: isSelected ? Border.all(color: primaryColor.withValues(alpha: 0.4)) : null,
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                    leading: Icon(
-                      item['icon'] as IconData,
-                      color: isSelected ? primaryColor : themeColors.textMuted,
-                      size: 22,
-                    ),
-                    title: Text(
-                      item['title'] as String,
-                      style: TextStyle(
-                        color: isSelected ? primaryColor : themeColors.textSecondary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        fontSize: 13,
-                      ),
-                    ),
-                    trailing: badge.isNotEmpty && badge != '0'
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isSelected ? primaryColor : themeColors.inputBackground,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              badge,
-                              style: TextStyle(
-                                color: isSelected ? themeColors.buttonTextPrimary : themeColors.textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        : null,
-                    onTap: () {
-                      setState(() {
-                        _tabController.index = index;
-                      });
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-          Divider(color: themeColors.divider, height: 1),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: ListTile(
-              dense: true,
-              leading: Icon(Icons.logout, color: themeColors.error, size: 20),
-              title: Text('Sign Out', style: TextStyle(color: themeColors.error, fontSize: 13, fontWeight: FontWeight.bold)),
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                navigator.pop();
-                if (!mounted) return;
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (dialogCtx) => AlertDialog(
-                    backgroundColor: themeColors.cardSurface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(color: primaryColor, width: 0.8),
-                    ),
-                    title: Row(
-                      children: [
-                        Icon(Icons.logout, color: themeColors.error, size: 22),
-                        const SizedBox(width: 10),
-                        Text('Sign Out', style: TextStyle(color: themeColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                    content: Text('Are you sure you want to sign out from Staff Portal?', style: TextStyle(color: themeColors.textSecondary, fontSize: 14)),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogCtx, false),
-                        child: Text('Cancel', style: TextStyle(color: themeColors.textMuted)),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: themeColors.error,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () => Navigator.pop(dialogCtx, true),
-                        child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                );
-
-                if (confirm == true) {
-                  await ApiService.logout();
-                  if (!mounted) return;
-                  navigator.pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (ctx) => LoginScreen(
-                        onLoginSuccess: () async {
-                          final user = await ApiService.getStoredUser();
-                          final role = (user?['role'] ?? 'customer').toString().toLowerCase();
-                          final isAdmin = role == 'admin' || role == 'manager';
-                          final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-                          if (!ctx.mounted) return;
-
-                          if (isAdmin) {
-                            await ApiService.clearSession();
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(
-                                backgroundColor: themeColors.error,
-                                content: const Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
-                              ),
-                            );
-                            return;
-                          }
-
-                          if (isStaff) {
-                            Navigator.pushAndRemoveUntil(
-                              ctx,
-                              MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
-                              (route) => false,
-                            );
-                          } else {
-                            Navigator.pushAndRemoveUntil(
-                              ctx,
-                              MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
-                              (route) => false,
-                            );
-                          }
-                        },
-                      ),
-                    ),
-                    (route) => false,
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
+    return SpySalonBottomNavigation(
+      currentIndex: _tabController.index,
+      onTap: (index) {
+        setState(() {
+          _tabController.index = index;
+        });
+      },
+      items: navItems,
     );
   }
 
@@ -724,54 +516,43 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     }
 
     final sectionTitles = [
-      "Today's Service Queue",
       'Check-In & Attendance',
-      'My Salary Slips & Payouts',
       'Leave Requests',
-      'My Shift & Breaktime',
+      "Today's Service Queue",
       'Commission & Performance',
+      'My Salary Slips & Payouts',
     ];
 
     return PopScope(
       canPop: false,
       child: Scaffold(
         backgroundColor: themeColors.deepestBackground,
-        drawer: _buildStaffDrawer(themeColors, shiftColor, shiftText),
         appBar: AppBar(
           backgroundColor: cardBg,
           elevation: 0,
-          leading: Builder(
-            builder: (ctx) => IconButton(
-              icon: Icon(Icons.menu, color: primaryColor, size: 24),
-              onPressed: () => Scaffold.of(ctx).openDrawer(),
-              tooltip: 'Open Side Menu',
-            ),
-          ),
-          title: Row(
-            children: [
-              ClipRRect(
+          leading: Padding(
+            padding: const EdgeInsets.only(left: 14),
+            child: Center(
+              child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
                 child: Image.asset(
                   'assets/images/logo.png',
-                  width: 22,
-                  height: 22,
+                  width: 24,
+                  height: 24,
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      sectionTitles[_tabController.index].toUpperCase(),
-                      style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(_user?['name'] ?? 'Stylist Specialist', style: TextStyle(color: primaryColor, fontSize: 11)),
-                  ],
-                ),
+            ),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sectionTitles[_tabController.index].toUpperCase(),
+                style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                overflow: TextOverflow.ellipsis,
               ),
+              Text(_user?['name'] ?? 'Stylist Specialist', style: TextStyle(color: primaryColor, fontSize: 11)),
             ],
           ),
           actions: [
@@ -811,6 +592,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                   child: _buildStaffTabContent(_tabController.index, themeColors),
                 ),
               ),
+        bottomNavigationBar: _buildStaffBottomNav(themeColors),
       ),
     );
   }
@@ -818,17 +600,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   Widget _buildStaffTabContent(int index, AppColors themeColors) {
     switch (index) {
       case 0:
-        return _buildServiceQueueTab(themeColors);
-      case 1:
         return _buildCheckInAttendanceTab(themeColors);
-      case 2:
-        return _buildSalarySlipsTab(themeColors);
-      case 3:
+      case 1:
         return _buildLeaveRequestsTab(themeColors);
-      case 4:
-        return _buildShiftBreaktimeTab(themeColors);
-      case 5:
+      case 2:
+        return _buildServiceQueueTab(themeColors);
+      case 3:
         return _buildCommissionPerformanceTab(themeColors);
+      case 4:
+        return _buildSalarySlipsTab(themeColors);
       default:
         return _buildServiceQueueTab(themeColors);
     }
@@ -1442,111 +1222,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     );
   }
 
-  // --- MODULE 5: MY SHIFT & BREAKTIME ---
-  Widget _buildShiftBreaktimeTab(AppColors themeColors) {
-    final primaryColor = themeColors.primary;
-    final cardBg = themeColors.cardSurface;
 
-    final shiftStart = _user?['shiftStart'] ?? _user?['shift_start'] ?? _user?['workingHours']?['start'];
-    final shiftEnd = _user?['shiftEnd'] ?? _user?['shift_end'] ?? _user?['workingHours']?['end'];
-    final shiftName = _user?['shift'] ?? _user?['shiftName'] ?? _user?['assignedShift'];
-
-    final breakStart = _user?['breakStart'] ?? _user?['break_start'] ?? _user?['breakTime']?['start'];
-    final breakEnd = _user?['breakEnd'] ?? _user?['break_end'] ?? _user?['breakTime']?['end'];
-
-    final hasShift = (shiftStart != null && shiftEnd != null) || shiftName != null;
-    final hasBreak = (breakStart != null && breakEnd != null);
-
-    return RefreshIndicator(
-      color: primaryColor,
-      backgroundColor: cardBg,
-      onRefresh: _loadStaffData,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Assigned Shift & Duty Schedule', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: hasShift ? primaryColor.withValues(alpha: 0.3) : themeColors.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: hasShift ? primaryColor.withValues(alpha: 0.15) : themeColors.inputBackground, shape: BoxShape.circle),
-                    child: Icon(Icons.access_time_filled, color: hasShift ? primaryColor : themeColors.textMuted, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Working Shift Hours', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text(
-                          hasShift ? (shiftName ?? '$shiftStart – $shiftEnd') : 'No shift assigned',
-                          style: TextStyle(color: hasShift ? primaryColor : themeColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          hasShift ? 'Assigned Duty Schedule' : 'Working shift hours will appear once configured by management.',
-                          style: TextStyle(color: themeColors.textMuted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: hasBreak ? Colors.purple.withValues(alpha: 0.3) : themeColors.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: hasBreak ? Colors.purple.withValues(alpha: 0.15) : themeColors.inputBackground, shape: BoxShape.circle),
-                    child: Icon(Icons.free_breakfast, color: hasBreak ? Colors.purpleAccent : themeColors.textMuted, size: 24),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Breaktime Schedule', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-                        const SizedBox(height: 2),
-                        Text(
-                          hasBreak ? '$breakStart – $breakEnd' : 'No break schedule available',
-                          style: TextStyle(color: hasBreak ? Colors.purpleAccent : themeColors.textMuted, fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          hasBreak ? 'Duty Break Window' : 'Duty break windows will be displayed when assigned.',
-                          style: TextStyle(color: themeColors.textMuted, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   // --- MODULE 6: COMMISSION & PERFORMANCE ---
   Widget _buildCommissionPerformanceTab(AppColors themeColors) {

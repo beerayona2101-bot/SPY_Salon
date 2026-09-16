@@ -26,9 +26,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
   final _profilePhoneCtrl = TextEditingController();
   final _profileEmailCtrl = TextEditingController();
   final _profileDobCtrl = TextEditingController();
-  final _profileAnniversaryCtrl = TextEditingController();
-  final _profileAddressCtrl = TextEditingController();
-  final _profileEmergencyCtrl = TextEditingController();
 
   String _profileGender = 'Female';
   String _profileLanguage = 'English';
@@ -47,9 +44,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
     _profilePhoneCtrl.text = user['phone'] ?? '';
     _profileEmailCtrl.text = user['email'] ?? '';
     _profileDobCtrl.text = user['dob'] ?? '';
-    _profileAnniversaryCtrl.text = user['anniversary'] ?? '';
-    _profileAddressCtrl.text = user['address'] ?? '';
-    _profileEmergencyCtrl.text = user['emergencyContact'] ?? '';
 
     final g = (user['gender'] ?? '').toString();
     if (['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(g)) {
@@ -77,15 +71,12 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
 
   int _calculateProfileCompleteness() {
     int score = 0;
-    if (_profileNameCtrl.text.trim().isNotEmpty) score += 15;
-    if (_profileEmailCtrl.text.trim().isNotEmpty) score += 15;
-    if (_profilePhoneCtrl.text.trim().isNotEmpty) score += 15;
+    if (_profileNameCtrl.text.trim().isNotEmpty) score += 20;
+    if (_profileEmailCtrl.text.trim().isNotEmpty) score += 20;
+    if (_profilePhoneCtrl.text.trim().isNotEmpty) score += 20;
     if ((_user?['avatar'] ?? '').toString().isNotEmpty) score += 20;
     if (_profileDobCtrl.text.trim().isNotEmpty) score += 10;
-    if (_profileGender.isNotEmpty) score += 5;
-    if (_profileAddressCtrl.text.trim().isNotEmpty) score += 10;
-    if (_profileEmergencyCtrl.text.trim().isNotEmpty) score += 5;
-    if (_profileAnniversaryCtrl.text.trim().isNotEmpty) score += 5;
+    if (_profileGender.isNotEmpty) score += 10;
     return score > 100 ? 100 : score;
   }
 
@@ -121,9 +112,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
     _profilePhoneCtrl.dispose();
     _profileEmailCtrl.dispose();
     _profileDobCtrl.dispose();
-    _profileAnniversaryCtrl.dispose();
-    _profileAddressCtrl.dispose();
-    _profileEmergencyCtrl.dispose();
     super.dispose();
   }
 
@@ -137,7 +125,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
 
   Future<void> _loadCustomerData({bool quiet = false}) async {
     if (!quiet) setState(() => _isLoading = true);
-    final storedUser = await ApiService.getStoredUser();
+    final storedUser = await ApiService.fetchCurrentUserProfile();
 
     if (!mounted) return;
 
@@ -1372,7 +1360,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
 
           Text('Edit Personal Info & Preferences', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: themeColors.textPrimary)),
           const SizedBox(height: 4),
-          Text('Update your profile information, saved location, and notification preferences.', style: TextStyle(color: themeColors.textMuted, fontSize: 12)),
+          Text('Update your profile information and notification preferences.', style: TextStyle(color: themeColors.textMuted, fontSize: 12)),
           const SizedBox(height: 16),
 
           // SECTION 1: PERSONAL INFORMATION
@@ -1492,79 +1480,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
               ),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Anniversary DatePicker
-          InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: DateTime.tryParse(_profileAnniversaryCtrl.text) ?? DateTime.now(),
-                firstDate: DateTime(1970),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) {
-                setState(() {
-                  _profileAnniversaryCtrl.text = picked.toString().split(' ')[0];
-                });
-              }
-            },
-            child: IgnorePointer(
-              child: TextField(
-                controller: _profileAnniversaryCtrl,
-                style: TextStyle(color: themeColors.textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Anniversary Date (Optional)',
-                  hintText: 'YYYY-MM-DD',
-                  labelStyle: TextStyle(color: themeColors.textMuted),
-                  prefixIcon: Icon(Icons.favorite_outline, color: primaryColor),
-                  suffixIcon: Icon(Icons.calendar_today_outlined, color: themeColors.textMuted, size: 18),
-                  filled: true,
-                  fillColor: themeColors.inputBackground,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // SECTION 3: LOCATION & EMERGENCY CONTACT
-          _buildFormSectionTitle(themeColors, 'LOCATION & EMERGENCY CONTACT'),
-          const SizedBox(height: 10),
-
-          // Saved Address
-          TextField(
-            controller: _profileAddressCtrl,
-            maxLines: 2,
-            style: TextStyle(color: themeColors.textPrimary),
-            decoration: InputDecoration(
-              labelText: 'Saved Address / Studio Delivery Location',
-              labelStyle: TextStyle(color: themeColors.textMuted),
-              prefixIcon: Icon(Icons.location_on_outlined, color: primaryColor),
-              filled: true,
-              fillColor: themeColors.inputBackground,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Emergency Contact
-          TextField(
-            controller: _profileEmergencyCtrl,
-            keyboardType: TextInputType.phone,
-            style: TextStyle(color: themeColors.textPrimary),
-            decoration: InputDecoration(
-              labelText: 'Emergency Contact Phone',
-              labelStyle: TextStyle(color: themeColors.textMuted),
-              prefixIcon: Icon(Icons.contact_phone_outlined, color: primaryColor),
-              filled: true,
-              fillColor: themeColors.inputBackground,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: themeColors.cardBorder)),
-            ),
-          ),
           const SizedBox(height: 20),
 
           // SECTION 4: PREFERENCES & COMMUNICATION
@@ -1621,51 +1536,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
           ),
           const SizedBox(height: 20),
 
-          // SECTION 5: NOTIFICATION ALERTS TOGGLES
-          _buildFormSectionTitle(themeColors, 'NOTIFICATION ALERTS'),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: themeColors.cardBorder),
-            ),
-            child: Column(
-              children: [
-                SwitchListTile(
-                  title: Text('WhatsApp Instant Alerts', style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Receive booking confirmations via WhatsApp', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                  value: _whatsappAlerts,
-                  activeThumbColor: primaryColor,
-                  onChanged: (val) => setState(() => _whatsappAlerts = val),
-                ),
-                Divider(color: themeColors.divider, height: 1),
-                SwitchListTile(
-                  title: Text('SMS Notifications', style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Receive SMS updates for appointment status', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                  value: _smsAlerts,
-                  activeThumbColor: primaryColor,
-                  onChanged: (val) => setState(() => _smsAlerts = val),
-                ),
-                Divider(color: themeColors.divider, height: 1),
-                SwitchListTile(
-                  title: Text('Email Receipts & Statements', style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Receive official receipts and membership statements', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                  value: _emailAlerts,
-                  activeThumbColor: primaryColor,
-                  onChanged: (val) => setState(() => _emailAlerts = val),
-                ),
-                Divider(color: themeColors.divider, height: 1),
-                SwitchListTile(
-                  title: Text('Promotional Offers & Special Deals', style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Exclusive seasonal studio discounts and package deals', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                  value: _promoOffers,
-                  activeThumbColor: primaryColor,
-                  onChanged: (val) => setState(() => _promoOffers = val),
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 24),
 
           // Save Profile Button
@@ -1711,9 +1581,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
       'email': _profileEmailCtrl.text.trim(),
       'gender': _profileGender,
       'dob': _profileDobCtrl.text.trim(),
-      'anniversary': _profileAnniversaryCtrl.text.trim(),
-      'address': _profileAddressCtrl.text.trim(),
-      'emergencyContact': _profileEmergencyCtrl.text.trim(),
       'preferredLanguage': _profileLanguage,
       'preferredCommunication': _profileCommunication,
       'notificationPreferences': {
@@ -1734,11 +1601,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> with 
           content: Text(res['message'] ?? (isSuccess ? 'Profile details updated successfully!' : 'Failed to update profile')),
         ),
       );
-      if (isSuccess && res['user'] != null) {
-        setState(() {
-          _user = res['user'];
-          _syncProfileControllers(_user!);
-        });
+      if (isSuccess) {
+        final freshUser = await ApiService.fetchCurrentUserProfile();
+        if (mounted && freshUser != null) {
+          setState(() {
+            _user = freshUser;
+            _syncProfileControllers(freshUser);
+          });
+        }
       }
     }
   }

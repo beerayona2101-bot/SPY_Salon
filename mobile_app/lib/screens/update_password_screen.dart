@@ -10,37 +10,23 @@ class UpdatePasswordScreen extends StatefulWidget {
 }
 
 class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
-  final _currentPassCtrl = TextEditingController();
   final _newPassCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
-  bool _obscureCurrent = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _isSubmitting = false;
 
   @override
   void dispose() {
-    _currentPassCtrl.dispose();
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _handleUpdatePassword(AppColors colors) async {
-    final currentPass = _currentPassCtrl.text;
     final newPass = _newPassCtrl.text;
     final confirmPass = _confirmPassCtrl.text;
-
-    if (currentPass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: colors.error,
-          content: const Text('Current password cannot be empty.'),
-        ),
-      );
-      return;
-    }
 
     if (newPass.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -87,7 +73,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     });
 
     try {
-      final res = await ApiService.changeCustomerPassword(currentPass, newPass);
+      final res = await ApiService.changeCustomerPassword(newPass);
       if (mounted) {
         setState(() {
           _isSubmitting = false;
@@ -102,7 +88,6 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
         );
 
         if (isSuccess) {
-          _currentPassCtrl.clear();
           _newPassCtrl.clear();
           _confirmPassCtrl.clear();
         }
@@ -200,7 +185,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                               ),
                             ),
                             Text(
-                              'Enter your current password and set a new password.',
+                              'Set a new password for your account.',
                               style: TextStyle(color: colors.textMuted, fontSize: 12),
                             ),
                           ],
@@ -209,22 +194,6 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                     ],
                   ),
                   const SizedBox(height: 24),
-
-                  // Current Password
-                  _buildPasswordField(
-                    context: context,
-                    controller: _currentPassCtrl,
-                    label: 'Current Password *',
-                    hint: 'Enter your current password',
-                    icon: Icons.lock_outline,
-                    obscureText: _obscureCurrent,
-                    onToggleVisibility: () {
-                      setState(() {
-                        _obscureCurrent = !_obscureCurrent;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
 
                   // New Password
                   _buildPasswordField(

@@ -225,6 +225,8 @@ img, video {
 
 .spy-btn-anim,
 .rosegold-gradient-bg,
+.gold-gradient-bg,
+.purple-gradient-bg,
 .hero-cta-btn,
 button.rosegold-gradient-bg,
 a.rosegold-gradient-bg {
@@ -247,7 +249,7 @@ a.rosegold-gradient-bg::before {
   height: 100%;
   background: var(--spy-btn-hover-shade, linear-gradient(135deg, #AA6B72 0%, #8C4757 50%, #4D1526 100%));
   transition: width 0.3s ease;
-  z-index: 0;
+  z-index: -1 !important;
   pointer-events: none;
   border-radius: inherit;
 }
@@ -260,22 +262,36 @@ a.rosegold-gradient-bg:hover::before {
   width: 100%;
 }
 
-/* Ensure button text and icons stay above expanding animation layer and stay crisp white on hover */
-.spy-btn-anim > *,
-.rosegold-gradient-bg > *,
-.gold-gradient-bg > *,
-.purple-gradient-bg > *,
-.hero-cta-btn > *,
-button.rosegold-gradient-bg > *,
+/* Ensure button text and icons stay above expanding animation layer and stay crisp white in normal, hover, focus, and active states */
 .spy-btn-anim,
+.spy-btn-anim *,
 .rosegold-gradient-bg,
+.rosegold-gradient-bg *,
+.rosegold-gradient-bg span,
 .gold-gradient-bg,
+.gold-gradient-bg *,
 .purple-gradient-bg,
+.purple-gradient-bg *,
 .hero-cta-btn,
+.hero-cta-btn *,
 button.rosegold-gradient-bg,
-a.rosegold-gradient-bg {
+button.rosegold-gradient-bg *,
+a.rosegold-gradient-bg,
+a.rosegold-gradient-bg *,
+.rosegold-gradient-bg:hover,
+.rosegold-gradient-bg:hover *,
+.rosegold-gradient-bg:focus,
+.rosegold-gradient-bg:focus *,
+.rosegold-gradient-bg:active,
+.rosegold-gradient-bg:active *,
+button.rosegold-gradient-bg:hover,
+button.rosegold-gradient-bg:hover *,
+a.rosegold-gradient-bg:hover,
+a.rosegold-gradient-bg:hover * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .spy-btn-anim > *,
@@ -294,6 +310,8 @@ a.rosegold-gradient-bg span,
   z-index: 10 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* MASTER HIGH CONTRAST HOVER TEXT & ICON COLOR RECTIFICATION (LIGHT & DARK MODE) */
@@ -305,6 +323,7 @@ header nav a.rosegold-gradient-bg:hover *,
 header nav a.rosegold-gradient-bg:hover span {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
 }
 
 .spy-btn-anim:hover,
@@ -342,6 +361,7 @@ html.light .glass-card:hover .rosegold-gradient-bg * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   fill: none;
+  opacity: 1 !important;
 }
 
 /* MASTER INTERACTIVE ACCESSIBILITY & FOCUS VISIBILITY RULES */
@@ -356,6 +376,17 @@ textarea:focus-visible,
   box-shadow: 0 0 12px rgba(224, 169, 109, 0.4) !important;
 }
 
+html.light button:focus-visible,
+html.light a:focus-visible,
+html.light input:focus-visible,
+html.light select:focus-visible,
+html.light textarea:focus-visible,
+html.light [role="button"]:focus-visible {
+  outline: 2px solid #B8860B !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 12px rgba(184, 134, 11, 0.4) !important;
+}
+
 button:disabled,
 a.disabled,
 input:disabled,
@@ -366,6 +397,112 @@ button[disabled] {
   pointer-events: none !important;
 }
 
+/* ==========================================================================
+   MASTER PERMANENT DARK-MODE INTERACTIVE HOVER & CONTRAST CONTRACT
+   ========================================================================== */
+
+/* Guaranteed Dark-Mode Button & Control Hover Contrast (Pure White / Rosegold Text & Icons) */
+html:not(.light) button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.bg-red-500\/15):not(.notif-bell-btn):hover,
+html:not(.light) a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.bg-red-500\/15):not(.notif-bell-btn):hover,
+html:not(.light) [role="button"]:hover {
+  background-color: var(--spy-surface-hover, #2B0C15) !important;
+  border-color: var(--spy-border-hover, #E0A96D) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html:not(.light) button:hover span:not(.brand-profile-avatar *),
+html:not(.light) button:hover p,
+html:not(.light) button:hover h1,
+html:not(.light) button:hover h2,
+html:not(.light) button:hover h3,
+html:not(.light) button:hover h4,
+html:not(.light) a:hover span:not(.brand-profile-avatar *),
+html:not(.light) a:hover p,
+html:not(.light) a:hover h1,
+html:not(.light) a:hover h2,
+html:not(.light) a:hover h3,
+html:not(.light) a:hover h4,
+html:not(.light) [role="button"]:hover span,
+html:not(.light) .glass-card:hover button span:not(.brand-profile-avatar *) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+html:not(.light) button:hover svg:not(.brand-profile-avatar *),
+html:not(.light) a:hover svg:not(.brand-profile-avatar *),
+html:not(.light) [role="button"]:hover svg,
+html:not(.light) .glass-card:hover button svg:not(.brand-profile-avatar *) {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ==========================================================================
+   MASTER NOTIFICATION BELL BUTTON CONTRAST & HOVER CONTRACT
+   ========================================================================== */
+
+/* Dark Mode Notification Bell Button */
+html:not(.light) .notif-bell-btn {
+  background-color: #1E1A18 !important;
+  border-color: rgba(224, 169, 109, 0.3) !important;
+  color: #E0A96D !important;
+}
+
+html:not(.light) .notif-bell-btn:hover {
+  background-color: #2F2420 !important;
+  border-color: #E0A96D !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 15px rgba(224, 169, 109, 0.4) !important;
+}
+
+html:not(.light) .notif-bell-btn:hover svg,
+html:not(.light) .notif-bell-btn:hover .notif-bell-icon {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  transform: scale(1.1);
+  transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
+}
+
+/* Light Mode Notification Bell Button */
+html.light .notif-bell-btn,
+.light .notif-bell-btn {
+  background-color: #FFFFFF !important;
+  border-color: rgba(184, 134, 11, 0.35) !important;
+  color: #390614 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .notif-bell-btn:hover,
+.light .notif-bell-btn:hover {
+  background-color: #F8F1E7 !important;
+  border-color: #B8860B !important;
+  color: #390614 !important;
+  box-shadow: 0 4px 14px rgba(184, 134, 11, 0.25) !important;
+}
+
+html.light .notif-bell-btn svg,
+html.light .notif-bell-btn .notif-bell-icon,
+.light .notif-bell-btn svg,
+.light .notif-bell-btn .notif-bell-icon {
+  color: #390614 !important;
+  stroke: #390614 !important;
+}
+
+html.light .notif-bell-btn:hover svg,
+html.light .notif-bell-btn:hover .notif-bell-icon,
+.light .notif-bell-btn:hover svg,
+.light .notif-bell-btn:hover .notif-bell-icon {
+  color: #6B152B !important;
+  stroke: #6B152B !important;
+  transform: scale(1.1);
+  transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
+}
+
+/* NATIVE SELECT & DROPDOWN OPTION LIST CONTRAST (DARK & LIGHT MODE) */
 select option {
   background-color: #191512 !important;
   color: #FFFFFF !important;
@@ -376,6 +513,22 @@ select option:focus,
 select option:checked {
   background-color: #2F2722 !important;
   color: #E0A96D !important;
+}
+
+.light select option,
+html.light select option {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+}
+
+.light select option:hover,
+.light select option:focus,
+.light select option:checked,
+html.light select option:hover,
+html.light select option:focus,
+html.light select option:checked {
+  background-color: #F3ECE2 !important;
+  color: #390614 !important;
 }
 
 .gold-gradient-text {
@@ -564,7 +717,7 @@ html, body, * {
   scrollbar-width: none;  /* Firefox */
 }
 
-/* DEFAULT DARK MODE VARIABLES (LOGO-INSPIRED) */
+/* DEFAULT DARK MODE VARIABLES (LOGO-INSPIRED & SEMANTIC CONTRAST TOKENS) */
 :root {
   --color-dark-950: #0E0B09; /* Deep warm espresso charcoal */
   --color-dark-900: #13100E; /* Luxurious dark chocolate */
@@ -572,6 +725,16 @@ html, body, * {
   --color-dark-800: #221C18; /* Warm dark espresso panels/inputs */
   --color-dark-700: #2F2722; /* Soft warm gold-espresso borders */
   --color-dark-600: #3F342D; /* Brighter gold highlighting borders */
+
+  /* Semantic Interactive Tokens - Dark Theme */
+  --spy-text-primary: #F8F3EC;
+  --spy-text-secondary: #C9BFB3;
+  --spy-text-muted: #91867B;
+  --spy-text-hover: #FFFFFF;
+  --spy-icon-primary: #E0A96D;
+  --spy-icon-hover: #FFFFFF;
+  --spy-surface-hover: #2B0C15;
+  --spy-border-hover: #E0A96D;
 }
 
 .light {
@@ -865,12 +1028,7 @@ html.light .hero-cta-btn span,
   border-color: rgba(197, 157, 92, 0.45) !important;
 }
 
-.light .brand-profile-avatar {
-  background-color: #FDFBF7 !important;
-  color: #4D1526 !important;
-  border-color: #C59D5C !important;
-  font-weight: 800 !important;
-}
+
 
 .light .glass-card h3,
 .light .glass-card h2,
@@ -903,8 +1061,8 @@ html.light .hero-cta-btn span,
 .light .bg-burgundy h2,
 .light .bg-burgundy h3,
 .light .bg-burgundy h4,
-.light .bg-burgundy span,
-.light .bg-burgundy p,
+.light .bg-burgundy span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light .bg-burgundy p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 .light .bg-burgundy-dark .text-white,
 .light .bg-burgundy-dark .text-gray-100,
@@ -916,8 +1074,8 @@ html.light .hero-cta-btn span,
 .light .bg-burgundy-dark h2,
 .light .bg-burgundy-dark h3,
 .light .bg-burgundy-dark h4,
-.light .bg-burgundy-dark span,
-.light .bg-burgundy-dark p,
+.light .bg-burgundy-dark span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light .bg-burgundy-dark p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 .light section[class*="pt-2"] .text-white,
 .light section[class*="pt-2"] .text-gray-100,
@@ -929,8 +1087,8 @@ html.light .hero-cta-btn span,
 .light section[class*="pt-2"] h2,
 .light section[class*="pt-2"] h3,
 .light section[class*="pt-2"] h4,
-.light section[class*="pt-2"] span,
-.light section[class*="pt-2"] p,
+.light section[class*="pt-2"] span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light section[class*="pt-2"] p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 .light footer .text-white,
 .light footer .text-gray-100,
@@ -942,8 +1100,8 @@ html.light .hero-cta-btn span,
 .light footer h2,
 .light footer h3,
 .light footer h4,
-.light footer span,
-.light footer p,
+.light footer span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light footer p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 .light form .text-white,
 .light form .text-gray-100,
@@ -955,8 +1113,8 @@ html.light .hero-cta-btn span,
 .light form h2,
 .light form h3,
 .light form h4,
-.light form span,
-.light form p,
+.light form span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light form p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 .light section:has(form) .text-white,
 .light section:has(form) .text-gray-100,
@@ -968,8 +1126,8 @@ html.light .hero-cta-btn span,
 .light section:has(form) h2,
 .light section:has(form) h3,
 .light section:has(form) h4,
-.light section:has(form) span,
-.light section:has(form) p,
+.light section:has(form) span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
+.light section:has(form) p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
 /* QUICK ENQUIRY TEMPLATE BUTTONS LIGHT MODE FONT COLOR OVERRIDE */
 html.light .quick-template-btn span,
@@ -1194,11 +1352,7 @@ html.light form .quick-template-btn.selected {
   color: var(--rose-wine) !important;
 }
 
-.light .brand-profile-avatar {
-  background-color: var(--burgundy) !important;
-  color: var(--white) !important;
-  border-color: var(--gold) !important;
-}
+
 
 /* NAVBAR LIGHT & DARK MODE HOVER OVERRIDES */
 .light header nav {
@@ -1629,35 +1783,30 @@ html.light body {
   color: #111827 !important;
 }
 
-html.light h1,
-html.light h2,
-html.light h3,
-html.light h4,
-html.light h5,
-html.light h6,
-html.light h1.text-white,
-html.light h2.text-white,
-html.light h3.text-white,
-html.light h4.text-white,
-html.light h5.text-white {
+html.light h1:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *),
+html.light h2:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *),
+html.light h3:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *),
+html.light h4:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *),
+html.light h5:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *),
+html.light h6:not(.fixed.inset-0 *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *) {
   color: #111827 !important;
 }
 
-html.light p,
-html.light label,
-html.light td,
-html.light th,
-html.light div.text-white,
-html.light p.text-white,
-html.light label.text-white,
-html.light span.text-white:not(.force-text-white):not(button *):not(a *):not([role="button"] *) {
+html.light p:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light label:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light td:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *),
+html.light th:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *),
+html.light div.text-white:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light p.text-white:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light label.text-white:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light span.text-white:not(.force-text-white):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(button *):not(a *):not([role="button"] *) {
   color: #111827 !important;
 }
 
-html.light .text-gray-100,
-html.light .text-gray-200,
-html.light .text-gray-300,
-html.light .text-gray-400 {
+html.light .text-gray-100:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light .text-gray-200:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light .text-gray-300:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *),
+html.light .text-gray-400:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.bg-burgundy *):not(.bg-wine-dark *):not(.force-text-white *):not(button *):not(a *):not([role="button"] *) {
   color: #111827 !important;
 }
 
@@ -1670,6 +1819,8 @@ html.light .purple-gradient-bg,
 html.light .purple-gradient-bg *,
 html.light button.rosegold-gradient-bg,
 html.light button.rosegold-gradient-bg *,
+html.light a.rosegold-gradient-bg,
+html.light a.rosegold-gradient-bg *,
 html.light button[type="submit"],
 html.light button[type="submit"] *,
 html.light .hero-cta-btn,
@@ -1682,10 +1833,310 @@ html.light .force-text-white * {
   -webkit-text-fill-color: #FFFFFF !important;
 }
 
+/* MASTER HOVER, ACTIVE & SELECTED CONTRAST CONVERSION RULES FOR LIGHT MODE */
 html.light button:hover,
 html.light a.button:hover,
 html.light .btn:hover {
-  transition: all 0.2s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Force pure white text & icons on dark background hovers / active states */
+html.light button:hover[class*="hover:bg-"] *,
+html.light button:hover[class*="bg-"] *,
+html.light a:hover[class*="hover:bg-"] *,
+html.light a:hover[class*="bg-"] *,
+html.light [role="button"]:hover[class*="hover:bg-"] *,
+html.light .group:hover [class*="hover:bg-"] *,
+html.light .spy-btn-anim:hover *,
+html.light .rosegold-gradient-bg:hover *,
+html.light .gold-gradient-bg:hover *,
+html.light .purple-gradient-bg:hover *,
+html.light button.bg-burgundy,
+html.light button.bg-burgundy *,
+html.light button.bg-wine-dark,
+html.light button.bg-wine-dark *,
+html.light a.bg-burgundy,
+html.light a.bg-burgundy *,
+html.light a.bg-wine-dark,
+html.light a.bg-wine-dark * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+html.light button:hover[class*="hover:bg-"] svg,
+html.light button:hover[class*="bg-"] svg,
+html.light a:hover[class*="hover:bg-"] svg,
+html.light a:hover[class*="bg-"] svg,
+html.light [role="button"]:hover[class*="hover:bg-"] svg,
+html.light .spy-btn-anim:hover svg,
+html.light .rosegold-gradient-bg:hover svg,
+html.light .gold-gradient-bg:hover svg,
+html.light .purple-gradient-bg:hover svg,
+html.light button.bg-burgundy svg,
+html.light button.bg-wine-dark svg,
+html.light a.bg-burgundy svg,
+html.light a.bg-wine-dark svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* SPECIFIC HIGH-CONTRAST LIGHT MODE RESTORATION FOR HEADER & ACTION BUTTON CONTROLS */
+html.light header button.bg-dark-800,
+html.light header nav button.bg-dark-800,
+html.light .glass-card button.bg-dark-800 {
+  background-color: #F8F3ED !important;
+  border-color: rgba(184, 134, 11, 0.35) !important;
+}
+
+html.light header button.bg-dark-800 svg,
+html.light header nav button.bg-dark-800 svg,
+html.light .glass-card button.bg-dark-800 svg {
+  color: #8C6228 !important;
+  stroke: #8C6228 !important;
+}
+
+html.light header button.bg-dark-800 span:not(.brand-profile-avatar *),
+html.light header nav button.bg-dark-800 span:not(.brand-profile-avatar *) {
+  color: #111827 !important;
+}
+
+html.light header button.bg-dark-800:hover,
+html.light header nav button.bg-dark-800:hover,
+html.light .glass-card button.bg-dark-800:hover {
+  background-color: #4D1526 !important;
+  border-color: #B8860B !important;
+}
+
+html.light header button.bg-dark-800:hover svg,
+html.light header nav button.bg-dark-800:hover svg,
+html.light .glass-card button.bg-dark-800:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+html.light header button.bg-dark-800:hover span:not(.brand-profile-avatar *),
+html.light header nav button.bg-dark-800:hover span:not(.brand-profile-avatar *) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   MASTER NOTIFICATION BELL BUTTON & ICON CONTRAST SPECIFICATION
+   ========================================================================== */
+
+/* Light Mode Notification Bell Button - Normal State */
+html.light .notif-bell-btn,
+html.light header button.notif-bell-btn {
+  background-color: #F8F3ED !important;
+  border-color: rgba(184, 134, 11, 0.35) !important;
+}
+
+html.light .notif-bell-btn .notif-bell-icon,
+html.light .notif-bell-btn svg,
+html.light header button.notif-bell-btn svg {
+  color: #8C6228 !important;
+  stroke: #8C6228 !important;
+  fill: none !important;
+}
+
+/* Light Mode Notification Bell Button - Hover, Focus & Active States (Crisp White Bell) */
+html.light .notif-bell-btn:hover,
+html.light .notif-bell-btn:focus,
+html.light .notif-bell-btn:active,
+html.light header button.notif-bell-btn:hover,
+html.light header button.notif-bell-btn:focus,
+html.light header button.notif-bell-btn:active {
+  background-color: #4D1526 !important;
+  border-color: #B8860B !important;
+  box-shadow: 0 0 12px rgba(184, 134, 11, 0.4) !important;
+}
+
+html.light .notif-bell-btn:hover .notif-bell-icon,
+html.light .notif-bell-btn:hover svg,
+html.light .notif-bell-btn:focus .notif-bell-icon,
+html.light .notif-bell-btn:focus svg,
+html.light .notif-bell-btn:active .notif-bell-icon,
+html.light .notif-bell-btn:active svg,
+html.light header button.notif-bell-btn:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  fill: none !important;
+  opacity: 1 !important;
+}
+
+/* Dark Mode Notification Bell Button - Normal & Hover States */
+.notif-bell-btn,
+header button.notif-bell-btn {
+  background-color: #1A1A24 !important;
+  border-color: rgba(224, 169, 109, 0.3) !important;
+}
+
+.notif-bell-btn .notif-bell-icon,
+.notif-bell-btn svg,
+header button.notif-bell-btn svg {
+  color: #E0A96D !important;
+  stroke: #E0A96D !important;
+  fill: none !important;
+}
+
+.notif-bell-btn:hover,
+.notif-bell-btn:focus,
+.notif-bell-btn:active,
+header button.notif-bell-btn:hover,
+header button.notif-bell-btn:focus,
+header button.notif-bell-btn:active {
+  background-color: #2B0C15 !important;
+  border-color: #E0A96D !important;
+  box-shadow: 0 0 12px rgba(224, 169, 109, 0.4) !important;
+}
+
+.notif-bell-btn:hover .notif-bell-icon,
+.notif-bell-btn:hover svg,
+.notif-bell-btn:focus .notif-bell-icon,
+.notif-bell-btn:focus svg,
+.notif-bell-btn:active .notif-bell-icon,
+.notif-bell-btn:active svg,
+header button.notif-bell-btn:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  fill: none !important;
+  opacity: 1 !important;
+}
+
+/* ==========================================================================
+   MASTER BULLETPROOF PROFILE AVATAR INITIALS CONTRAST FIX (LIGHT & DARK MODE)
+   ========================================================================== */
+
+/* Light Mode Profile Avatar: Pure White Circle + Dark Burgundy Initials (Normal & Hover) */
+html.light .brand-profile-avatar,
+html.light button .brand-profile-avatar,
+html.light button:hover .brand-profile-avatar,
+html.light a .brand-profile-avatar,
+html.light a:hover .brand-profile-avatar,
+html.light header button:hover .brand-profile-avatar,
+html.light header nav button:hover .brand-profile-avatar {
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(184, 134, 11, 0.45) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+html.light .brand-profile-avatar span,
+html.light .brand-profile-avatar *,
+html.light button .brand-profile-avatar span,
+html.light button .brand-profile-avatar *,
+html.light button:hover .brand-profile-avatar span,
+html.light button:hover .brand-profile-avatar *,
+html.light a .brand-profile-avatar span,
+html.light a .brand-profile-avatar *,
+html.light a:hover .brand-profile-avatar span,
+html.light a:hover .brand-profile-avatar *,
+html.light header button:hover .brand-profile-avatar span,
+html.light header nav button:hover .brand-profile-avatar span {
+  color: #390614 !important;
+  -webkit-text-fill-color: #390614 !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Dark Mode Profile Avatar: Dark Maroon Circle + Rosegold Initials (Normal & Hover) */
+.brand-profile-avatar,
+button .brand-profile-avatar,
+button:hover .brand-profile-avatar,
+a .brand-profile-avatar,
+a:hover .brand-profile-avatar {
+  background-color: #2B0C15 !important;
+  border: 1px solid rgba(224, 169, 109, 0.4) !important;
+}
+
+.brand-profile-avatar span,
+.brand-profile-avatar *,
+button .brand-profile-avatar span,
+button .brand-profile-avatar *,
+button:hover .brand-profile-avatar span,
+button:hover .brand-profile-avatar *,
+a .brand-profile-avatar span,
+a .brand-profile-avatar *,
+a:hover .brand-profile-avatar span,
+a:hover .brand-profile-avatar * {
+  color: #FFF2E2 !important;
+  -webkit-text-fill-color: #FFF2E2 !important;
+  font-weight: 800 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* LIGHT MODE TAB BAR, FILTER PILLS & INACTIVE TAB HOVER CONTRAST FIX */
+html.light .bg-dark-800\/80 button:not(.rosegold-gradient-bg):not(.bg-burgundy),
+html.light .bg-dark-800 button:not(.rosegold-gradient-bg):not(.bg-burgundy),
+html.light .bg-dark-850 button:not(.rosegold-gradient-bg):not(.bg-burgundy) {
+  color: #1E1B18 !important;
+}
+
+html.light .bg-dark-800\/80 button:not(.rosegold-gradient-bg):not(.bg-burgundy) svg,
+html.light .bg-dark-800 button:not(.rosegold-gradient-bg):not(.bg-burgundy) svg,
+html.light .bg-dark-850 button:not(.rosegold-gradient-bg):not(.bg-burgundy) svg {
+  color: #8C6228 !important;
+  stroke: #8C6228 !important;
+}
+
+html.light .bg-dark-800\/80 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover,
+html.light .bg-dark-800 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover,
+html.light .bg-dark-850 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover {
+  background-color: #E6D9CB !important;
+  color: #390614 !important;
+}
+
+html.light .bg-dark-800\/80 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover svg,
+html.light .bg-dark-800 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover svg,
+html.light .bg-dark-850 button:not(.rosegold-gradient-bg):not(.bg-burgundy):hover svg {
+  color: #390614 !important;
+  stroke: #390614 !important;
+}
+
+/* LIGHT MODE NAVBAR LINK & SEARCH INPUT ICON CONTRAST FIX */
+html.light header nav a:not(.rosegold-gradient-bg) {
+  color: #111827 !important;
+}
+
+html.light header nav a:not(.rosegold-gradient-bg):hover {
+  background-color: rgba(77, 21, 38, 0.08) !important;
+  color: #390614 !important;
+}
+
+html.light .relative input + svg,
+html.light input + svg {
+  color: #7A4B1A !important;
+  stroke: #7A4B1A !important;
+}
+
+html.light select option {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+}
+
+html.light select option:hover,
+html.light select option:focus,
+html.light select option:checked {
+  background-color: #F3ECE2 !important;
+  color: #390614 !important;
+}
+
+/* LIGHT MODE CARD ACTION BUTTON HOVER RECTIFICATION */
+html.light .glass-card button:not(.rosegold-gradient-bg):not([type="submit"]):not(.bg-red-500\/15):hover,
+html.light .glass-card a:not(.rosegold-gradient-bg):not(.bg-red-500\/15):hover {
+  background-color: #E6D9CB !important;
+  color: #390614 !important;
+}
+
+html.light .glass-card button:not(.rosegold-gradient-bg):not([type="submit"]):not(.bg-red-500\/15):hover svg,
+html.light .glass-card a:not(.rosegold-gradient-bg):not(.bg-red-500\/15):hover svg {
+  color: #390614 !important;
+  stroke: #390614 !important;
 }
 
 html.light .text-rosegold-400,
@@ -1703,18 +2154,81 @@ html.light textarea {
 
 html.light .glass-card,
 html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
   border-color: rgba(139, 90, 43, 0.25) !important;
   color: #111827 !important;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08) !important;
 }
 
-html.light .bg-dark-900,
-html.light .bg-dark-850,
-html.light .bg-dark-800 {
+html.light .bg-dark-900:not(button):not(a),
+html.light .bg-dark-850:not(button):not(a),
+html.light .bg-dark-800:not(button):not(a) {
   background-color: rgba(255, 248, 242, 0.95) !important;
   color: #111827 !important;
   border-color: rgba(139, 90, 43, 0.2) !important;
+}
+
+/* MODAL CONTAINERS & OVERLAYS (`.fixed.inset-0`) IN LIGHT MODE */
+html.light .fixed.inset-0 .glass-card,
+html.light .fixed.inset-0 .glass-panel {
+  background: #FFFFFF !important;
+  border-color: rgba(197, 157, 92, 0.4) !important;
+  box-shadow: 0 25px 60px rgba(57, 6, 20, 0.2) !important;
+  color: #111827 !important;
+}
+
+html.light .fixed.inset-0 .glass-card h1,
+html.light .fixed.inset-0 .glass-card h2,
+html.light .fixed.inset-0 .glass-card h3,
+html.light .fixed.inset-0 .glass-card h4,
+html.light .fixed.inset-0 .glass-card h5,
+html.light .fixed.inset-0 .glass-card h6 {
+  color: #111827 !important;
+}
+
+html.light .fixed.inset-0 .glass-card p:not(.rosegold-gradient-bg *):not(button *):not(a *),
+html.light .fixed.inset-0 .glass-card label:not(.rosegold-gradient-bg *):not(button *):not(a *),
+html.light .fixed.inset-0 .glass-card span:not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(button *):not(a *):not(.force-text-white) {
+  color: #1E1B18 !important;
+}
+
+/* Modal form input sub-panels (non-button) */
+html.light .fixed.inset-0 .glass-card .bg-dark-800:not(button):not(a),
+html.light .fixed.inset-0 .glass-card .bg-dark-850:not(button):not(a),
+html.light .fixed.inset-0 .glass-card .bg-dark-900:not(button):not(a) {
+  background-color: #F8F3ED !important;
+  border-color: rgba(184, 134, 11, 0.25) !important;
+  color: #111827 !important;
+}
+
+html.light .fixed.inset-0 .glass-card .bg-dark-800:not(button):not(a) *:not(.rosegold-gradient-bg *):not(button *):not(a *),
+html.light .fixed.inset-0 .glass-card .bg-dark-850:not(button):not(a) *:not(.rosegold-gradient-bg *):not(button *):not(a *),
+html.light .fixed.inset-0 .glass-card .bg-dark-900:not(button):not(a) *:not(.rosegold-gradient-bg *):not(button *):not(a *) {
+  color: #111827 !important;
+}
+
+/* Modal action buttons & Submit buttons MUST be crisp pure white */
+html.light .fixed.inset-0 .glass-card .rosegold-gradient-bg,
+html.light .fixed.inset-0 .glass-card .rosegold-gradient-bg *,
+html.light .fixed.inset-0 .glass-card button[type="submit"],
+html.light .fixed.inset-0 .glass-card button[type="submit"] *,
+html.light .fixed.inset-0 .glass-card button.bg-dark-800,
+html.light .fixed.inset-0 .glass-card button.bg-dark-800 *,
+html.light .fixed.inset-0 .glass-card button.bg-burgundy,
+html.light .fixed.inset-0 .glass-card button.bg-burgundy * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* Modal header close button (✕) visibility in light mode */
+html.light .fixed.inset-0 .glass-card button.text-gray-400,
+html.light .fixed.inset-0 .glass-panel button.text-gray-400 {
+  color: #111827 !important;
+}
+
+html.light .fixed.inset-0 .glass-card button.text-gray-400:hover,
+html.light .fixed.inset-0 .glass-panel button.text-gray-400:hover {
+  color: #991B1B !important;
 }
 
 /* Shine Border Keyframe Animation */

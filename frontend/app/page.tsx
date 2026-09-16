@@ -770,8 +770,8 @@ export default function Home() {
               >
                 {/* Top Badge */}
                 <div className="absolute top-4 right-4 z-10">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full rosegold-gradient-bg !text-white shadow-sm">
-                    {item.badge}
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full rosegold-gradient-bg !text-white shadow-sm relative inline-block">
+                    <span className="relative z-10 !text-white font-extrabold">{item.badge}</span>
                   </span>
                 </div>
 

@@ -229,7 +229,7 @@ export default function AppointmentCard({
             {onReschedule && (
               <button
                 onClick={() => onReschedule(appointment)}
-                className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer"
               >
                 Reschedule Slot →
               </button>
@@ -259,7 +259,7 @@ export default function AppointmentCard({
             {onReschedule && (
               <button
                 onClick={() => onReschedule(appointment)}
-                className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer"
               >
                 Reschedule Slot
               </button>
@@ -298,7 +298,7 @@ export default function AppointmentCard({
             {onBookAgain && (
               <button
                 onClick={() => onBookAgain(appointment)}
-                className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
+                className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Book Again</span>
@@ -313,7 +313,7 @@ export default function AppointmentCard({
             {onBookAgain && (
               <button
                 onClick={() => onBookAgain(appointment)}
-                className="px-4 py-2 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
+                className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-sm hover:scale-105 transition-all cursor-pointer flex items-center space-x-1"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Re-Book Session</span>

@@ -20,9 +20,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _dobCtrl = TextEditingController();
-  final _anniversaryCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
-  final _emergencyCtrl = TextEditingController();
 
   String _gender = 'Female';
   String _language = 'English';
@@ -45,15 +42,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _dobCtrl.dispose();
-    _anniversaryCtrl.dispose();
-    _addressCtrl.dispose();
-    _emergencyCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _loadProfileData({bool quiet = false}) async {
     if (!quiet) setState(() => _isLoading = true);
-    final user = await ApiService.getStoredUser();
+    final user = await ApiService.fetchCurrentUserProfile();
     if (!mounted) return;
 
     if (user != null) {
@@ -72,9 +66,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _phoneCtrl.text = user['phone'] ?? '';
     _emailCtrl.text = user['email'] ?? '';
     _dobCtrl.text = user['dob'] ?? '';
-    _anniversaryCtrl.text = user['anniversary'] ?? '';
-    _addressCtrl.text = user['address'] ?? '';
-    _emergencyCtrl.text = user['emergencyContact'] ?? '';
 
     final g = (user['gender'] ?? '').toString();
     if (['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(g)) {
@@ -102,15 +93,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   int _calculateCompleteness() {
     int score = 0;
-    if (_nameCtrl.text.trim().isNotEmpty) score += 15;
-    if (_emailCtrl.text.trim().isNotEmpty) score += 15;
-    if (_phoneCtrl.text.trim().isNotEmpty) score += 15;
+    if (_nameCtrl.text.trim().isNotEmpty) score += 20;
+    if (_emailCtrl.text.trim().isNotEmpty) score += 20;
+    if (_phoneCtrl.text.trim().isNotEmpty) score += 20;
     if ((_user?['avatar'] ?? '').toString().isNotEmpty) score += 20;
     if (_dobCtrl.text.trim().isNotEmpty) score += 10;
-    if (_gender.isNotEmpty) score += 5;
-    if (_addressCtrl.text.trim().isNotEmpty) score += 10;
-    if (_emergencyCtrl.text.trim().isNotEmpty) score += 5;
-    if (_anniversaryCtrl.text.trim().isNotEmpty) score += 5;
+    if (_gender.isNotEmpty) score += 10;
     return score > 100 ? 100 : score;
   }
 
@@ -129,9 +117,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'email': _emailCtrl.text.trim(),
       'gender': _gender,
       'dob': _dobCtrl.text.trim(),
-      'anniversary': _anniversaryCtrl.text.trim(),
-      'address': _addressCtrl.text.trim(),
-      'emergencyContact': _emergencyCtrl.text.trim(),
       'preferredLanguage': _language,
       'preferredCommunication': _communication,
       'notificationPreferences': {
@@ -154,12 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
         if (isSuccess) {
-          if (res['user'] != null) {
-            _user = res['user'];
-            _populateFields(_user!);
-          } else {
-            await _loadProfileData(quiet: true);
-          }
+          await _loadProfileData(quiet: true);
           setState(() {
             _isEditMode = false;
           });
@@ -423,15 +403,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 10),
         _buildInfoCard(colors, [
           _buildInfoTile(colors, Icons.cake_outlined, 'Date of Birth', _dobCtrl.text.isNotEmpty ? _dobCtrl.text : 'Not Set'),
-          _buildInfoTile(colors, Icons.favorite_outline, 'Anniversary Date', _anniversaryCtrl.text.isNotEmpty ? _anniversaryCtrl.text : 'Not Set'),
-        ]),
-        const SizedBox(height: 20),
-
-        _buildSectionTitle(colors, 'LOCATION & EMERGENCY CONTACT'),
-        const SizedBox(height: 10),
-        _buildInfoCard(colors, [
-          _buildInfoTile(colors, Icons.location_on_outlined, 'Saved Studio Location / Address', _addressCtrl.text.isNotEmpty ? _addressCtrl.text : 'Not Set'),
-          _buildInfoTile(colors, Icons.contact_phone_outlined, 'Emergency Contact Phone', _emergencyCtrl.text.isNotEmpty ? _emergencyCtrl.text : 'Not Set'),
         ]),
         const SizedBox(height: 20),
 
@@ -440,7 +411,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _buildInfoCard(colors, [
           _buildInfoTile(colors, Icons.language_outlined, 'Preferred Language', _language),
           _buildInfoTile(colors, Icons.chat_bubble_outline, 'Preferred Channel', _communication),
-          _buildInfoTile(colors, Icons.notifications_active_outlined, 'Notification Preferences', 'WhatsApp (${_whatsappAlerts ? "ON" : "OFF"}), SMS (${_smsAlerts ? "ON" : "OFF"}), Email (${_emailAlerts ? "ON" : "OFF"})'),
         ]),
         const SizedBox(height: 24),
 
@@ -595,78 +565,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-
-        // Anniversary DatePicker
-        InkWell(
-          onTap: () async {
-            final picked = await showDatePicker(
-              context: context,
-              initialDate: DateTime.tryParse(_anniversaryCtrl.text) ?? DateTime.now(),
-              firstDate: DateTime(1970),
-              lastDate: DateTime.now(),
-            );
-            if (picked != null) {
-              setState(() {
-                _anniversaryCtrl.text = picked.toString().split(' ')[0];
-              });
-            }
-          },
-          child: IgnorePointer(
-            child: TextField(
-              controller: _anniversaryCtrl,
-              style: TextStyle(color: colors.textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Anniversary Date (Optional)',
-                hintText: 'YYYY-MM-DD',
-                labelStyle: TextStyle(color: colors.textMuted),
-                prefixIcon: Icon(Icons.favorite_outline, color: colors.primary),
-                suffixIcon: Icon(Icons.calendar_today_outlined, color: colors.textMuted, size: 18),
-                filled: true,
-                fillColor: colors.inputBackground,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        _buildSectionTitle(colors, 'LOCATION & EMERGENCY CONTACT'),
-        const SizedBox(height: 10),
-
-        // Address
-        TextField(
-          controller: _addressCtrl,
-          maxLines: 2,
-          style: TextStyle(color: colors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Saved Studio Location / Address',
-            labelStyle: TextStyle(color: colors.textMuted),
-            prefixIcon: Icon(Icons.location_on_outlined, color: colors.primary),
-            filled: true,
-            fillColor: colors.inputBackground,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Emergency Contact
-        TextField(
-          controller: _emergencyCtrl,
-          keyboardType: TextInputType.phone,
-          style: TextStyle(color: colors.textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Emergency Contact Phone',
-            labelStyle: TextStyle(color: colors.textMuted),
-            prefixIcon: Icon(Icons.contact_phone_outlined, color: colors.primary),
-            filled: true,
-            fillColor: colors.inputBackground,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-          ),
-        ),
         const SizedBox(height: 20),
 
         _buildSectionTitle(colors, 'COMMUNICATION PREFERENCES'),
@@ -718,53 +616,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fillColor: colors.inputBackground,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        _buildSectionTitle(colors, 'NOTIFICATION ALERTS'),
-        const SizedBox(height: 10),
-
-        Container(
-          decoration: BoxDecoration(
-            color: colors.cardSurface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: colors.cardBorder),
-          ),
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: Text('WhatsApp Instant Alerts', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                subtitle: Text('Receive booking confirmations via WhatsApp', style: TextStyle(color: colors.textMuted, fontSize: 11)),
-                value: _whatsappAlerts,
-                activeThumbColor: colors.primary,
-                onChanged: (val) => setState(() => _whatsappAlerts = val),
-              ),
-              Divider(color: colors.divider, height: 1),
-              SwitchListTile(
-                title: Text('SMS Notifications', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                subtitle: Text('Receive SMS updates for appointment status', style: TextStyle(color: colors.textMuted, fontSize: 11)),
-                value: _smsAlerts,
-                activeThumbColor: colors.primary,
-                onChanged: (val) => setState(() => _smsAlerts = val),
-              ),
-              Divider(color: colors.divider, height: 1),
-              SwitchListTile(
-                title: Text('Email Receipts & Statements', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                subtitle: Text('Receive official receipts and membership statements', style: TextStyle(color: colors.textMuted, fontSize: 11)),
-                value: _emailAlerts,
-                activeThumbColor: colors.primary,
-                onChanged: (val) => setState(() => _emailAlerts = val),
-              ),
-              Divider(color: colors.divider, height: 1),
-              SwitchListTile(
-                title: Text('Promotional Offers & Special Deals', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
-                subtitle: Text('Exclusive seasonal studio discounts and package deals', style: TextStyle(color: colors.textMuted, fontSize: 11)),
-                value: _promoOffers,
-                activeThumbColor: colors.primary,
-                onChanged: (val) => setState(() => _promoOffers = val),
-              ),
-            ],
           ),
         ),
         const SizedBox(height: 24),

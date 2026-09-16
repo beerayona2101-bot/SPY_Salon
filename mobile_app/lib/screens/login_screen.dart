@@ -98,15 +98,11 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         } else if (mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
-              (route) => false,
-            );
-          }
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+            (route) => false,
+          );
         }
       } else {
         _showSnackBar(res['message']);
@@ -185,15 +181,11 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         } else if (mounted) {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
-              (route) => false,
-            );
-          }
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+            (route) => false,
+          );
         }
       } else {
         _showSnackBar(res['message']);

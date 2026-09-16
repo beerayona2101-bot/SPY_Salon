@@ -104,7 +104,7 @@ export default function AppointmentDetailsModal({
             <button
               onClick={() => setActiveTab('details')}
               className={`px-3 py-1.5 rounded-full font-bold transition-all ${
-                activeTab === 'details' ? 'rosegold-gradient-bg text-dark-900' : 'bg-dark-800 text-gray-400 hover:text-white'
+                activeTab === 'details' ? 'rosegold-gradient-bg !text-white' : 'bg-dark-800 text-gray-400 hover:text-white'
               }`}
             >
               Appointment Breakdown
@@ -112,7 +112,7 @@ export default function AppointmentDetailsModal({
             <button
               onClick={() => setActiveTab('reschedule')}
               className={`px-3 py-1.5 rounded-full font-bold transition-all ${
-                activeTab === 'reschedule' ? 'rosegold-gradient-bg text-dark-900' : 'bg-dark-800 text-gray-400 hover:text-white'
+                activeTab === 'reschedule' ? 'rosegold-gradient-bg !text-white' : 'bg-dark-800 text-gray-400 hover:text-white'
               }`}
             >
               Request Reschedule
@@ -121,7 +121,7 @@ export default function AppointmentDetailsModal({
               <button
                 onClick={() => setActiveTab('review')}
                 className={`px-3 py-1.5 rounded-full font-bold transition-all ${
-                  activeTab === 'review' ? 'rosegold-gradient-bg text-dark-900' : 'bg-dark-800 text-gray-400 hover:text-white'
+                  activeTab === 'review' ? 'rosegold-gradient-bg !text-white' : 'bg-dark-800 text-gray-400 hover:text-white'
                 }`}
               >
                 Write Review
@@ -222,7 +222,7 @@ export default function AppointmentDetailsModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-glow-rosegold hover:scale-105 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-glow-rosegold hover:scale-105 cursor-pointer"
                 >
                   {isSubmitting ? 'Submitting Request...' : 'Submit Reschedule Request →'}
                 </button>
@@ -268,7 +268,7 @@ export default function AppointmentDetailsModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-6 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold shadow-glow-rosegold hover:scale-105 cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold shadow-glow-rosegold hover:scale-105 cursor-pointer"
                 >
                   {isSubmitting ? 'Submitting...' : 'Post Verified Review ✨'}
                 </button>
