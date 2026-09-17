@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
 import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
+import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'update_password_screen.dart';
 
@@ -100,6 +101,39 @@ class SettingsScreen extends StatelessWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (ctx) => const ProfileScreen()),
+                      );
+                    },
+                  ),
+                  Divider(height: 1, color: colors.cardBorder),
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: colors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: colors.primary.withValues(alpha: 0.4)),
+                      ),
+                      child: Icon(Icons.history_rounded, color: colors.primary, size: 20),
+                    ),
+                    title: Text(
+                      'Appointment History',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'View past bookings, status & schedules',
+                      style: TextStyle(color: colors.textMuted, fontSize: 12),
+                    ),
+                    trailing: Icon(Icons.chevron_right_rounded, color: colors.textMuted),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (ctx) => const HistoryScreen()),
                       );
                     },
                   ),

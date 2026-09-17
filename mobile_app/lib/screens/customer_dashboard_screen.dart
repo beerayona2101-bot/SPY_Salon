@@ -6,9 +6,9 @@ import '../services/api_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
+import 'history_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
-import 'settings_screen.dart';
 import 'update_password_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
@@ -987,6 +987,49 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                   ),
                   const SizedBox(height: 12),
 
+                  // Option: Appointment History
+                  Container(
+                    decoration: BoxDecoration(
+                      color: themeColors.inputBackground.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: themeColors.cardBorder),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      leading: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Icon(Icons.history_rounded, color: primaryColor, size: 20),
+                      ),
+                      title: Text(
+                        'Appointment History',
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      subtitle: Text(
+                        'View past bookings, status & schedules',
+                        style: TextStyle(color: themeColors.textMuted, fontSize: 12),
+                      ),
+                      trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
+                      onTap: () {
+                        Navigator.pop(modalCtx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (c) => const HistoryScreen()),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Option 2: Theme Toggle
                   Container(
                     decoration: BoxDecoration(
@@ -1086,35 +1129,48 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                       },
                     ),
                   ),
-                  const SizedBox(height: 16),
 
-                  // All Settings Navigation Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: themeColors.cardBorder),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+                  // Option 4: Sign Out (for logged in users)
+                  if (_user != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.25)),
                       ),
-                      onPressed: () {
-                        Navigator.pop(modalCtx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (c) => const SettingsScreen()),
-                        );
-                      },
-                      icon: Icon(Icons.tune_rounded, color: primaryColor, size: 18),
-                      label: Text(
-                        'All App Settings',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        leading: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
                         ),
+                        title: const Text(
+                          'Sign Out',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Sign out of your account cleanly',
+                          style: TextStyle(color: themeColors.textMuted, fontSize: 12),
+                        ),
+                        trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
+                        onTap: () {
+                          Navigator.pop(modalCtx);
+                          _confirmSignOut();
+                        },
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );
@@ -1167,19 +1223,53 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
           ],
         ),
         actions: [
-          // 1. Settings Icon Button (Replaces Theme Toggle)
-          IconButton(
-            icon: Icon(
-              Icons.settings_outlined,
-              color: primaryColor,
-              size: 22,
+          if (_user != null) ...[
+            // 1. VIP Members Badge (Positioned before Settings, display badge only)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.workspace_premium_rounded, color: primaryColor, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        clientTier.toUpperCase(),
+                        style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            tooltip: 'Settings, Profile & Theme',
-            onPressed: () => _showSettingsModal(),
-          ),
-
-          // 2. Highlighted Sign In Button (shifted to the far right side)
-          if (_user == null)
+            // 2. Settings Icon Button (Replaces direct logout at position 2 far right)
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: primaryColor,
+                size: 22,
+              ),
+              tooltip: 'Settings, Profile & Theme',
+              onPressed: () => _showSettingsModal(),
+            ),
+          ] else ...[
+            // For Guest Users: Settings Icon + Sign In Button
+            IconButton(
+              icon: Icon(
+                Icons.settings_outlined,
+                color: primaryColor,
+                size: 22,
+              ),
+              tooltip: 'Settings & Theme',
+              onPressed: () => _showSettingsModal(),
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
               child: ElevatedButton.icon(
@@ -1203,29 +1293,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                   ),
                 ),
               ),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.only(right: 4, top: 8, bottom: 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryColor),
-                ),
-                child: Center(
-                  child: Text(
-                    clientTier.toUpperCase(),
-                    style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              icon: Icon(Icons.logout_rounded, color: primaryColor, size: 18),
-              tooltip: 'Sign Out',
-              onPressed: () => _confirmSignOut(),
             ),
           ],
         ],
