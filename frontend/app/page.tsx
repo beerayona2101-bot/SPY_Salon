@@ -349,7 +349,7 @@ export default function Home() {
                 className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/10 border border-rosegold-500/40 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
               >
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse hero-tagline-star" />
-                <span style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }} className="hero-tagline-text font-bold text-[#F5EBE1] !text-[#F5EBE1]">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
+                <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-tagline-text font-bold text-white !text-white">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
               </motion.div>
 
               {/* Main Responsive Headline */}
@@ -360,15 +360,15 @@ export default function Home() {
               </h1>
 
               {/* Sub-description / Quote */}
-              <p style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }} className="hero-subtitle-text text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic text-[#F5EBE1] !text-[#F5EBE1]">
+              <p style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-subtitle-text text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic text-white !text-white">
                 <TextAnimate
                   animation="blurInUp"
                   by="character"
                   delay={0.5}
                   once
-                  className="text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic !text-[#F5EBE1]"
-                  segmentClassName="!text-[#F5EBE1]"
-                  style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }}
+                  className="text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic !text-white"
+                  segmentClassName="!text-white"
+                  style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}
                 >
                   {homeSettings.heroSubtitle}
                 </TextAnimate>

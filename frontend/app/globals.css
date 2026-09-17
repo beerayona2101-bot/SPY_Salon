@@ -895,23 +895,23 @@ html.light .hero-subtitle-text span,
 .light p.hero-subtitle-text *,
 .light section .hero-subtitle-text,
 .light section .hero-subtitle-text * {
-  color: #FFF2E2 !important;
-  -webkit-text-fill-color: #FFF2E2 !important;
-  opacity: 0.95 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
 }
 
 html.light .hero-tagline-text,
 html.light .hero-tagline-text *,
 .light .hero-tagline-text,
 .light .hero-tagline-text * {
-  color: #F5EBE1 !important;
-  -webkit-text-fill-color: #F5EBE1 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 html.light .hero-perk-text span,
 .light .hero-perk-text span {
-  color: #F3ECE2 !important;
-  -webkit-text-fill-color: #F3ECE2 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 html.light .hero-perk-text svg,
@@ -930,6 +930,24 @@ html.light .hero-cta-btn span,
   -webkit-text-fill-color: #FFFFFF !important;
 }
 
+/* Official Brand Identity Feature Card Pure Black Text Contrast Overrides in Light Mode */
+html.light .rosegold-glass-card,
+html.light .rosegold-glass-card *,
+html.light .rosegold-glass-card h3,
+html.light .rosegold-glass-card h4,
+html.light .rosegold-glass-card p,
+html.light .rosegold-glass-card span,
+html.light .rosegold-glass-card .brand-identity-tag,
+html.light .rosegold-glass-card .brand-identity-title,
+html.light .rosegold-glass-card .brand-identity-desc,
+html.light .rosegold-glass-card .award-badge-title,
+html.light .rosegold-glass-card .award-badge-desc,
+.light .rosegold-glass-card,
+.light .rosegold-glass-card *,
+.light .rosegold-glass-card h3,
+.light .rosegold-glass-card h4,
+.light .rosegold-glass-card p,
+.light .rosegold-glass-card span,
 .light .brand-identity-tag,
 .light .brand-identity-title,
 .light .brand-identity-desc,
@@ -938,6 +956,12 @@ html.light .hero-cta-btn span,
   color: #000000 !important;
   -webkit-text-fill-color: #000000 !important;
   font-weight: 700 !important;
+}
+
+html.light .rosegold-glass-card .brand-identity-tag,
+.light .rosegold-glass-card .brand-identity-tag {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
 }
 
 /* 3. NOTIFICATION DROPDOWN PANEL LIGHT MODE CONTRAST FIXES */
@@ -1095,19 +1119,12 @@ html.light .hero-cta-btn span,
 .light .bg-burgundy-dark span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
 .light .bg-burgundy-dark p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
 
-.light section[class*="pt-2"] .text-white,
-.light section[class*="pt-2"] .text-gray-100,
-.light section[class*="pt-2"] .text-gray-200,
-.light section[class*="pt-2"] .text-gray-300,
-.light section[class*="pt-2"] .text-gray-400,
-.light section[class*="pt-2"] .text-gray-500,
-.light section[class*="pt-2"] h1,
-.light section[class*="pt-2"] h2,
-.light section[class*="pt-2"] h3,
-.light section[class*="pt-2"] h4,
-.light section[class*="pt-2"] span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
-.light section[class*="pt-2"] p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
-
+.light section.hero-section-container .hero-tagline-badge span,
+.light section.hero-section-container .hero-title-text,
+.light section.hero-section-container .hero-title-text *,
+.light section.hero-section-container .hero-subtitle-text,
+.light section.hero-section-container .hero-subtitle-text *,
+.light section.hero-section-container .hero-perk-text span,
 .light footer .text-white,
 .light footer .text-gray-100,
 .light footer .text-gray-200,
@@ -1145,7 +1162,10 @@ html.light .hero-cta-btn span,
 .light section:has(form) h3,
 .light section:has(form) h4,
 .light section:has(form) span:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *):not(.brand-profile-avatar *),
-.light section:has(form) p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *),
+.light section:has(form) p:not(button *):not(a *):not([role="button"] *):not(.rosegold-gradient-bg *):not(.gold-gradient-bg *):not(.purple-gradient-bg *) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
 
 /* QUICK ENQUIRY TEMPLATE BUTTONS LIGHT MODE FONT COLOR OVERRIDE */
 html.light .quick-template-btn span,
@@ -2399,8 +2419,8 @@ html.light .hero-tagline-badge span,
 .light .hero-tagline-text,
 .light .hero-tagline-text *,
 .light .hero-tagline-badge span {
-  color: #F5EBE1 !important;
-  -webkit-text-fill-color: #F5EBE1 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 html.light section.hero-section-container .hero-tagline-badge,
@@ -2431,9 +2451,9 @@ html.light .hero-subtitle-text span,
 .light .hero-subtitle-text span,
 .light p.hero-subtitle-text,
 .light p.hero-subtitle-text * {
-  color: #F5EBE1 !important;
-  -webkit-text-fill-color: #F5EBE1 !important;
-  opacity: 0.95 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
 }
 
 /* 4, 5, 6. Perk Text ("100% Sanitized", "Verified Experts", "Instant Slot Lock") */
