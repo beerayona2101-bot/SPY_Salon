@@ -5,25 +5,25 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { AdminSkeleton } from '@/components/common/Skeleton';
-import { 
-  Users, 
-  Clock, 
-  Calendar, 
-  MessageSquare, 
+import {
+  Users,
+  Clock,
+  Calendar,
+  MessageSquare,
   Mail,
-  Trash2, 
-  Plus, 
-  Edit3, 
-  Scissors, 
-  ShieldCheck, 
-  TrendingUp, 
-  UserCheck, 
-  LogOut, 
-  Lock, 
-  Building, 
-  Menu, 
-  X, 
-  ChevronRight, 
+  Trash2,
+  Plus,
+  Edit3,
+  Scissors,
+  ShieldCheck,
+  TrendingUp,
+  UserCheck,
+  LogOut,
+  Lock,
+  Building,
+  Menu,
+  X,
+  ChevronRight,
   ChevronLeft,
   ChevronDown,
   CalendarDays,
@@ -72,7 +72,6 @@ import QuickContactActions from '@/components/admin/QuickContactActions';
 import VIPBadge from '@/components/common/VIPBadge';
 import ChangePasswordModal from '@/components/common/ChangePasswordModal';
 import ProfileAvatar from '@/components/common/ProfileAvatar';
-import { AnimatedThemeToggler } from '@/registry/magicui/animated-theme-toggler';
 import { validateForm, validateName, validateEmail, validatePhone, validateNumber, validateRequired, validateDate } from '@/lib/validation';
 import { SALON_CATALOGUE } from '@/lib/servicesData';
 
@@ -280,7 +279,7 @@ function AdminDashboardContent() {
       setSidebarOpen(false);
     }
   }, []);
-  
+
   const tabFromUrl = searchParams?.get('tab');
   const subTabFromUrl = searchParams?.get('subTab') || searchParams?.get('section');
   const validTabs = ['analytics', 'calendar', 'memberships', 'earnings', 'employees', 'customers', 'services', 'appointments', 'leaves', 'reviews', 'ai-reports', 'enquiries', 'landing-settings', 'home-settings', 'footer-settings'];
@@ -319,7 +318,7 @@ function AdminDashboardContent() {
     if (!currentUser && storedUser) {
       try {
         currentUser = JSON.parse(storedUser);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (!currentUser) {
@@ -340,7 +339,7 @@ function AdminDashboardContent() {
       setIsAuthorized(false);
     }
   }, [user, isLoading, router]);
-  
+
   // Data States
   const [analytics, setAnalytics] = useState<any>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -381,7 +380,7 @@ function AdminDashboardContent() {
 
   const handleAdminMarkRead = async (id: string) => {
     setNotifications(prev => prev.map(n => (n._id === id || n.notificationId === id) ? { ...n, read: true, isRead: true } : n));
-    await apiFetch(`${API_BASE_URL}/notifications/read/${id}`, { method: 'PATCH' }).catch(() => {});
+    await apiFetch(`${API_BASE_URL}/notifications/read/${id}`, { method: 'PATCH' }).catch(() => { });
   };
 
   const handleOpenLeaveModalFromNotif = async (notif: any) => {
@@ -585,7 +584,7 @@ function AdminDashboardContent() {
           if (Array.isArray(parsed.faqItems)) setLandingFaqItems(parsed.faqItems);
           localStorage.setItem('spy_landing_settings', JSON.stringify(parsed));
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Also load offers & coupons from API
       try {
@@ -594,7 +593,7 @@ function AdminDashboardContent() {
         if (offRes.ok && offJson.success && Array.isArray(offJson.data)) {
           setOffersList(offJson.data);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     loadLandingSettingsFromBackend();
@@ -884,7 +883,7 @@ function AdminDashboardContent() {
   });
 
   const [custForm, setCustForm] = useState({ name: '', email: '', phone: '', membership: 'VIP Gold' });
-  
+
   const [servicesSubTab, setServicesSubTab] = useState<'memberships' | 'main-services' | 'full-catalogue' | 'individual-services'>('memberships');
   const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
   const [catalogueGenderFilter, setCatalogueGenderFilter] = useState<'all' | 'men' | 'women' | 'kids'>('all');
@@ -965,7 +964,7 @@ function AdminDashboardContent() {
     isOpen: false,
     title: '',
     message: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   const showConfirm = (message: string, onConfirm: () => void, title = 'Confirm Action') => {
@@ -1674,14 +1673,14 @@ function AdminDashboardContent() {
         try {
           const appIsoDate = new Date(app.bookingDateTime).toISOString().split('T')[0];
           if (appIsoDate === dateStr) return true;
-        } catch (e) {}
+        } catch (e) { }
       }
       if (app.bookingDate) {
         if (app.bookingDate === dateStr) return true;
         try {
           const parsed = new Date(app.bookingDate).toISOString().split('T')[0];
           if (parsed === dateStr) return true;
-        } catch (e) {}
+        } catch (e) { }
       }
       return false;
     });
@@ -1722,8 +1721,8 @@ function AdminDashboardContent() {
 
   const filteredEnquiries = enquiries.filter(e => {
     const queryStr = searchQuery.toLowerCase().trim();
-    const matchQ = !queryStr || 
-      (e.name && e.name.toLowerCase().includes(queryStr)) || 
+    const matchQ = !queryStr ||
+      (e.name && e.name.toLowerCase().includes(queryStr)) ||
       (e.email && e.email.toLowerCase().includes(queryStr)) ||
       (e.phone && e.phone.toLowerCase().includes(queryStr)) ||
       (e.enquiryId && e.enquiryId.toLowerCase().includes(queryStr)) ||
@@ -1738,11 +1737,11 @@ function AdminDashboardContent() {
   const formattedSelectedDate = isNaN(selectedDateObj.getTime())
     ? selectedCalDate
     : selectedDateObj.toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
 
   const selectedDateRevenue = selectedApps.reduce((acc, app) => {
     if (app.price) return acc + Number(app.price);
@@ -1764,12 +1763,12 @@ function AdminDashboardContent() {
   }) : [];
 
   const filteredApps = selectedApps.filter(app => {
-    const matchesSearch = !calSearchQuery || 
+    const matchesSearch = !calSearchQuery ||
       (app.customerName && app.customerName.toLowerCase().includes(calSearchQuery.toLowerCase())) ||
       (app.customerPhone && app.customerPhone.includes(calSearchQuery)) ||
       (app.specialistName && app.specialistName.toLowerCase().includes(calSearchQuery.toLowerCase())) ||
       (app.service && app.service.toLowerCase().includes(calSearchQuery.toLowerCase()));
-    
+
     const matchesStatus = calStatusFilter === 'All' || app.status === calStatusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -1952,19 +1951,18 @@ function AdminDashboardContent() {
 
   return (
     <div className="min-h-screen bg-dark-900 flex text-gray-100 font-sans">
-      
+
       {/* MOBILE BACKDROP OVERLAY */}
       {sidebarOpen && (
-        <div 
-          onClick={() => setSidebarOpen(false)} 
+        <div
+          onClick={() => setSidebarOpen(false)}
           className="fixed inset-0 z-40 bg-black/70 lg:hidden transition-opacity cursor-pointer"
         />
       )}
 
       {/* SIDEBAR NAVIGATION */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-850 border-r border-rosegold-500/20 flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen overflow-hidden ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-850 border-r border-rosegold-500/20 flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}>
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <Link href="/" className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity cursor-pointer" title="Go to Main Website">
@@ -1981,9 +1979,9 @@ function AdminDashboardContent() {
               </div>
             </Link>
 
-            <button 
-              onClick={() => setSidebarOpen(false)} 
-              className="p-1.5 rounded-lg bg-dark-800 border border-white/10 text-gray-400 hover:text-white hover:border-rosegold-500/40 transition-all relative z-10 cursor-pointer shadow-sm" 
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-1.5 rounded-lg bg-dark-800 border border-white/10 text-gray-400 hover:text-white hover:border-rosegold-500/40 transition-all relative z-10 cursor-pointer shadow-sm"
               title="Close Navigation Sidebar"
             >
               <X className="w-5 h-5" />
@@ -2000,9 +1998,8 @@ function AdminDashboardContent() {
                   <button
                     key={item.id}
                     onClick={() => handleTabChange(item.id!)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                      isActive ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                    }`}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all cursor-pointer ${isActive ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md' : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
                       <IconComp className={`w-4 h-4 ${isActive ? 'text-dark-900' : 'text-rosegold-400'}`} />
@@ -2020,9 +2017,8 @@ function AdminDashboardContent() {
                 <div key={item.id} className="space-y-1">
                   <button
                     onClick={() => toggleAccordion(item.id!)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl transition-all cursor-pointer text-left ${
-                      hasActiveChild ? 'text-rosegold-300 font-bold bg-rosegold-500/10 border border-rosegold-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white font-semibold'
-                    }`}
+                    className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl transition-all cursor-pointer text-left ${hasActiveChild ? 'text-rosegold-300 font-bold bg-rosegold-500/10 border border-rosegold-500/20' : 'text-gray-400 hover:bg-white/5 hover:text-white font-semibold'
+                      }`}
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <IconComp className={`w-4 h-4 shrink-0 ${hasActiveChild ? 'text-rosegold-400' : 'text-gray-400'}`} />
@@ -2047,11 +2043,10 @@ function AdminDashboardContent() {
                           <button
                             key={child.id}
                             onClick={() => handleTabChange(child.id)}
-                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${
-                              isChildActive
+                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all cursor-pointer ${isChildActive
                                 ? 'rosegold-gradient-bg text-dark-900 font-bold shadow-md'
                                 : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center space-x-2.5 min-w-0">
                               <ChildIcon className={`w-3.5 h-3.5 shrink-0 ${isChildActive ? 'text-dark-900' : 'text-rosegold-400'}`} />
@@ -2059,9 +2054,8 @@ function AdminDashboardContent() {
                             </div>
 
                             {child.badge !== undefined && child.badge !== null && child.badge > 0 && (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                isChildActive ? 'bg-dark-900 text-rosegold-300' : 'bg-amber-500 text-dark-900'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isChildActive ? 'bg-dark-900 text-rosegold-300' : 'bg-amber-500 text-dark-900'
+                                }`}>
                                 {child.badge}
                               </span>
                             )}
@@ -2103,23 +2097,21 @@ function AdminDashboardContent() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${
-        sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'
-      }`}>
-        
-        {/* Header */}
-        <header className={`sticky top-0 z-40 bg-dark-900 border-b border-rosegold-500/20 px-4 sm:px-6 py-3.5 flex items-center justify-between transition-transform duration-300 ease-in-out shadow-md ${
-          showHeader ? 'translate-y-0' : '-translate-y-full shadow-none'
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${sidebarOpen ? 'lg:ml-72' : 'lg:ml-0'
         }`}>
+
+        {/* Header */}
+        <header className={`sticky top-0 z-40 bg-dark-900 border-b border-rosegold-500/20 px-4 sm:px-6 py-3.5 flex items-center justify-between transition-transform duration-300 ease-in-out shadow-md ${showHeader ? 'translate-y-0' : '-translate-y-full shadow-none'
+          }`}>
           <div className="flex items-center space-x-3">
             {!sidebarOpen && (
-              <button 
-                onClick={() => setSidebarOpen(true)} 
-                className="p-2 rounded-xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-500/40 cursor-pointer transition-all flex items-center space-x-1.5 shadow-sm" 
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="nav-menu-toggle-btn p-2 rounded-xl bg-dark-800 border border-white/10 text-white hover:text-white hover:border-rosegold-500/40 cursor-pointer transition-all flex items-center space-x-1.5 shadow-sm"
                 title="Open Navigation Menu"
               >
-                <Menu className="w-5 h-5 text-rosegold-400" />
-                <span className="hidden sm:inline text-xs font-bold text-gray-300">Menu</span>
+                <Menu className="w-5 h-5 text-rosegold-400 group-hover:text-white" />
+                <span className="hidden sm:inline text-xs font-bold text-white">Menu</span>
               </button>
             )}
             <div className="flex items-center space-x-2 text-xs">
@@ -2141,18 +2133,7 @@ function AdminDashboardContent() {
           </div>
 
           <div className="flex items-center space-x-3 text-xs">
-            {/* THEME TOGGLE BUTTON */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl bg-dark-800 border border-white/10 text-rosegold-400 hover:text-white hover:border-rosegold-500/40 transition-all cursor-pointer flex items-center justify-center"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-purple-400" />
-              )}
-            </button>
+
 
             <div className="relative" ref={adminNotifRef}>
               {(() => {
@@ -2177,7 +2158,7 @@ function AdminDashboardContent() {
 
                 const handleAdminMarkRead = async (id: string) => {
                   setNotifications(prev => prev.map(n => (n._id === id || n.notificationId === id) ? { ...n, read: true, isRead: true } : n));
-                  await apiFetch(`${API_BASE_URL}/notifications/read/${id}`, { method: 'PATCH' }).catch(() => {});
+                  await apiFetch(`${API_BASE_URL}/notifications/read/${id}`, { method: 'PATCH' }).catch(() => { });
                 };
 
                 const handleAdminMarkAllRead = async () => {
@@ -2186,12 +2167,12 @@ function AdminDashboardContent() {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: 'admin' })
-                  }).catch(() => {});
+                  }).catch(() => { });
                 };
 
                 const handleAdminDeleteNotif = async (id: string) => {
                   setNotifications(prev => prev.filter(n => n._id !== id && n.notificationId !== id));
-                  await apiFetch(`${API_BASE_URL}/notifications/${id}`, { method: 'DELETE' }).catch(() => {});
+                  await apiFetch(`${API_BASE_URL}/notifications/${id}`, { method: 'DELETE' }).catch(() => { });
                 };
 
                 return (
@@ -2249,13 +2230,11 @@ function AdminDashboardContent() {
                                 <div
                                   key={notifId}
                                   onClick={() => isLeaveNotif && handleOpenLeaveModalFromNotif(n)}
-                                  className={`p-3 rounded-2xl text-xs space-y-1 transition-colors ${
-                                    isLeaveNotif ? 'cursor-pointer hover:bg-rosegold-500/20' : ''
-                                  } ${
-                                    isUnread
+                                  className={`p-3 rounded-2xl text-xs space-y-1 transition-colors ${isLeaveNotif ? 'cursor-pointer hover:bg-rosegold-500/20' : ''
+                                    } ${isUnread
                                       ? 'bg-rosegold-500/10 border-l-4 border-l-rosegold-500 text-white font-medium'
                                       : 'bg-dark-800/40 text-gray-400'
-                                  }`}
+                                    }`}
                                 >
                                   <div className="flex justify-between items-start gap-2">
                                     <div className="space-y-0.5 flex-1 min-w-0">
@@ -2309,21 +2288,21 @@ function AdminDashboardContent() {
 
         {/* Dashboard Content */}
         <main className="p-4 sm:p-6 lg:p-8 space-y-8 flex-1">
-          
+
           {/* TAB 1: ANALYTICS & INTERACTIVE STAT CARDS */}
           {activeTab === 'analytics' && (
             <div className="space-y-6 animate-fadeIn text-left">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold font-serif text-white">Business Intelligence & Revenue Reports</h2>
-                <button onClick={() => handleExportReport('appointments')} className="px-3.5 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV Report</span>
+                <button onClick={() => handleExportReport('appointments')} className="csv-export-btn px-3.5 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-gray-900 dark:text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
+                  <Download className="w-3.5 h-3.5 text-gray-900 dark:text-rosegold-400" />
+                  <span className="text-gray-900 dark:text-rosegold-300 font-bold">Export CSV Report</span>
                 </button>
               </div>
-              
+
               {/* INTERACTIVE STAT CARDS (CLICK REVENUE ➔ EARNINGS, APPOINTMENTS ➔ APPOINTMENTS DESK, SPECIALISTS ➔ EMPLOYEES, CLIENT BASE ➔ CUSTOMERS) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div 
+                <div
                   onClick={() => handleTabChange('earnings')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 hover:shadow-glow-rosegold group"
                 >
@@ -2332,7 +2311,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-rosegold-300 font-bold block pt-1">Click to View Earnings & Payouts →</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => handleTabChange('appointments')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2341,7 +2320,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-gray-400 block pt-1">Click to Manage Appointments →</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => handleTabChange('employees')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2350,7 +2329,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-gray-400 block pt-1">Click to Manage Specialists →</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => handleTabChange('customers')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 text-center space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2457,7 +2436,7 @@ function AdminDashboardContent() {
               {/* Revenue Breakdown Ribbon - Clickable for Itemized Modal Breakdowns */}
               {/* Revenue Breakdown Ribbon - 4 Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div 
+                <div
                   onClick={() => setBreakdownModal('revenue')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/30 hover:border-rosegold-500 space-y-1 cursor-pointer transition-all hover:scale-105 group hover:shadow-glow-rosegold"
                 >
@@ -2469,7 +2448,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-green-400 font-bold block pt-0.5">🟢 Razorpay & Counter Sync</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => setBreakdownModal('revenue')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/40 hover:border-rosegold-500 space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2483,7 +2462,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-amber-300 font-bold block pt-0.5">Counter Cash & POS Sync</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => setBreakdownModal('payroll')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/40 hover:border-rosegold-500 space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2495,7 +2474,7 @@ function AdminDashboardContent() {
                   <span className="text-[10px] text-purple-300 font-bold block pt-0.5">{payrolls.length} Staff Slips Disbursed</span>
                 </div>
 
-                <div 
+                <div
                   onClick={() => setBreakdownModal('profit')}
                   className="glass-card p-5 rounded-3xl border border-rosegold-500/40 hover:border-rosegold-500 space-y-1 cursor-pointer transition-all hover:scale-105 group"
                 >
@@ -2520,20 +2499,20 @@ function AdminDashboardContent() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex bg-dark-800 p-1 rounded-xl border border-white/10 text-xs shrink-0">
-                      <button 
-                        onClick={() => setTxnFilter('All')} 
+                      <button
+                        onClick={() => setTxnFilter('All')}
                         className={`px-3 py-1 rounded-lg font-bold transition-all ${txnFilter === 'All' ? 'bg-rosegold-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}
                       >
                         All
                       </button>
-                      <button 
-                        onClick={() => setTxnFilter('Credited')} 
+                      <button
+                        onClick={() => setTxnFilter('Credited')}
                         className={`px-3 py-1 rounded-lg font-bold transition-all ${txnFilter === 'Credited' ? 'bg-green-500 text-dark-900' : 'text-gray-400 hover:text-white'}`}
                       >
                         Credited
                       </button>
-                      <button 
-                        onClick={() => setTxnFilter('Debited')} 
+                      <button
+                        onClick={() => setTxnFilter('Debited')}
                         className={`px-3 py-1 rounded-lg font-bold transition-all ${txnFilter === 'Debited' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-white'}`}
                       >
                         Debited
@@ -2591,42 +2570,40 @@ function AdminDashboardContent() {
                             <tr key={t._id} className="hover:bg-white/5 transition-colors">
                               <td className="p-3 font-mono font-bold text-rosegold-300 whitespace-nowrap">{t.txnId}</td>
                               <td className="p-3 font-mono text-[11px] text-gray-300 font-semibold whitespace-nowrap">{formattedTxnDate}</td>
-                            <td className="p-3 whitespace-nowrap">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border inline-flex items-center space-x-1 whitespace-nowrap ${
-                                t.type === 'Credited' 
-                                  ? 'bg-green-500/20 text-green-400 border-green-500/40' 
-                                  : 'bg-red-500/20 text-red-400 border-red-500/40'
-                              }`}>
-                                {t.type === 'Credited' ? '🟢 Credited' : '🔴 Debited'}
-                              </span>
-                            </td>
-                            <td className="p-3">
-                              <strong className="text-white block">{t.category}</strong>
-                              <span className="text-gray-400 text-[11px]">{t.description}</span>
-                            </td>
-                            <td className="p-3 font-mono text-gray-300">{t.paymentMethod}</td>
-                            <td className={`p-3 text-right font-mono font-bold text-sm ${
-                              t.type === 'Credited' ? 'text-green-400' : 'text-rosegold-400'
-                            }`}>
-                              {t.type === 'Credited' ? `+₹${t.amount?.toLocaleString('en-IN')}` : `-₹${t.amount?.toLocaleString('en-IN')}`}
-                            </td>
-                            <td className="p-3 text-center">
-                              <span className="bg-dark-800 text-gray-300 px-2 py-0.5 rounded text-[10px] border border-white/10 font-mono">
-                                {t.status}
-                              </span>
-                            </td>
-                            <td className="p-3 text-center">
-                              <button
-                                onClick={() => handleDeleteTransaction(t._id)}
-                                className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 cursor-pointer transition-all"
-                                title="Delete Transaction permanently"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                              <td className="p-3 whitespace-nowrap">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border inline-flex items-center space-x-1 whitespace-nowrap ${t.type === 'Credited'
+                                    ? 'bg-green-500/20 text-green-400 border-green-500/40'
+                                    : 'bg-red-500/20 text-red-400 border-red-500/40'
+                                  }`}>
+                                  {t.type === 'Credited' ? '🟢 Credited' : '🔴 Debited'}
+                                </span>
+                              </td>
+                              <td className="p-3">
+                                <strong className="text-white block">{t.category}</strong>
+                                <span className="text-gray-400 text-[11px]">{t.description}</span>
+                              </td>
+                              <td className="p-3 font-mono text-gray-300">{t.paymentMethod}</td>
+                              <td className={`p-3 text-right font-mono font-bold text-sm ${t.type === 'Credited' ? 'text-green-400' : 'text-rosegold-400'
+                                }`}>
+                                {t.type === 'Credited' ? `+₹${t.amount?.toLocaleString('en-IN')}` : `-₹${t.amount?.toLocaleString('en-IN')}`}
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="bg-dark-800 text-gray-300 px-2 py-0.5 rounded text-[10px] border border-white/10 font-mono">
+                                  {t.status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => handleDeleteTransaction(t._id)}
+                                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/30 cursor-pointer transition-all"
+                                  title="Delete Transaction permanently"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
@@ -2655,15 +2632,15 @@ function AdminDashboardContent() {
                     {payrolls.map((p) => (
                       <tr key={p._id} className="hover:bg-white/5 transition-colors">
                         <td className="p-4 font-mono font-bold text-rosegold-400">{p.slipId}</td>
-                        <td className="p-4 font-bold text-white">{p.employeeName}<br/><span className="text-gray-400 font-mono text-[10px]">{p.empCode}</span></td>
+                        <td className="p-4 font-bold text-white">{p.employeeName}<br /><span className="text-gray-400 font-mono text-[10px]">{p.empCode}</span></td>
                         <td className="p-4 font-semibold text-white">{p.month}</td>
                         <td className="p-4 font-mono">₹{p.baseSalary?.toLocaleString('en-IN')}</td>
                         <td className="p-4 font-mono text-green-400">+₹{p.incentives?.toLocaleString('en-IN')}</td>
                         <td className="p-4 font-serif font-bold text-rosegold-400 text-sm">₹{p.netPay?.toLocaleString('en-IN')}</td>
                         <td className="p-4">
-                          <select 
-                            value={p.status} 
-                            onChange={(e) => handleUpdatePayrollStatus(p._id, e.target.value)} 
+                          <select
+                            value={p.status}
+                            onChange={(e) => handleUpdatePayrollStatus(p._id, e.target.value)}
                             className="bg-dark-900 text-xs font-bold px-2.5 py-1 rounded-full border border-white/10 focus:outline-none"
                           >
                             <option value="Paid">Paid 🟢</option>
@@ -2671,15 +2648,15 @@ function AdminDashboardContent() {
                           </select>
                         </td>
                         <td className="p-4 text-right space-x-2">
-                          <button 
+                          <button
                             onClick={() => { setSelectedItem(p); setModalType('viewPay'); }}
                             className="p-1.5 rounded bg-rosegold-500/20 text-rosegold-300 hover:text-white cursor-pointer"
                             title="View Salary Slip"
                           >
                             <FileText className="w-3.5 h-3.5" />
                           </button>
-                          <button 
-                            onClick={() => handleDeletePayroll(p._id)} 
+                          <button
+                            onClick={() => handleDeletePayroll(p._id)}
                             className="p-1.5 rounded bg-red-500/20 text-red-400 hover:text-red-300 cursor-pointer"
                             title="Delete Payroll Record"
                           >
@@ -2701,7 +2678,7 @@ function AdminDashboardContent() {
 
             return (
               <div className="space-y-6 animate-fadeIn text-left">
-                
+
                 {/* CALENDAR HEADER & QUICK BANNER */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-rosegold-500/30">
                   <div className="space-y-1">
@@ -2731,7 +2708,7 @@ function AdminDashboardContent() {
 
                 {/* FULL-WIDTH MONTHLY CALENDAR GRID */}
                 <div className="glass-card p-6 sm:p-8 rounded-3xl border border-rosegold-500/30 space-y-6 shadow-2xl">
-                  
+
                   {/* MONTH CONTROLS BAR */}
                   <div className="flex items-center justify-between border-b border-white/10 pb-5">
                     <div className="flex items-center space-x-3">
@@ -2818,22 +2795,20 @@ function AdminDashboardContent() {
                             setSelectedCalDate(day.dateStr);
                             setIsScheduleModalOpen(true);
                           }}
-                          className={`min-h-[90px] sm:min-h-[110px] p-3 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border group hover:border-rosegold-400/80 hover:scale-[1.02] ${
-                            isSelected
+                          className={`min-h-[90px] sm:min-h-[110px] p-3 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border group hover:border-rosegold-400/80 hover:scale-[1.02] ${isSelected
                               ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-lg z-10'
                               : approvedLeavesOnDay.length > 0
-                              ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
-                              : isToday
-                              ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 text-white font-bold shadow-md'
-                              : day.isCurrentMonth
-                              ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800'
-                              : 'bg-dark-900/40 border-transparent text-gray-600'
-                          } ${isPast && !isSelected ? 'opacity-75' : ''}`}
+                                ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
+                                : isToday
+                                  ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 text-white font-bold shadow-md'
+                                  : day.isCurrentMonth
+                                    ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800'
+                                    : 'bg-dark-900/40 border-transparent text-gray-600'
+                            } ${isPast && !isSelected ? 'opacity-75' : ''}`}
                         >
                           <div className="flex items-center justify-between w-full">
-                            <span className={`text-sm sm:text-base font-extrabold ${
-                              isSelected ? 'text-dark-900' : isToday ? 'text-green-400 font-bold' : 'text-gray-200'
-                            }`}>
+                            <span className={`text-sm sm:text-base font-extrabold ${isSelected ? 'text-dark-900' : isToday ? 'text-green-400 font-bold' : 'text-gray-200'
+                              }`}>
                               {day.dayNumber}
                             </span>
 
@@ -2845,11 +2820,10 @@ function AdminDashboardContent() {
                               )}
 
                               {dayApps.length > 0 && (
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold shadow-sm ${
-                                  isSelected
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold shadow-sm ${isSelected
                                     ? 'bg-white !text-black font-extrabold shadow-md'
                                     : 'bg-rosegold-500/20 text-rosegold-400 border border-rosegold-500/40 font-extrabold'
-                                }`}>
+                                  }`}>
                                   {dayApps.length} {dayApps.length === 1 ? 'booking' : 'bookings'}
                                 </span>
                               )}
@@ -3093,11 +3067,10 @@ function AdminDashboardContent() {
                     <button
                       key={t}
                       onClick={() => setMembFilterTier(t)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                        membFilterTier === t
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${membFilterTier === t
                           ? 'rosegold-gradient-bg text-dark-900 shadow-sm'
                           : 'bg-dark-800 text-gray-400 hover:text-white border border-white/5'
-                      }`}
+                        }`}
                     >
                       {t}
                     </button>
@@ -3124,16 +3097,16 @@ function AdminDashboardContent() {
                     <tbody className="divide-y divide-white/5 text-gray-300">
                       {(() => {
                         const filteredList = (membershipsData?.recentMemberships || []).filter((m: any) => {
-                          const matchesQuery = !membSearchQuery || 
+                          const matchesQuery = !membSearchQuery ||
                             m.customerName?.toLowerCase().includes(membSearchQuery.toLowerCase()) ||
                             m.customerEmail?.toLowerCase().includes(membSearchQuery.toLowerCase()) ||
                             m.customerPhone?.includes(membSearchQuery) ||
                             m.membershipId?.toLowerCase().includes(membSearchQuery.toLowerCase());
-                          
+
                           const matchesTier = membFilterTier === 'All' ||
                             (membFilterTier === 'Expired' && m.status === 'Expired') ||
                             (m.planCode && m.planCode.toLowerCase().includes(membFilterTier.toLowerCase()));
-                          
+
                           return matchesQuery && matchesTier;
                         });
 
@@ -3179,11 +3152,10 @@ function AdminDashboardContent() {
                             </td>
 
                             <td className="p-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap shrink-0 ${
-                                m.status === 'Active' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
-                                m.status === 'Expired' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
-                                'bg-red-500/20 text-red-300 border-red-500/40'
-                              }`}>
+                              <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap shrink-0 ${m.status === 'Active' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
+                                  m.status === 'Expired' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                                    'bg-red-500/20 text-red-300 border-red-500/40'
+                                }`}>
                                 {m.status === 'Active' ? 'Active 🟢' : m.status === 'Expired' ? 'Expired 🔴' : 'Cancelled ⚪'}
                               </span>
                             </td>
@@ -3367,7 +3339,7 @@ function AdminDashboardContent() {
 
                         {/* View Profile & Credentials Action */}
                         <div className="pt-2 border-t border-white/10 flex items-center justify-end text-xs">
-                          <button 
+                          <button
                             onClick={() => {
                               setSelectedItem(emp);
                               setCreatedCredentials({
@@ -3460,15 +3432,15 @@ function AdminDashboardContent() {
                     {customers.map((c) => (
                       <tr key={c._id} className="hover:bg-white/5 transition-colors">
                         <td className="p-4 font-bold text-white">{c.name}</td>
-                        <td className="p-4">{c.email}<br/><span className="text-gray-400">{c.phone}</span></td>
+                        <td className="p-4">{c.email}<br /><span className="text-gray-400">{c.phone}</span></td>
                         <td className="p-4 font-semibold text-white">{c.visits} Visits</td>
                         <td className="p-4 font-serif font-bold text-rosegold-400">
                           ₹{Number((c as any).totalSpent ?? (c as any).totalSpend ?? 0).toLocaleString()}
                         </td>
                         <td className="p-4">
                           <span className="bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 px-3 py-1 rounded-full font-bold text-[11px] inline-flex items-center space-x-1 shadow-sm">
-                            {c.membership && typeof c.membership === 'object' 
-                              ? ((c.membership as any).badge || `👑 ${(c.membership as any).tier} Member`) 
+                            {c.membership && typeof c.membership === 'object'
+                              ? ((c.membership as any).badge || `👑 ${(c.membership as any).tier} Member`)
                               : ((c.membership as any) || '🥉 Standard Member')}
                           </span>
                         </td>
@@ -3486,7 +3458,7 @@ function AdminDashboardContent() {
           {/* TAB 5: SERVICES MENU MANAGEMENT (3-SECTION HIERARCHICAL LAYOUT) */}
           {activeTab === 'services' && (
             <div className="space-y-6 animate-fadeIn text-left">
-              
+
               {/* Header Banner & Global Action Button */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
@@ -3494,11 +3466,11 @@ function AdminDashboardContent() {
                   <p className="text-xs text-gray-400 mt-0.5">Full access control for VIP Membership Packages, Main Services, and Full Salon Menu Catalogue Pricings.</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button onClick={() => handleExportReport('services')} className="px-3.5 py-2 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
-                    <Download className="w-3.5 h-3.5" />
-                    <span>CSV</span>
+                  <button onClick={() => handleExportReport('services')} className="csv-export-btn px-3.5 py-2 rounded-full bg-dark-800 border border-rosegold-500/30 text-gray-900 dark:text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
+                    <Download className="w-3.5 h-3.5 text-gray-900 dark:text-rosegold-400" />
+                    <span className="text-gray-900 dark:text-rosegold-300 font-bold">CSV</span>
                   </button>
-                  
+
                   {servicesSubTab === 'memberships' ? (
                     <button
                       onClick={() => {
@@ -3562,11 +3534,10 @@ function AdminDashboardContent() {
                 <button
                   type="button"
                   onClick={() => setServicesSubTab('memberships')}
-                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
-                    servicesSubTab === 'memberships'
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${servicesSubTab === 'memberships'
                       ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
                       : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
-                  }`}
+                    }`}
                 >
                   <Crown className="w-4 h-4 text-amber-400" />
                   <span>1. VIP Membership Packages ({membershipPlans.length})</span>
@@ -3575,11 +3546,10 @@ function AdminDashboardContent() {
                 <button
                   type="button"
                   onClick={() => setServicesSubTab('main-services')}
-                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
-                    servicesSubTab === 'main-services'
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${servicesSubTab === 'main-services'
                       ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
                       : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
-                  }`}
+                    }`}
                 >
                   <Star className="w-4 h-4 text-yellow-400" />
                   <span>2. Main Featured Services ({filteredServices.length})</span>
@@ -3588,11 +3558,10 @@ function AdminDashboardContent() {
                 <button
                   type="button"
                   onClick={() => setServicesSubTab('full-catalogue')}
-                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
-                    servicesSubTab === 'full-catalogue'
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${servicesSubTab === 'full-catalogue'
                       ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
                       : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
-                  }`}
+                    }`}
                 >
                   <Scissors className="w-4 h-4 text-rosegold-400" />
                   <span>3. Full Menu Pricing Catalogue ({services.length})</span>
@@ -3601,11 +3570,10 @@ function AdminDashboardContent() {
                 <button
                   type="button"
                   onClick={() => setServicesSubTab('individual-services')}
-                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${
-                    servicesSubTab === 'individual-services'
+                  className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center space-x-2 shrink-0 cursor-pointer ${servicesSubTab === 'individual-services'
                       ? 'rosegold-gradient-bg text-dark-900 shadow-glow-rosegold font-extrabold'
                       : 'bg-dark-800 text-gray-300 hover:text-white border border-white/10'
-                  }`}
+                    }`}
                 >
                   <Tag className="w-4 h-4 text-emerald-400" />
                   <span>4. Individual Services ({services.filter(s => (s as any).serviceType === 'INDIVIDUAL' || (s as any).subCategory === 'Individual Services').length})</span>
@@ -3786,7 +3754,7 @@ function AdminDashboardContent() {
                             </div>
 
                             <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{s.description || 'Luxury botanical treatment provided by SPY Salon certified specialists.'}</p>
-                            
+
                             <div className="flex items-center space-x-2 text-xs text-gray-300 font-mono">
                               <Clock className="w-3.5 h-3.5 text-rosegold-400" />
                               <span>Duration: <strong>{s.durationMinutes || 60} Minutes</strong></span>
@@ -3812,7 +3780,7 @@ function AdminDashboardContent() {
               {/* SECTION 3: FULL SALON MENU PRICINGS CATALOGUE */}
               {servicesSubTab === 'full-catalogue' && (
                 <div className="space-y-4 animate-fadeIn">
-                  
+
                   {/* Catalogue Gender & Category Filter Bar */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-dark-850 border border-rosegold-500/30">
                     <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto">
@@ -3827,11 +3795,10 @@ function AdminDashboardContent() {
                           type="button"
                           key={g.id}
                           onClick={() => setCatalogueGenderFilter(g.id as any)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                            catalogueGenderFilter === g.id
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${catalogueGenderFilter === g.id
                               ? 'rosegold-gradient-bg text-dark-900 font-extrabold'
                               : 'bg-dark-800 text-gray-300 hover:text-white'
-                          }`}
+                            }`}
                         >
                           {g.label}
                         </button>
@@ -3940,7 +3907,7 @@ function AdminDashboardContent() {
 
                               <h3 className="text-white font-serif font-bold text-base leading-snug">{catItem.name}</h3>
                               <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{catItem.description || 'Luxury treatment.'}</p>
-                              
+
                               <div className="flex items-center space-x-2 text-xs text-gray-300 font-mono">
                                 <Clock className="w-3.5 h-3.5 text-rosegold-400" />
                                 <span>Duration: <strong>{catItem.durationMinutes || 60} Minutes</strong></span>
@@ -3967,7 +3934,7 @@ function AdminDashboardContent() {
               {/* SECTION 4: INDIVIDUAL STANDALONE SALON SERVICES */}
               {servicesSubTab === 'individual-services' && (
                 <div className="space-y-4 animate-fadeIn">
-                  
+
                   {/* Header & Filter Bar */}
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 rounded-2xl bg-dark-850 border border-rosegold-500/30">
                     <div className="flex items-center space-x-1.5 overflow-x-auto w-full sm:w-auto">
@@ -3982,11 +3949,10 @@ function AdminDashboardContent() {
                           type="button"
                           key={g.id}
                           onClick={() => setCatalogueGenderFilter(g.id as any)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                            catalogueGenderFilter === g.id
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${catalogueGenderFilter === g.id
                               ? 'rosegold-gradient-bg text-dark-900 font-extrabold'
                               : 'bg-dark-800 text-gray-300 hover:text-white'
-                          }`}
+                            }`}
                         >
                           {g.label}
                         </button>
@@ -4103,7 +4069,7 @@ function AdminDashboardContent() {
 
                               <h3 className="text-white font-serif font-bold text-base leading-snug">{item.name}</h3>
                               <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{item.description || 'Standalone service work.'}</p>
-                              
+
                               <div className="flex items-center space-x-2 text-xs text-gray-300 font-mono">
                                 <Clock className="w-3.5 h-3.5 text-rosegold-400" />
                                 <span>Duration: <strong>{item.durationMinutes || 30} Minutes</strong></span>
@@ -4146,17 +4112,17 @@ function AdminDashboardContent() {
                     <Download className="w-3.5 h-3.5" />
                     <span>CSV</span>
                   </button>
-                  <button onClick={() => { 
-                    setAppForm({ 
-                      customerName: '', 
-                      customerPhone: '+91 98765 43210', 
-                      service: services[0]?.name || '24K Royal Gold Glow Facial', 
-                      specialistName: employees[0] ? `${employees[0].name} (${employees[0].specialties[0] || 'Specialist'})` : 'Ananya Sharma (Senior Hair Stylist)', 
-                      appointmentDate: new Date().toISOString().split('T')[0], 
-                      appointmentTime: '11:00 AM', 
-                      paymentMethod: 'UPI' 
-                    }); 
-                    setModalType('addApp'); 
+                  <button onClick={() => {
+                    setAppForm({
+                      customerName: '',
+                      customerPhone: '+91 98765 43210',
+                      service: services[0]?.name || '24K Royal Gold Glow Facial',
+                      specialistName: employees[0] ? `${employees[0].name} (${employees[0].specialties[0] || 'Specialist'})` : 'Ananya Sharma (Senior Hair Stylist)',
+                      appointmentDate: new Date().toISOString().split('T')[0],
+                      appointmentTime: '11:00 AM',
+                      paymentMethod: 'UPI'
+                    });
+                    setModalType('addApp');
                   }} className="px-4 py-2.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-md flex items-center justify-center space-x-1 cursor-pointer">
                     <Plus className="w-4 h-4" />
                     <span>Walk-In Appointment</span>
@@ -4168,11 +4134,10 @@ function AdminDashboardContent() {
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
                 <button
                   onClick={() => setAppKpiFilter('All')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'All'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'All'
                       ? 'rosegold-gradient-bg text-dark-900 font-extrabold shadow-glow-rosegold scale-105'
                       : 'glass-card border-white/10 text-gray-300 hover:border-rosegold-500/50'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Total Today</span>
                   <span className="text-lg font-serif font-bold block">{appointments.length}</span>
@@ -4181,11 +4146,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('Completed')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'Completed'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'Completed'
                       ? 'bg-green-500 text-dark-900 font-extrabold shadow-lg scale-105'
                       : 'glass-card border-green-500/30 text-green-400 hover:bg-green-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Completed</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4196,11 +4160,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('Pending')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'Pending'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'Pending'
                       ? 'bg-amber-500 text-dark-900 font-extrabold shadow-lg scale-105'
                       : 'glass-card border-amber-500/30 text-amber-300 hover:bg-amber-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Pending</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4211,11 +4174,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('Confirmed')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'Confirmed'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'Confirmed'
                       ? 'bg-emerald-500 text-dark-900 font-extrabold shadow-lg scale-105'
                       : 'glass-card border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Confirmed</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4226,11 +4188,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('Cancelled')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'Cancelled'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'Cancelled'
                       ? 'bg-red-500 text-white font-extrabold shadow-lg scale-105'
                       : 'glass-card border-red-500/30 text-red-400 hover:bg-red-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Cancelled</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4241,11 +4202,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('Rescheduled')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'Rescheduled'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'Rescheduled'
                       ? 'bg-purple-600 text-white font-extrabold shadow-lg scale-105'
                       : 'glass-card border-purple-500/30 text-purple-300 hover:bg-purple-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">Rescheduled</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4256,11 +4216,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('In Progress')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'In Progress'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'In Progress'
                       ? 'bg-blue-500 text-dark-900 font-extrabold shadow-lg scale-105'
                       : 'glass-card border-blue-500/30 text-blue-300 hover:bg-blue-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">In Progress</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4271,11 +4230,10 @@ function AdminDashboardContent() {
 
                 <button
                   onClick={() => setAppKpiFilter('No Show')}
-                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${
-                    appKpiFilter === 'No Show'
+                  className={`p-3 rounded-2xl border text-center transition-all cursor-pointer ${appKpiFilter === 'No Show'
                       ? 'bg-gray-600 text-white font-extrabold shadow-lg scale-105'
                       : 'glass-card border-gray-500/30 text-gray-400 hover:bg-gray-500/10'
-                  }`}
+                    }`}
                 >
                   <span className="text-[9px] uppercase font-bold block opacity-80 truncate">No Show</span>
                   <span className="text-lg font-serif font-bold block">
@@ -4309,130 +4267,129 @@ function AdminDashboardContent() {
                         return a.status === appKpiFilter;
                       })
                       .map((a) => (
-                      <tr key={a._id} className="hover:bg-white/5 transition-colors">
-                        <td className="p-4 align-middle whitespace-nowrap font-mono font-bold text-rosegold-400">{a.bookingId}</td>
-                        <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.customerName}<br/><span className="text-gray-400 font-normal">{a.customerPhone}</span></td>
-                        <td className="p-4 align-middle whitespace-nowrap font-semibold text-white">
-                          {a.service ? a.service.replace(/\s*\([^)]*\)/gi, '').trim() : ''}
-                          <br />
-                          <span className="text-[11px] text-rosegold-400 font-normal">
-                            Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No'}
-                          </span>
-                        </td>
-                        <td className="p-4 align-middle whitespace-nowrap font-mono text-[11px] text-rosegold-300">
-                          {(() => {
-                            const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;
-                            const d = raw ? new Date(raw) : new Date();
-                            const isValid = !isNaN(d.getTime());
-                            const finalD = isValid ? d : new Date();
-                            return (
-                              <>
-                                {finalD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                <br />
-                                <span className="text-gray-400">
-                                  {a.bookingTimeFormatted || finalD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                </span>
-                              </>
-                            );
-                          })()}
-                        </td>
-                        <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.appointmentDate}<br/><span className="text-rosegold-400">{a.appointmentTime}</span></td>
-                        <td className="p-4 align-middle whitespace-nowrap">
-                          <div className="space-y-1 text-left w-[110px]">
+                        <tr key={a._id} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 align-middle whitespace-nowrap font-mono font-bold text-rosegold-400">{a.bookingId}</td>
+                          <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.customerName}<br /><span className="text-gray-400 font-normal">{a.customerPhone}</span></td>
+                          <td className="p-4 align-middle whitespace-nowrap font-semibold text-white">
+                            {a.service ? a.service.replace(/\s*\([^)]*\)/gi, '').trim() : ''}
+                            <br />
+                            <span className="text-[11px] text-rosegold-400 font-normal">
+                              Pkg: {(a.packageTier && a.packageTier !== 'No Package' && a.packageTier !== 'null') ? a.packageTier : (a.packageName && a.packageName !== 'No Package' && a.packageName !== 'null') ? a.packageName : 'No'}
+                            </span>
+                          </td>
+                          <td className="p-4 align-middle whitespace-nowrap font-mono text-[11px] text-rosegold-300">
+                            {(() => {
+                              const raw = (a as any).createdAt || a.bookingDateTime || a.bookingDate;
+                              const d = raw ? new Date(raw) : new Date();
+                              const isValid = !isNaN(d.getTime());
+                              const finalD = isValid ? d : new Date();
+                              return (
+                                <>
+                                  {finalD.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  <br />
+                                  <span className="text-gray-400">
+                                    {a.bookingTimeFormatted || finalD.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                  </span>
+                                </>
+                              );
+                            })()}
+                          </td>
+                          <td className="p-4 align-middle whitespace-nowrap font-bold text-white">{a.appointmentDate}<br /><span className="text-rosegold-400">{a.appointmentTime}</span></td>
+                          <td className="p-4 align-middle whitespace-nowrap">
+                            <div className="space-y-1 text-left w-[110px]">
+                              <select
+                                value={a.paymentStatus || 'Pending'}
+                                onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
+                                className={`w-full text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${a.paymentStatus === 'Paid'
+                                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50 font-mono'
+                                    : 'bg-amber-950/70 text-amber-300 border-amber-800/40 font-mono'
+                                  }`}
+                              >
+                                <option value="Pending">🟡 Pending</option>
+                                <option value="Paid">🟢 Paid</option>
+                              </select>
+
+                              <span className="text-[10px] text-gray-400 font-mono block truncate">
+                                Method: <strong className="text-gray-300">{a.paymentMethod || 'Cash'}</strong>
+                              </span>
+
+                              {a.paymentStatus !== 'Paid' && (
+                                <button
+                                  onClick={() => handleUpdateAppPaymentStatus(a._id, 'Paid')}
+                                  className="w-full mt-1 px-2 py-0.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 font-bold text-[10px] transition-all cursor-pointer whitespace-nowrap text-center block"
+                                  title="Mark Cash Payment as Received & Paid"
+                                >
+                                  Mark Paid ✓
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-4 align-middle whitespace-nowrap space-y-1">
                             <select
-                              value={a.paymentStatus || 'Pending'}
-                              onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
-                              className={`w-full text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
-                                a.paymentStatus === 'Paid'
-                                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50 font-mono'
-                                  : 'bg-amber-950/70 text-amber-300 border-amber-800/40 font-mono'
-                              }`}
+                              value={a.status}
+                              onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)}
+                              disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
+                              className="w-[130px] bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
                             >
-                              <option value="Pending">🟡 Pending</option>
-                              <option value="Paid">🟢 Paid</option>
+                              {getValidStatusOptions(a.status, a).map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
                             </select>
 
-                            <span className="text-[10px] text-gray-400 font-mono block truncate">
-                              Method: <strong className="text-gray-300">{a.paymentMethod || 'Cash'}</strong>
-                            </span>
-
-                            {a.paymentStatus !== 'Paid' && (
-                              <button
-                                onClick={() => handleUpdateAppPaymentStatus(a._id, 'Paid')}
-                                className="w-full mt-1 px-2 py-0.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800/80 text-emerald-200 border border-emerald-700/50 font-bold text-[10px] transition-all cursor-pointer whitespace-nowrap text-center block"
-                                title="Mark Cash Payment as Received & Paid"
-                              >
-                                Mark Paid ✓
-                              </button>
+                            {a.status === 'Reschedule Requested' && (
+                              <div className="flex flex-col space-y-1 pt-1">
+                                <span className="text-[10px] text-amber-300 font-bold">
+                                  Requested: {a.rescheduleData?.requestedDate || a.appointmentDate} at {a.rescheduleData?.requestedTime || a.appointmentTime}
+                                </span>
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => handleRespondReschedule(a._id, 'Approve')}
+                                    className="px-2.5 py-1 rounded bg-green-500 text-dark-900 text-[10px] font-extrabold shadow hover:scale-105 transition-all cursor-pointer"
+                                  >
+                                    Approve ✅
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const reason = prompt('Reason for rejecting reschedule request:') || 'Slot unavailable';
+                                      handleRespondReschedule(a._id, 'Reject', reason);
+                                    }}
+                                    className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-[10px] font-bold border border-red-500/30 cursor-pointer"
+                                  >
+                                    Reject ❌
+                                  </button>
+                                </div>
+                              </div>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-4 align-middle whitespace-nowrap space-y-1">
-                          <select 
-                            value={a.status} 
-                            onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} 
-                            disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
-                            className="w-[130px] bg-dark-900 text-xs font-bold px-2 py-1 rounded border border-white/10 focus:outline-none block disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-all"
-                          >
-                            {getValidStatusOptions(a.status, a).map(opt => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
 
-                          {a.status === 'Reschedule Requested' && (
-                            <div className="flex flex-col space-y-1 pt-1">
-                              <span className="text-[10px] text-amber-300 font-bold">
-                                Requested: {a.rescheduleData?.requestedDate || a.appointmentDate} at {a.rescheduleData?.requestedTime || a.appointmentTime}
-                              </span>
-                              <div className="flex items-center space-x-1">
+                            {a.status === 'Pending' && (
+                              <div className="flex items-center space-x-1 pt-1">
                                 <button
-                                  onClick={() => handleRespondReschedule(a._id, 'Approve')}
-                                  className="px-2.5 py-1 rounded bg-green-500 text-dark-900 text-[10px] font-extrabold shadow hover:scale-105 transition-all cursor-pointer"
+                                  onClick={() => handleUpdateAppStatus(a._id, 'Confirmed')}
+                                  className="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 text-[10px] font-bold border border-emerald-800/40 cursor-pointer"
                                 >
-                                  Approve ✅
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const reason = prompt('Reason for rejecting reschedule request:') || 'Slot unavailable';
-                                    handleRespondReschedule(a._id, 'Reject', reason);
-                                  }}
-                                  className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-[10px] font-bold border border-red-500/30 cursor-pointer"
-                                >
-                                  Reject ❌
+                                  Confirm
                                 </button>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {a.status === 'Pending' && (
-                            <div className="flex items-center space-x-1 pt-1">
+                            {(a as any).adminNote && (
+                              <span className="text-[10px] text-amber-300 italic block">Note: {(a as any).adminNote}</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle whitespace-nowrap text-right flex items-center justify-end space-x-1.5">
+                            {a.status === 'Completed' && (
                               <button
-                                onClick={() => handleUpdateAppStatus(a._id, 'Confirmed')}
-                                className="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 hover:bg-emerald-900/80 text-[10px] font-bold border border-emerald-800/40 cursor-pointer"
+                                onClick={() => handleDownloadInvoice(a._id, a.bookingId)}
+                                className="p-1.5 rounded bg-emerald-950/60 text-emerald-300 hover:text-emerald-200 border border-emerald-800/40 cursor-pointer"
+                                title="Download PDF Invoice"
                               >
-                                Confirm
+                                <FileText className="w-3.5 h-3.5" />
                               </button>
-                            </div>
-                          )}
-
-                          {(a as any).adminNote && (
-                            <span className="text-[10px] text-amber-300 italic block">Note: {(a as any).adminNote}</span>
-                          )}
-                        </td>
-                        <td className="p-4 align-middle whitespace-nowrap text-right flex items-center justify-end space-x-1.5">
-                          {a.status === 'Completed' && (
-                            <button
-                              onClick={() => handleDownloadInvoice(a._id, a.bookingId)}
-                              className="p-1.5 rounded bg-emerald-950/60 text-emerald-300 hover:text-emerald-200 border border-emerald-800/40 cursor-pointer"
-                              title="Download PDF Invoice"
-                            >
-                              <FileText className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <button onClick={() => handleDeleteAppointment(a._id)} className="p-1.5 rounded bg-red-500/20 text-red-400 hover:text-red-300 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </td>
-                      </tr>
-                    ))}
+                            )}
+                            <button onClick={() => handleDeleteAppointment(a._id)} className="p-1.5 rounded bg-red-500/20 text-red-400 hover:text-red-300 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -4522,11 +4479,10 @@ function AdminDashboardContent() {
                             <select
                               value={a.paymentStatus || 'Pending'}
                               onChange={(e) => handleUpdateAppPaymentStatus(a._id, e.target.value)}
-                              className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${
-                                a.paymentStatus === 'Paid'
+                              className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none cursor-pointer ${a.paymentStatus === 'Paid'
                                   ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/50 font-mono'
                                   : 'bg-amber-950/70 text-amber-300 border-amber-800/40 font-mono'
-                              }`}
+                                }`}
                             >
                               <option value="Pending">🟡 Pending</option>
                               <option value="Paid">🟢 Paid</option>
@@ -4540,9 +4496,9 @@ function AdminDashboardContent() {
                         {/* Status Selector */}
                         <div className="flex items-center justify-between space-x-2 bg-dark-800/90 p-2 rounded-xl border border-white/5">
                           <span className="text-[10px] text-gray-400 font-semibold uppercase">Status:</span>
-                          <select 
-                            value={a.status} 
-                            onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)} 
+                          <select
+                            value={a.status}
+                            onChange={(e) => handleUpdateAppStatus(a._id, e.target.value)}
                             disabled={['Completed', 'Cancelled', 'No Show'].includes(a.status)}
                             className="bg-dark-900 text-xs font-bold text-white px-2.5 py-1 rounded-lg border border-rosegold-500/30 focus:outline-none disabled:opacity-60 cursor-pointer"
                           >
@@ -4602,7 +4558,7 @@ function AdminDashboardContent() {
                   <h2 className="text-2xl font-bold font-serif text-white">Employee Attendance & Leave Portal</h2>
                   <p className="text-xs text-gray-400 mt-0.5">Real-time attendance cards report with salon open days, worked days, absent days, and OT hours tracking.</p>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <span className="text-xs font-bold text-rosegold-400 bg-dark-800 px-3 py-1.5 rounded-xl border border-rosegold-500/30">
                     🗓️ Cycle: July 2026 (26 Salon Days Opened)
@@ -4642,9 +4598,9 @@ function AdminDashboardContent() {
                       <div className="flex items-start space-x-4">
                         <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-rosegold-500/50 shadow-glow-rosegold shrink-0 bg-dark-800 flex items-center justify-center brand-profile-avatar">
                           {report.avatar ? (
-                            <img 
-                              src={report.avatar} 
-                              alt={report.name} 
+                            <img
+                              src={report.avatar}
+                              alt={report.name}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -4691,8 +4647,8 @@ function AdminDashboardContent() {
                         <span className="text-[11px] text-gray-400">
                           Today's Status: <strong className="text-green-400 font-mono">{report.lastStatus || 'Present 🟢'}</strong>
                         </span>
-                        
-                        <button 
+
+                        <button
                           onClick={() => showToast(`Marked today's attendance for ${report.name} as Present 🟢`, 'success')}
                           className="px-3 py-1.5 rounded-xl bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 font-bold text-[11px] hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
                         >
@@ -4707,8 +4663,8 @@ function AdminDashboardContent() {
               {/* LEAVE APPLICATIONS APPROVAL LIST */}
               <div className="space-y-4 pt-4">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <h3 className={`text-lg font-serif font-bold ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>Employee Leave Requests & Approvals</h3>
-                  <span className={`text-xs ${theme === 'light' ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>Review pending leave applications</span>
+                  <h3 className="text-lg font-serif font-bold text-white">Employee Leave Requests & Approvals</h3>
+                  <span className="text-xs text-gray-400">Review pending leave applications</span>
                 </div>
 
                 {leaves.map((leave) => (
@@ -4716,11 +4672,10 @@ function AdminDashboardContent() {
                     <div className="space-y-1.5">
                       <div className="flex items-center space-x-3">
                         <h4 className="text-white font-serif font-bold text-lg">{leave.employeeName}</h4>
-                        <span className={`text-[10px] font-bold px-3 py-0.5 rounded-full uppercase border ${
-                          leave.status === 'Approved' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
-                          leave.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
-                          'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                        }`}>
+                        <span className={`text-[10px] font-bold px-3 py-0.5 rounded-full uppercase border ${leave.status === 'Approved' ? 'bg-green-500/20 text-green-400 border-green-500/40' :
+                            leave.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                              'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          }`}>
                           {leave.status}
                         </span>
                       </div>
@@ -4819,8 +4774,8 @@ function AdminDashboardContent() {
 
             // 1. Calculate Real Staff Performance & ROI
             const liveStaffPerformance = employees.map((emp: any) => {
-              const empApps = rangeFilteredAppointments.filter((a: any) => 
-                a.specialistId === emp._id || 
+              const empApps = rangeFilteredAppointments.filter((a: any) =>
+                a.specialistId === emp._id ||
                 (a.specialistName && a.specialistName.toLowerCase().includes(emp.name?.toLowerCase())) ||
                 a.assignedEmployeeId === emp._id
               );
@@ -4830,12 +4785,12 @@ function AdminDashboardContent() {
                 .filter((a: any) => a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid')
                 .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
 
-              const salaryDisbursed = empPayrolls.length > 0 
+              const salaryDisbursed = empPayrolls.length > 0
                 ? empPayrolls.reduce((sum: number, p: any) => sum + (p.netPay || p.totalSalary || 0), 0)
                 : (revGenerated > 0 ? Math.round(revGenerated * 0.20) : (emp.baseSalary || 0));
 
               const netProfitNum = revGenerated - salaryDisbursed;
-              const netRoi = salaryDisbursed > 0 
+              const netRoi = salaryDisbursed > 0
                 ? ((netProfitNum / salaryDisbursed) * 100).toFixed(1)
                 : (revGenerated > 0 ? '100.0' : '0.0');
 
@@ -4887,11 +4842,11 @@ function AdminDashboardContent() {
             const liveTotalGross = rangeFilteredAppointments
               .filter(a => a.status === 'Completed' || a.status === 'Confirmed' || a.paymentStatus === 'Paid')
               .reduce((sum: number, a: any) => sum + (Number(a.price || a.totalAmount) || 0), 0);
-            
+
             const liveTotalPayouts = payrolls.reduce((sum: number, p: any) => sum + (Number(p.netPay || p.totalSalary) || 0), 0);
             const directOperatingExpenses = Math.round(liveTotalGross * 0.28);
-            const effectiveDeduction = liveTotalPayouts > 0 && liveTotalPayouts < liveTotalGross 
-              ? liveTotalPayouts 
+            const effectiveDeduction = liveTotalPayouts > 0 && liveTotalPayouts < liveTotalGross
+              ? liveTotalPayouts
               : directOperatingExpenses;
 
             const liveNetProfit = Math.max(0, liveTotalGross - effectiveDeduction);
@@ -4899,7 +4854,7 @@ function AdminDashboardContent() {
 
             return (
               <div className="space-y-8 animate-fadeIn text-left">
-                
+
                 {/* HEADER & CONTROLS BAR */}
                 <div className="glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-4 bg-dark-900/90 shadow-2xl">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
@@ -5004,7 +4959,7 @@ function AdminDashboardContent() {
 
                 {/* GENERATED REPORT DASHBOARD VIEW */}
                 <div className="space-y-6">
-                  
+
                   {/* ACTIVE REPORT BADGE */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 rounded-2xl bg-dark-800 border border-rosegold-500/30 text-xs">
                     <div className="flex items-center space-x-2">
@@ -5021,7 +4976,7 @@ function AdminDashboardContent() {
 
                   {/* EXECUTIVE BRIEFING METRIC TILES */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    
+
                     {/* Metric Tile 1 */}
                     <div className="glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-3 shadow-2xl bg-dark-800/80 hover:border-rosegold-500 transition-all">
                       <span className="text-[10px] font-bold text-green-400 uppercase bg-green-500/15 border border-green-500/30 px-2.5 py-0.5 rounded-full inline-block">
@@ -5070,7 +5025,7 @@ function AdminDashboardContent() {
 
                   {/* REPORT DATA MATRIX TABLES & CHARTS */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                    
+
                     {/* Visual 1: Comparative Period Trend */}
                     <div className="glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4">
                       <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -5150,33 +5105,33 @@ function AdminDashboardContent() {
                       ) : (
                         <div className="overflow-x-auto custom-scrollbar">
                           <table className="w-full min-w-[680px] whitespace-nowrap text-xs text-gray-300">
-                          <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
-                            <tr>
-                              <th className="p-3 text-left">Specialist Name</th>
-                              <th className="p-3 text-left">Employee Code</th>
-                              <th className="p-3 text-center">Services Handled</th>
-                              <th className="p-3 text-right">Revenue Generated</th>
-                              <th className="p-3 text-right">Salary Disbursed</th>
-                              <th className="p-3 text-center">Rating</th>
-                              <th className="p-3 text-right">Net ROI %</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/10 font-mono">
-                            {liveStaffPerformance.map((s) => (
-                              <tr key={s.id} className="hover:bg-white/5 transition-colors animate-fadeIn">
-                                <td className="p-3 font-sans font-bold text-white">{s.name}</td>
-                                <td className="p-3 text-rosegold-400">{s.code}</td>
-                                <td className="p-3 text-center text-white">{s.count} Appointments</td>
-                                <td className="p-3 text-right font-bold text-green-400">₹{s.rev.toLocaleString('en-IN')}</td>
-                                <td className="p-3 text-right text-gray-300">₹{s.sal.toLocaleString('en-IN')}</td>
-                                <td className="p-3 text-center text-yellow-400">{s.rating}</td>
-                                <td className="p-3 text-right font-bold text-rosegold-400">{s.roi}</td>
+                            <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                              <tr>
+                                <th className="p-3 text-left">Specialist Name</th>
+                                <th className="p-3 text-left">Employee Code</th>
+                                <th className="p-3 text-center">Services Handled</th>
+                                <th className="p-3 text-right">Revenue Generated</th>
+                                <th className="p-3 text-right">Salary Disbursed</th>
+                                <th className="p-3 text-center">Rating</th>
+                                <th className="p-3 text-right">Net ROI %</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                            </thead>
+                            <tbody className="divide-y divide-white/10 font-mono">
+                              {liveStaffPerformance.map((s) => (
+                                <tr key={s.id} className="hover:bg-white/5 transition-colors animate-fadeIn">
+                                  <td className="p-3 font-sans font-bold text-white">{s.name}</td>
+                                  <td className="p-3 text-rosegold-400">{s.code}</td>
+                                  <td className="p-3 text-center text-white">{s.count} Appointments</td>
+                                  <td className="p-3 text-right font-bold text-green-400">₹{s.rev.toLocaleString('en-IN')}</td>
+                                  <td className="p-3 text-right text-gray-300">₹{s.sal.toLocaleString('en-IN')}</td>
+                                  <td className="p-3 text-center text-yellow-400">{s.rating}</td>
+                                  <td className="p-3 text-right font-bold text-rosegold-400">{s.roi}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -5345,69 +5300,69 @@ function AdminDashboardContent() {
                   ) : (
                     <div className="overflow-x-auto custom-scrollbar">
                       <table className="w-full min-w-[880px] whitespace-nowrap text-xs text-left">
-                      <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
-                        <tr>
-                          <th className="p-3.5">Slip ID</th>
-                          <th className="p-3.5">Employee Specialist</th>
-                          <th className="p-3.5">Month</th>
-                          <th className="p-3.5 text-right">Base Salary</th>
-                          <th className="p-3.5 text-right">Service Sales</th>
-                          <th className="p-3.5 text-right">Commission</th>
-                          <th className="p-3.5 text-right">Net Disbursed</th>
-                          <th className="p-3.5 text-center">Status</th>
-                          <th className="p-3.5 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/10 font-mono">
-                        {payrolls.map((p) => {
-                          return (
-                            <tr key={p._id} className="hover:bg-white/5 transition-colors">
-                              <td className="p-3.5 font-bold text-rosegold-400">{p.slipId}</td>
-                              <td className="p-3.5 font-sans font-bold text-white">
-                                {p.employeeName}<br/>
-                                <span className="text-[10px] font-mono text-gray-400">{p.empCode}</span>
-                              </td>
-                              <td className="p-3.5 font-sans text-gray-300">{p.month}</td>
-                              <td className="p-3.5 text-right text-gray-300">₹{(p.baseSalary || 0).toLocaleString('en-IN')}</td>
-                              <td className="p-3.5 text-right text-purple-300">₹{(p.eligibleAmount || 0).toLocaleString('en-IN')}</td>
-                              <td className="p-3.5 text-right text-green-400">
-                                +₹{(p.commissionAmount || p.incentives || 0).toLocaleString('en-IN')}
-                                {p.commissionPercentage ? <span className="text-[9px] text-gray-400 block">({p.commissionPercentage}%)</span> : null}
-                              </td>
-                              <td className="p-3.5 text-right font-bold text-rosegold-300 text-sm">
-                                ₹{(p.netPay || 0).toLocaleString('en-IN')}
-                              </td>
-                              <td className="p-3.5 text-center">
-                                <span className="bg-green-500/20 text-green-400 border border-green-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
-                                  {p.status || 'Paid'}
-                                </span>
-                              </td>
-                              <td className="p-3.5 text-right flex items-center justify-end space-x-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedItem(p);
-                                    setModalType('viewPay');
-                                  }}
-                                  className="p-1.5 rounded-lg bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-dark-700 cursor-pointer"
-                                  title="View Slip Details"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeletePayroll(p._id)}
-                                  className="p-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 cursor-pointer"
-                                  title="Delete Salary Slip"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                          <tr>
+                            <th className="p-3.5">Slip ID</th>
+                            <th className="p-3.5">Employee Specialist</th>
+                            <th className="p-3.5">Month</th>
+                            <th className="p-3.5 text-right">Base Salary</th>
+                            <th className="p-3.5 text-right">Service Sales</th>
+                            <th className="p-3.5 text-right">Commission</th>
+                            <th className="p-3.5 text-right">Net Disbursed</th>
+                            <th className="p-3.5 text-center">Status</th>
+                            <th className="p-3.5 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/10 font-mono">
+                          {payrolls.map((p) => {
+                            return (
+                              <tr key={p._id} className="hover:bg-white/5 transition-colors">
+                                <td className="p-3.5 font-bold text-rosegold-400">{p.slipId}</td>
+                                <td className="p-3.5 font-sans font-bold text-white">
+                                  {p.employeeName}<br />
+                                  <span className="text-[10px] font-mono text-gray-400">{p.empCode}</span>
+                                </td>
+                                <td className="p-3.5 font-sans text-gray-300">{p.month}</td>
+                                <td className="p-3.5 text-right text-gray-300">₹{(p.baseSalary || 0).toLocaleString('en-IN')}</td>
+                                <td className="p-3.5 text-right text-purple-300">₹{(p.eligibleAmount || 0).toLocaleString('en-IN')}</td>
+                                <td className="p-3.5 text-right text-green-400">
+                                  +₹{(p.commissionAmount || p.incentives || 0).toLocaleString('en-IN')}
+                                  {p.commissionPercentage ? <span className="text-[9px] text-gray-400 block">({p.commissionPercentage}%)</span> : null}
+                                </td>
+                                <td className="p-3.5 text-right font-bold text-rosegold-300 text-sm">
+                                  ₹{(p.netPay || 0).toLocaleString('en-IN')}
+                                </td>
+                                <td className="p-3.5 text-center">
+                                  <span className="bg-green-500/20 text-green-400 border border-green-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase">
+                                    {p.status || 'Paid'}
+                                  </span>
+                                </td>
+                                <td className="p-3.5 text-right flex items-center justify-end space-x-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedItem(p);
+                                      setModalType('viewPay');
+                                    }}
+                                    className="p-1.5 rounded-lg bg-dark-800 text-rosegold-300 border border-rosegold-500/30 hover:bg-dark-700 cursor-pointer"
+                                    title="View Slip Details"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePayroll(p._id)}
+                                    className="p-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/40 cursor-pointer"
+                                    title="Delete Salary Slip"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -5430,7 +5385,7 @@ function AdminDashboardContent() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button 
+                  <button
                     onClick={handleExportEnquiriesCsv}
                     className="px-4 py-2.5 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700 transition-all cursor-pointer"
                   >
@@ -5485,11 +5440,10 @@ function AdminDashboardContent() {
                     <button
                       key={st}
                       onClick={() => setStatusFilter(st)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                        statusFilter === st
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${statusFilter === st
                           ? 'rosegold-gradient-bg text-dark-900 shadow-md scale-105'
                           : 'bg-dark-800 text-gray-400 hover:text-white border border-white/10'
-                      }`}
+                        }`}
                     >
                       {st}
                     </button>
@@ -5500,110 +5454,110 @@ function AdminDashboardContent() {
               {/* ENQUIRIES DATA TABLE */}
               <div className="glass-card rounded-2xl border border-rosegold-500/30 overflow-x-auto custom-scrollbar">
                 <table className="w-full min-w-[680px] whitespace-nowrap text-xs text-left">
-                    <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                  <thead className="bg-dark-800 text-rosegold-400 uppercase font-semibold text-[10px] tracking-wider border-b border-white/10">
+                    <tr>
+                      <th className="p-3.5">Enquiry ID</th>
+                      <th className="p-3.5">Customer Name & Contact</th>
+                      <th className="p-3.5">Message Excerpt</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5">Date & Time</th>
+                      <th className="p-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {filteredEnquiries.length === 0 ? (
                       <tr>
-                        <th className="p-3.5">Enquiry ID</th>
-                        <th className="p-3.5">Customer Name & Contact</th>
-                        <th className="p-3.5">Message Excerpt</th>
-                        <th className="p-3.5">Status</th>
-                        <th className="p-3.5">Date & Time</th>
-                        <th className="p-3.5 text-right">Actions</th>
+                        <td colSpan={6} className="p-8 text-center text-gray-400">
+                          <Mail className="w-8 h-8 mx-auto mb-2 opacity-40 text-rosegold-400" />
+                          <p className="font-semibold">No customer enquiries found matching criteria.</p>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/10">
-                      {filteredEnquiries.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="p-8 text-center text-gray-400">
-                            <Mail className="w-8 h-8 mx-auto mb-2 opacity-40 text-rosegold-400" />
-                            <p className="font-semibold">No customer enquiries found matching criteria.</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredEnquiries.map((enq) => {
-                          const statusColor = 
-                            enq.status === 'New' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-extrabold animate-pulse' :
+                    ) : (
+                      filteredEnquiries.map((enq) => {
+                        const statusColor =
+                          enq.status === 'New' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-extrabold animate-pulse' :
                             enq.status === 'Contacted' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
-                            enq.status === 'In Progress' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
-                            enq.status === 'Resolved' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
-                            'bg-gray-500/20 text-gray-300 border-gray-500/40';
+                              enq.status === 'In Progress' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
+                                enq.status === 'Resolved' ? 'bg-green-500/20 text-green-300 border-green-500/40' :
+                                  'bg-gray-500/20 text-gray-300 border-gray-500/40';
 
-                          return (
-                            <tr key={enq._id || enq.enquiryId} className="hover:bg-white/5 transition-colors">
-                              <td className="p-3.5 font-mono font-bold text-rosegold-400">
-                                {enq.enquiryId}
-                              </td>
-                              <td className="p-3.5">
-                                <div className="font-bold text-white">{enq.name}</div>
-                                <div className="text-[11px] text-gray-400 flex items-center space-x-2 mt-0.5">
-                                  <span>📧 {enq.email}</span>
-                                  {enq.phone && <span>📞 {enq.phone}</span>}
-                                </div>
-                              </td>
-                              <td className="p-3.5 max-w-xs">
-                                <p className="text-gray-300 text-xs line-clamp-2 italic font-sans">
-                                  "{enq.message}"
-                                </p>
-                                {enq.adminNotes && (
-                                  <span className="inline-block mt-1 text-[10px] text-rosegold-300/90 font-mono bg-dark-900 px-1.5 py-0.5 rounded border border-rosegold-500/20">
-                                    📝 Note: {enq.adminNotes}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="p-3.5">
-                                <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${statusColor}`}>
-                                  {enq.status}
+                        return (
+                          <tr key={enq._id || enq.enquiryId} className="hover:bg-white/5 transition-colors">
+                            <td className="p-3.5 font-mono font-bold text-rosegold-400">
+                              {enq.enquiryId}
+                            </td>
+                            <td className="p-3.5">
+                              <div className="font-bold text-white">{enq.name}</div>
+                              <div className="text-[11px] text-gray-400 flex items-center space-x-2 mt-0.5">
+                                <span>📧 {enq.email}</span>
+                                {enq.phone && <span>📞 {enq.phone}</span>}
+                              </div>
+                            </td>
+                            <td className="p-3.5 max-w-xs">
+                              <p className="text-gray-300 text-xs line-clamp-2 italic font-sans">
+                                "{enq.message}"
+                              </p>
+                              {enq.adminNotes && (
+                                <span className="inline-block mt-1 text-[10px] text-rosegold-300/90 font-mono bg-dark-900 px-1.5 py-0.5 rounded border border-rosegold-500/20">
+                                  📝 Note: {enq.adminNotes}
                                 </span>
-                              </td>
-                              <td className="p-3.5 text-gray-400 font-mono text-[11px]">
-                                {new Date(enq.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                              </td>
-                              <td className="p-3.5 text-right flex items-center justify-end space-x-2">
-                                <QuickContactActions
-                                  enquiry={enq}
-                                  adminUser={user || { name: 'Admin Executive' }}
-                                  size="sm"
-                                  showLabel={false}
-                                  onStatusUpdate={(newStatus) => {
-                                    setEnquiries(prev => prev.map(e => (e.enquiryId === enq.enquiryId || e._id === enq._id) ? { ...e, status: newStatus as any } : e));
-                                  }}
-                                />
-                                <button
-                                  onClick={async () => {
-                                    setSelectedEnquiry(enq);
-                                    setEnquiryAdminNotes(enq.adminNotes || '');
-                                    setIsEnquiryModalOpen(true);
-                                    const enqId = enq.enquiryId || enq._id;
-                                    setNotifications(prev => prev.map(n => (n.enquiryId === enqId || n.link?.includes(enqId)) ? { ...n, read: true, isRead: true } : n));
-                                    try {
-                                      await apiFetch(`${API_BASE_URL}/admin/enquiries/${enqId}/view`, { method: 'PATCH' });
-                                    } catch (e) {}
-                                  }}
-                                  className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
-                                >
-                                  View & Manage
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteEnquiry(enq._id || enq.enquiryId)}
-                                  className="p-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/30 transition-all cursor-pointer inline-flex items-center"
-                                  title="Delete Enquiry"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                              )}
+                            </td>
+                            <td className="p-3.5">
+                              <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] uppercase tracking-wider font-bold border ${statusColor}`}>
+                                {enq.status}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-gray-400 font-mono text-[11px]">
+                              {new Date(enq.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                            </td>
+                            <td className="p-3.5 text-right flex items-center justify-end space-x-2">
+                              <QuickContactActions
+                                enquiry={enq}
+                                adminUser={user || { name: 'Admin Executive' }}
+                                size="sm"
+                                showLabel={false}
+                                onStatusUpdate={(newStatus) => {
+                                  setEnquiries(prev => prev.map(e => (e.enquiryId === enq.enquiryId || e._id === enq._id) ? { ...e, status: newStatus as any } : e));
+                                }}
+                              />
+                              <button
+                                onClick={async () => {
+                                  setSelectedEnquiry(enq);
+                                  setEnquiryAdminNotes(enq.adminNotes || '');
+                                  setIsEnquiryModalOpen(true);
+                                  const enqId = enq.enquiryId || enq._id;
+                                  setNotifications(prev => prev.map(n => (n.enquiryId === enqId || n.link?.includes(enqId)) ? { ...n, read: true, isRead: true } : n));
+                                  try {
+                                    await apiFetch(`${API_BASE_URL}/admin/enquiries/${enqId}/view`, { method: 'PATCH' });
+                                  } catch (e) { }
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-rosegold-500/20 border border-rosegold-500/40 text-rosegold-300 hover:bg-rosegold-500/30 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                              >
+                                View & Manage
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEnquiry(enq._id || enq.enquiryId)}
+                                className="p-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/30 transition-all cursor-pointer inline-flex items-center"
+                                title="Delete Enquiry"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
+          )}
 
           {/* TAB 1: HOME PAGE SETTINGS */}
           {(activeTab === 'home-settings' || activeTab === 'landing-settings') && (
             <div className="space-y-6 animate-fadeIn text-left">
-              
+
               {/* Dynamic Breadcrumbs Navigation Bar */}
               <nav className="flex items-center space-x-2 text-xs text-gray-400 bg-dark-850 p-3 rounded-2xl border border-white/10 overflow-x-auto font-medium">
                 <button onClick={() => handleTabChange('analytics')} className="hover:text-rosegold-400 transition-colors flex items-center space-x-1 shrink-0">
@@ -5672,7 +5626,7 @@ function AdminDashboardContent() {
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify(settingsObj)
                         });
-                      } catch (e) {}
+                      } catch (e) { }
 
                       setLandingSettingsSavedMsg("Home Page Settings Saved & Live on Website!");
                       showToast("Home Page Settings saved successfully!", 'success');
@@ -5694,7 +5648,7 @@ function AdminDashboardContent() {
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
+
                 {/* 1. ANNOUNCEMENT TICKER SETTINGS */}
                 <div className="glass-card p-6 rounded-3xl border border-rosegold-500/30 space-y-4">
                   <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -5939,7 +5893,7 @@ function AdminDashboardContent() {
           {/* TAB 2: FOOTER PAGE SETTINGS */}
           {activeTab === 'footer-settings' && (
             <div className="space-y-6 animate-fadeIn text-left">
-              
+
               {/* Dynamic Breadcrumbs Navigation Bar */}
               <nav className="flex items-center space-x-2 text-xs text-gray-400 bg-dark-850 p-3 rounded-2xl border border-white/10 overflow-x-auto font-medium">
                 <button onClick={() => handleTabChange('analytics')} className="hover:text-rosegold-400 transition-colors flex items-center space-x-1 shrink-0">
@@ -5955,9 +5909,9 @@ function AdminDashboardContent() {
                     <ChevronRight className="w-3.5 h-3.5 text-gray-500 shrink-0" />
                     <span className="text-white font-bold shrink-0 font-sans">
                       {websiteSubTab === 'links' ? 'Website Links' :
-                       websiteSubTab === 'gallery' ? 'Look Book & Gallery' :
-                       websiteSubTab === 'faqs' ? 'Frequently Asked Questions' :
-                       websiteSubTab === 'offers' ? 'Offers & Coupons' : websiteSubTab}
+                        websiteSubTab === 'gallery' ? 'Look Book & Gallery' :
+                          websiteSubTab === 'faqs' ? 'Frequently Asked Questions' :
+                            websiteSubTab === 'offers' ? 'Offers & Coupons' : websiteSubTab}
                     </span>
                   </>
                 )}
@@ -5984,7 +5938,7 @@ function AdminDashboardContent() {
               </div>
 
               <div className="space-y-6">
-                
+
                 {/* 1. WEBSITE LINKS MODULE */}
                 {(websiteSubTab === 'all' || websiteSubTab === 'links') && (
                   <div className="glass-card p-6 rounded-3xl border border-white/10 space-y-4">
@@ -6105,7 +6059,7 @@ function AdminDashboardContent() {
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(settingsObj)
                               });
-                            } catch (e) {}
+                            } catch (e) { }
                             showToast("Website Footer Links updated successfully!", 'success');
                           }}
                           className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
@@ -6290,7 +6244,7 @@ function AdminDashboardContent() {
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify(settingsObj)
                             });
-                          } catch (e) {}
+                          } catch (e) { }
                           showToast("Lookbook & Gallery Showcase saved successfully!", 'success');
                         }}
                         className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
@@ -6440,7 +6394,7 @@ function AdminDashboardContent() {
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify(settingsObj)
                             });
-                          } catch (e) {}
+                          } catch (e) { }
                           showToast("Frequently Asked Questions updated successfully!", 'success');
                         }}
                         className="px-5 py-2.5 rounded-xl rosegold-gradient-bg text-dark-900 font-extrabold text-xs shadow-glow-rosegold cursor-pointer"
@@ -6491,7 +6445,7 @@ function AdminDashboardContent() {
       {breakdownModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
           <div className="w-full max-w-xl glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-4 text-left max-h-[90vh] overflow-y-auto text-xs shadow-2xl">
-            
+
             {/* TOTAL REVENUE BREAKDOWN MODAL */}
             {breakdownModal === 'revenue' && (() => {
               const totalRev = analytics?.totalRevenue ?? 0;
@@ -6504,7 +6458,7 @@ function AdminDashboardContent() {
               const membRev = transactions
                 .filter(t => t.type === 'Credited' && (t.category?.toLowerCase().includes('membership') || t.category?.toLowerCase().includes('vip')))
                 .reduce((sum, t) => sum + (t.amount || 0), 0);
-              
+
               const appPct = totalRev > 0 ? ((appRev / totalRev) * 100).toFixed(1) : '0';
               const prodPct = totalRev > 0 ? ((prodRev / totalRev) * 100).toFixed(1) : '0';
               const membPct = totalRev > 0 ? ((membRev / totalRev) * 100).toFixed(1) : '0';
@@ -6725,7 +6679,7 @@ function AdminDashboardContent() {
 
             {/* MANUAL TRANSACTION LOGGING MODAL */}
             {breakdownModal === 'addTxn' && (
-              <form 
+              <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   try {
@@ -6744,7 +6698,7 @@ function AdminDashboardContent() {
                   } catch (err) {
                     console.error(err);
                   }
-                }} 
+                }}
                 className="space-y-3.5 text-xs"
               >
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -6838,12 +6792,12 @@ function AdminDashboardContent() {
 
             {/* REQUEST TIME RESCHEDULE NOTE MODAL */}
             {modalType === 'rescheduleNote' && selectedItem && (
-              <form 
+              <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   await handleUpdateAppStatus(selectedItem._id, 'Reschedule Requested');
                   setModalType(null);
-                }} 
+                }}
                 className="space-y-3.5"
               >
                 <h4 className="text-sm font-serif font-bold text-white">Send Reschedule Request Note to Client</h4>
@@ -6852,14 +6806,14 @@ function AdminDashboardContent() {
                 </p>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Reschedule Reason & Note *</label>
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Reschedule Reason & Note *</label>
                   <textarea
                     rows={3}
                     required
                     value={rescheduleNoteText}
                     onChange={(e) => setRescheduleNoteText(e.target.value)}
                     placeholder="e.g. 11:00 AM slot is fully booked for this date. Please pick 02:00 PM or 03:30 PM..."
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
@@ -6875,9 +6829,9 @@ function AdminDashboardContent() {
                 <h4 className="text-sm font-serif font-bold text-white">Generate Specialist Salary Slip</h4>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Select Employee Specialist *</label>
-                  <select 
-                    value={payForm.employeeName} 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Select Employee Specialist *</label>
+                  <select
+                    value={payForm.employeeName}
                     onChange={e => {
                       const selectedName = e.target.value;
                       const empObj = employees.find(item => item.name === selectedName || item.empCode === selectedName);
@@ -6890,8 +6844,8 @@ function AdminDashboardContent() {
 
                       const commAmt = Math.round(empRev * (commPct / 100));
 
-                      setPayForm({ 
-                        ...payForm, 
+                      setPayForm({
+                        ...payForm,
                         employeeName: empObj?.name || selectedName,
                         employeeId: empObj?._id || '',
                         empCode: empObj?.empCode || '',
@@ -6901,7 +6855,7 @@ function AdminDashboardContent() {
                         commissionAmount: commAmt
                       });
                     }}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none font-bold"
                   >
                     {employees.map(e => (
                       <option key={e._id} value={e.name}>{e.name} ({e.empCode || 'EMP-1001'})</option>
@@ -6910,87 +6864,87 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
-                  <input 
-                    type="month" 
-                    required 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
+                  <input
+                    type="month"
+                    required
                     max={getCurrentYearMonthStr()}
-                    value={parseToYearMonth(payForm.month)} 
+                    value={parseToYearMonth(payForm.month)}
                     onChange={e => {
                       const selectedYm = e.target.value;
                       if (selectedYm && selectedYm <= getCurrentYearMonthStr()) {
                         setPayForm({ ...payForm, month: formatMonthYear(selectedYm) });
                       }
                     }}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold cursor-pointer" 
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold cursor-pointer"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Base Fixed Salary (₹) *</label>
-                    <input 
-                      type="number" 
-                      required 
-                      value={payForm.baseSalary} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Base Fixed Salary (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={payForm.baseSalary}
                       onChange={e => setPayForm({ ...payForm, baseSalary: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono font-bold" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono font-bold"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Service Revenue Handled (₹)</label>
-                    <input 
-                      type="number" 
-                      value={payForm.eligibleAmount} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Service Revenue Handled (₹)</label>
+                    <input
+                      type="number"
+                      value={payForm.eligibleAmount}
                       onChange={e => {
                         const newEligible = Number(e.target.value);
                         const newComm = Math.round(newEligible * (payForm.commissionPercentage / 100));
                         setPayForm({ ...payForm, eligibleAmount: newEligible, commissionAmount: newComm });
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Commission Rate (%)</label>
-                    <input 
-                      type="number" 
-                      value={payForm.commissionPercentage} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Commission Rate (%)</label>
+                    <input
+                      type="number"
+                      value={payForm.commissionPercentage}
                       onChange={e => {
                         const newPct = Number(e.target.value);
                         const newComm = Math.round(payForm.eligibleAmount * (newPct / 100));
                         setPayForm({ ...payForm, commissionPercentage: newPct, commissionAmount: newComm });
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Commission Amount (₹)</label>
-                    <input 
-                      type="number" 
-                      value={payForm.commissionAmount} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Commission Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={payForm.commissionAmount}
                       onChange={e => setPayForm({ ...payForm, commissionAmount: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-green-400" 
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-green-400"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Deductions / Taxes (₹)</label>
-                  <input 
-                    type="number" 
-                    value={payForm.deductions} 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Deductions / Taxes (₹)</label>
+                  <input
+                    type="number"
+                    value={payForm.deductions}
                     onChange={e => setPayForm({ ...payForm, deductions: Number(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400" 
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400"
                   />
                 </div>
 
                 <div className="p-3 rounded-xl bg-dark-800 border border-white/10 flex justify-between items-center text-xs">
-                  <span className="text-gray-400 font-bold">Calculated Net Payable Amount:</span>
+                  <span className="text-gray-800 dark:text-gray-400 font-bold">Calculated Net Payable Amount:</span>
                   <span className="text-rosegold-400 font-serif font-bold text-base">
                     ₹{(payForm.baseSalary + payForm.commissionAmount + payForm.incentives - payForm.deductions).toLocaleString('en-IN')}
                   </span>
@@ -7054,9 +7008,9 @@ function AdminDashboardContent() {
                 <div className="flex items-center space-x-4">
                   <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-rosegold-500/50 shrink-0 bg-dark-800 flex items-center justify-center brand-profile-avatar">
                     {selectedItem.avatar ? (
-                      <img 
-                        src={selectedItem.avatar} 
-                        alt={selectedItem.name} 
+                      <img
+                        src={selectedItem.avatar}
+                        alt={selectedItem.name}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -7133,20 +7087,20 @@ function AdminDashboardContent() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(selectedItem.email || createdCredentials.email);
                       setCopiedCreds(true);
                       setTimeout(() => setCopiedCreds(false), 2000);
-                    }} 
+                    }}
                     className="flex-1 py-3 rounded-xl bg-dark-800 text-rosegold-300 border border-rosegold-500/30 font-bold text-xs flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     {copiedCreds ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                     <span>{copiedCreds ? 'Email Copied!' : 'Copy Email ID'}</span>
                   </button>
 
-                  <Link 
+                  <Link
                     href={`/admin/employees/${selectedItem._id}`}
                     className="flex-1 py-3 rounded-xl bg-dark-800 hover:bg-dark-700 text-white border border-white/10 font-bold text-xs flex items-center justify-center space-x-1 cursor-pointer"
                   >
@@ -7182,9 +7136,9 @@ function AdminDashboardContent() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <button 
-                    type="button" 
-                    onClick={() => copyCredsToClipboard(createdCredentials.email, createdCredentials.tempPassword, createdCredentials.empCode)} 
+                  <button
+                    type="button"
+                    onClick={() => copyCredsToClipboard(createdCredentials.email, createdCredentials.tempPassword, createdCredentials.empCode)}
                     className="flex-1 py-3 rounded-xl bg-dark-800 text-rosegold-300 border border-rosegold-500/30 font-bold text-xs flex items-center justify-center space-x-1.5 cursor-pointer"
                   >
                     {copiedCreds ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
@@ -7202,97 +7156,97 @@ function AdminDashboardContent() {
             {(modalType === 'addEmp' || modalType === 'editEmp') && (
               <form onSubmit={handleSaveEmployee} className="space-y-3.5">
                 <div>
-                  <ImageUploader 
-                    initialUrl={empForm.avatar} 
-                    folder="employees" 
-                    label="Employee Profile Photo" 
-                    onUploadSuccess={(url) => setEmpForm(prev => ({ ...prev, avatar: url }))} 
+                  <ImageUploader
+                    initialUrl={empForm.avatar}
+                    folder="employees"
+                    label="Employee Profile Photo"
+                    onUploadSuccess={(url) => setEmpForm(prev => ({ ...prev, avatar: url }))}
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Employee Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Employee Full Name *</label>
+                  <input
+                    type="text"
+                    required
                     placeholder="e.g. Ananya Sharma"
-                    value={empForm.name} 
-                    onChange={e => setEmpForm({ ...empForm, name: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                    value={empForm.name}
+                    onChange={e => setEmpForm({ ...empForm, name: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Email Address *</label>
-                    <input 
-                      type="email" 
-                      required 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Email Address *</label>
+                    <input
+                      type="email"
+                      required
                       placeholder="ananya@spysalon.com"
-                      value={empForm.email} 
-                      onChange={e => setEmpForm({ ...empForm, email: e.target.value })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                      value={empForm.email}
+                      onChange={e => setEmpForm({ ...empForm, email: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Phone Number *</label>
-                    <input 
-                      type="text" 
-                      required 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Phone Number *</label>
+                    <input
+                      type="text"
+                      required
                       placeholder="+91 98765 43210"
-                      value={empForm.phone} 
-                      onChange={e => setEmpForm({ ...empForm, phone: e.target.value })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                      value={empForm.phone}
+                      onChange={e => setEmpForm({ ...empForm, phone: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Login Password *</label>
-                  <input 
-                    type="text" 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Login Password *</label>
+                  <input
+                    type="text"
                     required
                     placeholder="Set login password (e.g. Ananya@123)"
-                    value={empForm.password} 
-                    onChange={e => setEmpForm({ ...empForm, password: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500" 
+                    value={empForm.password}
+                    onChange={e => setEmpForm({ ...empForm, password: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div>
                   <label className="text-gray-300 font-semibold block mb-1 text-xs">Specialist Skills (Comma Separated) *</label>
-                  <input 
-                    type="text" 
-                    required 
+                  <input
+                    type="text"
+                    required
                     placeholder="Senior Hair Stylist, Keratin Expert, Hydra Facial"
-                    value={empForm.specialties} 
-                    onChange={e => setEmpForm({ ...empForm, specialties: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                    value={empForm.specialties}
+                    onChange={e => setEmpForm({ ...empForm, specialties: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Base Fixed Salary (₹) *</label>
-                    <input 
-                      type="number" 
-                      required 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Base Fixed Salary (₹) *</label>
+                    <input
+                      type="number"
+                      required
                       placeholder="25000"
-                      value={empForm.baseSalary} 
-                      onChange={e => setEmpForm({ ...empForm, baseSalary: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500" 
+                      value={empForm.baseSalary}
+                      onChange={e => setEmpForm({ ...empForm, baseSalary: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Commission Rate (%) *</label>
-                    <input 
-                      type="number" 
-                      required 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Commission Rate (%) *</label>
+                    <input
+                      type="number"
+                      required
                       placeholder="20"
-                      value={empForm.commissionPercentage} 
-                      onChange={e => setEmpForm({ ...empForm, commissionPercentage: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500" 
+                      value={empForm.commissionPercentage}
+                      onChange={e => setEmpForm({ ...empForm, commissionPercentage: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
@@ -7307,7 +7261,7 @@ function AdminDashboardContent() {
             {(modalType === 'addMemb' || modalType === 'editMemb') && (
               <form onSubmit={handleSaveMembership} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Membership Package Name *</label>
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Membership Package Name *</label>
                   <input
                     type="text"
                     required
@@ -7320,7 +7274,7 @@ function AdminDashboardContent() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Package Code Slug *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Package Code Slug *</label>
                     <input
                       type="text"
                       required
@@ -7331,7 +7285,7 @@ function AdminDashboardContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Badge Icon / Label *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Badge Icon / Label *</label>
                     <input
                       type="text"
                       required
@@ -7345,7 +7299,7 @@ function AdminDashboardContent() {
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Monthly Price (₹) *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Monthly Price (₹) *</label>
                     <input
                       type="number"
                       required
@@ -7355,7 +7309,7 @@ function AdminDashboardContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Yearly Price (₹) *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Yearly Price (₹) *</label>
                     <input
                       type="number"
                       required
@@ -7365,7 +7319,7 @@ function AdminDashboardContent() {
                     />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Discount Off (%) *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Discount Off (%) *</label>
                     <input
                       type="number"
                       required
@@ -7377,7 +7331,7 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Tagline / Subtitle Description</label>
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Tagline / Subtitle Description</label>
                   <input
                     type="text"
                     placeholder="e.g. Essential VIP Privileges & Special Perks"
@@ -7388,7 +7342,7 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Included Package Benefits (Comma Separated)</label>
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Included Package Benefits (Comma Separated)</label>
                   <textarea
                     rows={3}
                     placeholder="20% Flat Discount, Free Monthly Hair Spa, Priority Queue"
@@ -7408,48 +7362,48 @@ function AdminDashboardContent() {
             {(modalType === 'addSrv' || modalType === 'editSrv') && (
               <form onSubmit={handleSaveService} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Service Title *</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g. Precision Hair Cut & Layering" 
-                    value={srvForm.name} 
-                    onChange={e => setSrvForm({ ...srvForm, name: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500" 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Service Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Precision Hair Cut & Layering"
+                    value={srvForm.name}
+                    onChange={e => setSrvForm({ ...srvForm, name: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Target Gender / Section *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Target Gender / Section *</label>
                     <select
                       value={srvForm.gender}
                       onChange={e => setSrvForm({ ...srvForm, gender: e.target.value as 'all' | 'men' | 'women' | 'kids' })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
                     >
-                      <option value="all">🌟 All / General Salon</option>
-                      <option value="men">👨 Men's Salon & Grooming</option>
-                      <option value="women">👩 Women's Luxury Salon</option>
-                      <option value="kids">🧒 Kids & Teens Studio</option>
+                      <option value="all"> All / General Salon</option>
+                      <option value="men"> Men's Salon & Grooming</option>
+                      <option value="women"> Women's Luxury Salon</option>
+                      <option value="kids"> Kids & Teens Studio</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Subcategory / Service Group *</label>
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Subcategory / Service Group *</label>
                     <input
                       type="text"
                       placeholder="e.g. Hair Care, Facials, Keratin, Beard"
                       value={srvForm.subCategory}
                       onChange={e => setSrvForm({ ...srvForm, subCategory: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Category *</label>
-                    <select 
-                      value={isCustomCategory ? 'OTHER_CUSTOM' : srvForm.category} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Category *</label>
+                    <select
+                      value={isCustomCategory ? 'OTHER_CUSTOM' : srvForm.category}
                       onChange={e => {
                         if (e.target.value === 'OTHER_CUSTOM') {
                           setIsCustomCategory(true);
@@ -7457,8 +7411,8 @@ function AdminDashboardContent() {
                           setIsCustomCategory(false);
                           setSrvForm({ ...srvForm, category: e.target.value });
                         }
-                      }} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
+                      }}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
                     >
                       {categoriesList.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -7475,123 +7429,123 @@ function AdminDashboardContent() {
                           placeholder="e.g. Laser Hair Removal, Medi-Facial Spa..."
                           value={customCategoryInput}
                           onChange={(e) => setCustomCategoryInput(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-dark-900 text-white border border-rosegold-500/50 focus:outline-none text-xs font-bold"
+                          className="w-full p-3 rounded-xl bg-dark-900 text-gray-900 dark:text-white border border-rosegold-500/50 focus:outline-none text-xs font-bold"
                         />
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1 text-xs">Duration (Minutes) *</label>
-                    <input 
-                      type="number" 
-                      required 
-                      value={srvForm.durationMinutes} 
-                      onChange={e => setSrvForm({ ...srvForm, durationMinutes: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs" 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Duration (Minutes) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={srvForm.durationMinutes}
+                      onChange={e => setSrvForm({ ...srvForm, durationMinutes: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Original Price (₹) *</label>
-                    <input 
-                      type="number" 
-                      required 
-                      value={srvForm.price} 
-                      onChange={e => setSrvForm({ ...srvForm, price: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Original Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      value={srvForm.price}
+                      onChange={e => setSrvForm({ ...srvForm, price: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Discount Price (₹)</label>
-                    <input 
-                      type="number" 
-                      value={srvForm.discountPrice} 
-                      onChange={e => setSrvForm({ ...srvForm, discountPrice: Number(e.target.value) })} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Discount Price (₹)</label>
+                    <input
+                      type="number"
+                      value={srvForm.discountPrice}
+                      onChange={e => setSrvForm({ ...srvForm, discountPrice: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <ImageUploader 
-                    initialUrl={srvForm.image} 
-                    folder="services" 
-                    label="Service Cover Image" 
-                    onUploadSuccess={(url) => setSrvForm({ ...srvForm, image: url })} 
+                  <ImageUploader
+                    initialUrl={srvForm.image}
+                    folder="services"
+                    label="Service Cover Image"
+                    onUploadSuccess={(url) => setSrvForm({ ...srvForm, image: url })}
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Treatment Description & Botanical Science</label>
-                  <textarea 
-                    rows={2} 
-                    value={srvForm.description} 
-                    onChange={e => setSrvForm({ ...srvForm, description: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Treatment Description & Botanical Science</label>
+                  <textarea
+                    rows={2}
+                    value={srvForm.description}
+                    onChange={e => setSrvForm({ ...srvForm, description: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Key Benefits (Comma Separated)</label>
-                  <input 
-                    type="text" 
-                    value={srvForm.benefits} 
-                    onChange={e => setSrvForm({ ...srvForm, benefits: e.target.value })} 
-                    placeholder="e.g. Deep Hydration, 100% Organic Serums, Zero Heat Damage" 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Key Benefits (Comma Separated)</label>
+                  <input
+                    type="text"
+                    value={srvForm.benefits}
+                    onChange={e => setSrvForm({ ...srvForm, benefits: e.target.value })}
+                    placeholder="e.g. Deep Hydration, 100% Organic Serums, Zero Heat Damage"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
                   />
                 </div>
 
                 {/* STEP-BY-STEP PROCEDURE CUSTOMIZER & AUTO GENERATOR */}
-                <div className="p-4 rounded-2xl bg-dark-800/90 border border-rosegold-500/30 space-y-3">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                    <span className="text-rosegold-400 font-bold text-xs uppercase flex items-center space-x-1.5">
-                      <Scissors className="w-4 h-4" />
-                      <span>Custom Step-by-Step Procedure Steps</span>
+                <div className="p-4 rounded-2xl bg-gray-100 dark:bg-dark-800/90 border border-rosegold-500/30 space-y-3 procedure-steps-container">
+                  <div className="flex items-center justify-between border-b border-gray-300 dark:border-white/10 pb-2">
+                    <span className="text-gray-900 dark:text-rosegold-400 font-bold text-xs uppercase flex items-center space-x-1.5 procedure-steps-title">
+                      <Scissors className="w-4 h-4 text-rosegold-600 dark:text-rosegold-400" />
+                      <span className="text-gray-900 dark:text-rosegold-400">Custom Step-by-Step Procedure Steps</span>
                     </span>
 
                     <button
                       type="button"
                       onClick={autoGenerateProcedureSteps}
-                      className="px-3 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
+                      className="px-3 py-1 rounded-xl bg-purple-100 dark:bg-purple-600/30 hover:bg-purple-200 dark:hover:bg-purple-600/50 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/40 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
                     >
-                      <Wand2 className="w-3.5 h-3.5 text-rosegold-400" />
-                      <span>⚡ Auto-Fill Category Steps</span>
+                      <Wand2 className="w-3.5 h-3.5 text-rosegold-700 dark:text-rosegold-400" />
+                      <span className="text-purple-900 dark:text-purple-200">⚡ Auto-Fill Category Steps</span>
                     </button>
                   </div>
 
                   <div className="space-y-2">
                     <div>
-                      <span className="text-gray-400 font-semibold block text-[10px] mb-0.5">Step 1 Title & Description</span>
-                      <input type="text" placeholder="Step 1 Title" value={srvForm.step1Title} onChange={e => setSrvForm({ ...srvForm, step1Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white border border-white/10 text-xs mb-1" />
-                      <input type="text" placeholder="Step 1 Description" value={srvForm.step1Desc} onChange={e => setSrvForm({ ...srvForm, step1Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-300 border border-white/10 text-xs" />
+                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 1 Title & Description</span>
+                      <input type="text" placeholder="Step 1 Title" value={srvForm.step1Title} onChange={e => setSrvForm({ ...srvForm, step1Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
+                      <input type="text" placeholder="Step 1 Description" value={srvForm.step1Desc} onChange={e => setSrvForm({ ...srvForm, step1Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
                     </div>
 
                     <div>
-                      <span className="text-gray-400 font-semibold block text-[10px] mb-0.5">Step 2 Title & Description</span>
-                      <input type="text" placeholder="Step 2 Title" value={srvForm.step2Title} onChange={e => setSrvForm({ ...srvForm, step2Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white border border-white/10 text-xs mb-1" />
-                      <input type="text" placeholder="Step 2 Description" value={srvForm.step2Desc} onChange={e => setSrvForm({ ...srvForm, step2Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-300 border border-white/10 text-xs" />
+                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 2 Title & Description</span>
+                      <input type="text" placeholder="Step 2 Title" value={srvForm.step2Title} onChange={e => setSrvForm({ ...srvForm, step2Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
+                      <input type="text" placeholder="Step 2 Description" value={srvForm.step2Desc} onChange={e => setSrvForm({ ...srvForm, step2Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
                     </div>
 
                     <div>
-                      <span className="text-gray-400 font-semibold block text-[10px] mb-0.5">Step 3 Title & Description</span>
-                      <input type="text" placeholder="Step 3 Title" value={srvForm.step3Title} onChange={e => setSrvForm({ ...srvForm, step3Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white border border-white/10 text-xs mb-1" />
-                      <input type="text" placeholder="Step 3 Description" value={srvForm.step3Desc} onChange={e => setSrvForm({ ...srvForm, step3Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-300 border border-white/10 text-xs" />
+                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 3 Title & Description</span>
+                      <input type="text" placeholder="Step 3 Title" value={srvForm.step3Title} onChange={e => setSrvForm({ ...srvForm, step3Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
+                      <input type="text" placeholder="Step 3 Description" value={srvForm.step3Desc} onChange={e => setSrvForm({ ...srvForm, step3Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
                     </div>
 
                     <div>
-                      <span className="text-gray-400 font-semibold block text-[10px] mb-0.5">Step 4 Title & Description</span>
-                      <input type="text" placeholder="Step 4 Title" value={srvForm.step4Title} onChange={e => setSrvForm({ ...srvForm, step4Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white border border-white/10 text-xs mb-1" />
-                      <input type="text" placeholder="Step 4 Description" value={srvForm.step4Desc} onChange={e => setSrvForm({ ...srvForm, step4Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-300 border border-white/10 text-xs" />
+                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 4 Title & Description</span>
+                      <input type="text" placeholder="Step 4 Title" value={srvForm.step4Title} onChange={e => setSrvForm({ ...srvForm, step4Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
+                      <input type="text" placeholder="Step 4 Description" value={srvForm.step4Desc} onChange={e => setSrvForm({ ...srvForm, step4Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2 pt-1">
                   <input type="checkbox" id="popularBadge" checked={srvForm.isPopular} onChange={e => setSrvForm({ ...srvForm, isPopular: e.target.checked })} className="w-4 h-4 accent-rosegold-500" />
-                  <label htmlFor="popularBadge" className="text-white font-semibold cursor-pointer">Mark as Popular Service (Displays 'Popular' badge on /services menu)</label>
+                  <label htmlFor="popularBadge" className="text-gray-900 dark:text-white font-semibold cursor-pointer">Mark as Popular Service (Displays 'Popular' badge on /services menu)</label>
                 </div>
 
                 <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
@@ -7604,29 +7558,29 @@ function AdminDashboardContent() {
             {modalType === 'addCust' && (
               <form onSubmit={handleSaveCustomer} className="space-y-3">
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
-                  <input type="text" required placeholder="e.g. Riya Verma" value={custForm.name} onChange={e => setCustForm({ ...custForm, name: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" />
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
+                  <input type="text" required placeholder="e.g. Riya Verma" value={custForm.name} onChange={e => setCustForm({ ...custForm, name: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Email Address</label>
-                    <input type="email" placeholder="riya@gmail.com" value={custForm.email} onChange={e => setCustForm({ ...custForm, email: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" />
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Email Address</label>
+                    <input type="email" placeholder="riya@gmail.com" value={custForm.email} onChange={e => setCustForm({ ...custForm, email: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
                   </div>
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Mobile Phone *</label>
-                    <input type="text" required placeholder="+91 98765 43210" value={custForm.phone} onChange={e => setCustForm({ ...custForm, phone: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10" />
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Mobile Phone *</label>
+                    <input type="text" required placeholder="+91 98765 43210" value={custForm.phone} onChange={e => setCustForm({ ...custForm, phone: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Membership Tier</label>
-                  <select value={custForm.membership} onChange={e => setCustForm({ ...custForm, membership: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10">
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Membership Tier</label>
+                  <select value={custForm.membership} onChange={e => setCustForm({ ...custForm, membership: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-bold text-xs">
                     <option value="Standard">Standard Client</option>
                     <option value="VIP Silver">VIP Silver Tier</option>
                     <option value="VIP Gold">VIP Gold Tier</option>
                     <option value="VIP Platinum">VIP Platinum Suite</option>
                   </select>
                 </div>
-                <button type="submit" className="w-full py-3 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs cursor-pointer">Save Customer Account</button>
+                <button type="submit" className="w-full py-3 rounded-xl rosegold-gradient-bg !text-white font-bold text-xs cursor-pointer">Save Customer Account</button>
               </form>
             )}
 
@@ -7634,35 +7588,35 @@ function AdminDashboardContent() {
             {modalType === 'addApp' && (
               <form onSubmit={handleSaveAppointment} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
-                  <input 
-                    type="text" 
-                    required 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
+                  <input
+                    type="text"
+                    required
                     placeholder="Enter customer's name"
-                    value={appForm.customerName} 
-                    onChange={e => setAppForm({ ...appForm, customerName: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                    value={appForm.customerName}
+                    onChange={e => setAppForm({ ...appForm, customerName: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Mobile Phone Number *</label>
-                  <input 
-                    type="text" 
-                    required 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Mobile Phone Number *</label>
+                  <input
+                    type="text"
+                    required
                     placeholder="+91 98765 43210"
-                    value={appForm.customerPhone} 
-                    onChange={e => setAppForm({ ...appForm, customerPhone: e.target.value })} 
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500" 
+                    value={appForm.customerPhone}
+                    onChange={e => setAppForm({ ...appForm, customerPhone: e.target.value })}
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Select Service Requested *</label>
-                  <select 
-                    value={appForm.service} 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Select Service Requested *</label>
+                  <select
+                    value={appForm.service}
                     onChange={e => setAppForm({ ...appForm, service: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   >
                     {services.map(s => (
                       <option key={s._id} value={s.name}>{s.name} (₹{s.price})</option>
@@ -7671,11 +7625,11 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Assign Staff Specialist *</label>
-                  <select 
-                    value={appForm.specialistName} 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Assign Staff Specialist *</label>
+                  <select
+                    value={appForm.specialistName}
                     onChange={e => setAppForm({ ...appForm, specialistName: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   >
                     <option value="Any Available Specialist">Any Available Specialist</option>
                     {employees.map((emp: any) => (
@@ -7688,12 +7642,12 @@ function AdminDashboardContent() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Appointment Date</label>
-                    <input 
-                      type="date" 
-                      required 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Appointment Date</label>
+                    <input
+                      type="date"
+                      required
                       min={new Date().toISOString().split('T')[0]}
-                      value={appForm.appointmentDate} 
+                      value={appForm.appointmentDate}
                       onChange={e => {
                         const val = e.target.value;
                         const today = new Date().toISOString().split('T')[0];
@@ -7703,17 +7657,17 @@ function AdminDashboardContent() {
                         } else {
                           setAppForm({ ...appForm, appointmentDate: val });
                         }
-                      }} 
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-semibold" 
+                      }}
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-semibold"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-300 font-semibold block mb-1">Time Slot</label>
-                    <select 
-                      value={appForm.appointmentTime} 
+                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Time Slot</label>
+                    <select
+                      value={appForm.appointmentTime}
                       onChange={e => setAppForm({ ...appForm, appointmentTime: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold"
                     >
                       <option value="Immediate Walk-In">Immediate Walk-In</option>
                       <option value="11:00 AM">11:00 AM</option>
@@ -7727,11 +7681,11 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1">Payment Method</label>
-                  <select 
-                    value={appForm.paymentMethod} 
+                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Payment Method</label>
+                  <select
+                    value={appForm.paymentMethod}
                     onChange={e => setAppForm({ ...appForm, paymentMethod: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold"
                   >
                     <option value="Razorpay">Razorpay Gateway (Card/UPI)</option>
                     <option value="UPI">UPI Direct (GPay/PhonePe)</option>
@@ -7761,11 +7715,11 @@ function AdminDashboardContent() {
                 </div>
                 <h3 className="text-2xl font-serif font-bold text-white mt-1">{selectedEnquiry.name}</h3>
               </div>
-              <button 
+              <button
                 onClick={() => {
                   setIsEnquiryModalOpen(false);
                   setSelectedEnquiry(null);
-                }} 
+                }}
                 className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white cursor-pointer"
               >
                 ✕
@@ -7821,11 +7775,10 @@ function AdminDashboardContent() {
                     key={st}
                     disabled={isUpdatingEnquiry}
                     onClick={() => setSelectedEnquiry(prev => prev ? { ...prev, status: st } : null)}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-50 ${
-                      selectedEnquiry.status === st
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-50 ${selectedEnquiry.status === st
                         ? 'rosegold-gradient-bg text-dark-900 border-rosegold-400 shadow-md font-extrabold scale-105'
                         : 'bg-dark-800 text-gray-400 border-white/10 hover:text-white'
-                    }`}
+                      }`}
                   >
                     {st}
                   </button>
@@ -7885,7 +7838,7 @@ function AdminDashboardContent() {
       {showAiBriefModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
           <div className="w-full max-w-2xl glass-card p-6 rounded-3xl border border-rosegold-500/40 space-y-5 text-left max-h-[90vh] overflow-y-auto text-xs bg-dark-900">
-            
+
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center space-x-2">
                 <FileText className="w-5 h-5 text-rosegold-400" />
@@ -7902,7 +7855,7 @@ function AdminDashboardContent() {
 
               <h4 className="text-sm font-serif font-bold text-white">Executive Summary & Strategic Growth Directives</h4>
               <p className="text-gray-300 leading-relaxed text-xs">
-                This document is auto-compiled by the <strong>GPT-4o PowerBI Enterprise Analytics Engine</strong> for SPY Salon administration. 
+                This document is auto-compiled by the <strong>GPT-4o PowerBI Enterprise Analytics Engine</strong> for SPY Salon administration.
                 Data cross-analyzes live appointments, revenue streams, staff payroll, and customer retention metrics.
               </p>
 
@@ -8003,11 +7956,10 @@ function AdminDashboardContent() {
             </div>
 
             {leaveActionModal.msg && (
-              <div className={`p-3.5 rounded-2xl text-xs font-semibold border ${
-                leaveActionModal.msg.includes('APPROVED') || leaveActionModal.msg.includes('successfully')
+              <div className={`p-3.5 rounded-2xl text-xs font-semibold border ${leaveActionModal.msg.includes('APPROVED') || leaveActionModal.msg.includes('successfully')
                   ? 'bg-green-500/20 text-green-300 border-green-500/30'
                   : 'bg-red-500/20 text-red-300 border-red-500/30'
-              }`}>
+                }`}>
                 {leaveActionModal.msg}
               </div>
             )}
@@ -8023,13 +7975,12 @@ function AdminDashboardContent() {
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[10px]">Current Status</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase inline-block mt-0.5 ${
-                      leaveActionModal.leave.status === 'Approved'
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase inline-block mt-0.5 ${leaveActionModal.leave.status === 'Approved'
                         ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                         : leaveActionModal.leave.status === 'Rejected'
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-                    }`}>
+                          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                          : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                      }`}>
                       {leaveActionModal.leave.status}
                     </span>
                   </div>
@@ -8105,11 +8056,11 @@ function AdminDashboardContent() {
 
       {/* DAILY SCHEDULE POPUP MODAL (ROOT PORTAL LEVEL FOR FULL SCREEN COVERAGE) */}
       {isScheduleModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fadeIn"
           onClick={() => setIsScheduleModalOpen(false)}
         >
-          <div 
+          <div
             className="bg-[#181524] light:bg-white text-white light:text-dark-900 w-full max-w-4xl max-h-[90vh] rounded-3xl border-2 border-rosegold-500/50 light:border-rosegold-500/60 shadow-[0_25px_90px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-auto"
             onClick={(e) => e.stopPropagation()}
           >
@@ -8137,7 +8088,7 @@ function AdminDashboardContent() {
 
             {/* MODAL BODY */}
             <div className="p-6 overflow-y-auto custom-scrollbar space-y-6 flex-1 bg-[#12101b] light:bg-[#FFFDF9]">
-              
+
               {/* DATE METRICS SUMMARY GRID */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-2xl bg-[#1c182a] light:bg-white border border-white/10 light:border-rosegold-500/30 space-y-0.5 shadow-md">
@@ -8203,11 +8154,10 @@ function AdminDashboardContent() {
                     <button
                       key={st}
                       onClick={() => setCalStatusFilter(st)}
-                      className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer text-xs ${
-                        calStatusFilter === st
+                      className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer text-xs ${calStatusFilter === st
                           ? 'rosegold-gradient-bg !text-dark-900 light:!text-white shadow-sm font-extrabold'
                           : 'bg-dark-900 light:bg-gray-100 text-gray-300 light:text-dark-900 hover:text-white border border-white/5 light:border-gray-300 font-bold'
-                      }`}
+                        }`}
                     >
                       {st}
                     </button>
@@ -8223,7 +8173,7 @@ function AdminDashboardContent() {
                   </div>
                   <h4 className="!text-white light:!text-dark-900 font-serif font-bold text-lg">No Appointments Found</h4>
                   <p className="text-xs text-gray-400 light:text-gray-600 max-w-sm mx-auto">
-                    {calSearchQuery || calStatusFilter !== 'All' 
+                    {calSearchQuery || calStatusFilter !== 'All'
                       ? `No appointments match filters for ${formattedSelectedDate}.`
                       : `There are no appointments registered for ${formattedSelectedDate}.`}
                   </p>
@@ -8252,7 +8202,7 @@ function AdminDashboardContent() {
 
                   <div className="grid grid-cols-1 gap-3">
                     {filteredApps.map((app) => (
-                      <div 
+                      <div
                         key={app._id}
                         className="p-4 sm:p-5 rounded-2xl bg-[#1c182a] light:bg-white border border-rosegold-500/30 light:border-rosegold-500/40 hover:border-rosegold-400 transition-all shadow-lg space-y-3"
                       >
@@ -8273,24 +8223,22 @@ function AdminDashboardContent() {
                           </div>
 
                           <div className="flex items-center space-x-2 self-start sm:self-auto">
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold ${
-                              app.paymentStatus === 'Paid' ? 'bg-green-500/20 light:bg-green-100 text-green-400 light:text-green-800 border border-green-500/40 light:border-green-300' : 'bg-amber-500/20 light:bg-amber-100 text-amber-400 light:text-amber-800 border border-amber-500/40 light:border-amber-300'
-                            }`}>
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-mono font-bold ${app.paymentStatus === 'Paid' ? 'bg-green-500/20 light:bg-green-100 text-green-400 light:text-green-800 border border-green-500/40 light:border-green-300' : 'bg-amber-500/20 light:bg-amber-100 text-amber-400 light:text-amber-800 border border-amber-500/40 light:border-amber-300'
+                              }`}>
                               {app.paymentStatus === 'Paid' ? 'Paid ✅' : 'Payment Pending ⏳'}
                             </span>
 
                             <select
                               value={app.status}
                               onChange={(e) => handleUpdateAppStatus(app._id, e.target.value)}
-                              className={`px-3 py-1 rounded-full text-xs font-bold border focus:outline-none cursor-pointer bg-dark-900 light:bg-white text-white light:text-dark-900 border-white/20 light:border-gray-300 shadow-sm ${
-                                app.status === 'Completed'
+                              className={`px-3 py-1 rounded-full text-xs font-bold border focus:outline-none cursor-pointer bg-dark-900 light:bg-white text-white light:text-dark-900 border-white/20 light:border-gray-300 shadow-sm ${app.status === 'Completed'
                                   ? 'bg-green-500/20 light:bg-green-100 text-green-300 light:text-green-800 border-green-500/40 light:border-green-300'
                                   : app.status === 'In Progress'
-                                  ? 'bg-amber-500/20 light:bg-amber-100 text-amber-300 light:text-amber-800 border-amber-500/40 light:border-amber-300'
-                                  : app.status === 'Cancelled' || app.status === 'Staff_Rejected'
-                                  ? 'bg-red-500/20 light:bg-red-100 text-red-300 light:text-red-800 border-red-500/40 light:border-red-300'
-                                  : 'bg-purple-500/20 light:bg-purple-100 text-purple-300 light:text-purple-800 border-purple-500/40 light:border-purple-300'
-                              }`}
+                                    ? 'bg-amber-500/20 light:bg-amber-100 text-amber-300 light:text-amber-800 border-amber-500/40 light:border-amber-300'
+                                    : app.status === 'Cancelled' || app.status === 'Staff_Rejected'
+                                      ? 'bg-red-500/20 light:bg-red-100 text-red-300 light:text-red-800 border-red-500/40 light:border-red-300'
+                                      : 'bg-purple-500/20 light:bg-purple-100 text-purple-300 light:text-purple-800 border-purple-500/40 light:border-purple-300'
+                                }`}
                             >
                               {(() => {
                                 const allowed = (() => {
@@ -8435,11 +8383,10 @@ function AdminDashboardContent() {
       {/* ON-SCREEN TOAST NOTIFICATION POPUP */}
       {toast && (
         <div className="fixed top-6 right-6 z-[9999] animate-fadeIn flex items-center space-x-3 px-5 py-3.5 rounded-2xl bg-dark-900/95 border border-rosegold-500/50 shadow-2xl backdrop-blur-xl text-xs font-bold text-white max-w-md">
-          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${
-            toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-            toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
-            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-          }`}>
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${toast.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+              toast.type === 'error' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+            }`}>
             {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
           </div>
           <div className="flex-1 pr-2">

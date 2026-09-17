@@ -612,7 +612,7 @@ export default function Home() {
                       <span className="text-gray-500 text-xs line-through ml-1.5">{service.oldPrice}</span>
                     </div>
 
-                    <AnimatedButton className="px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-sm">
+                    <AnimatedButton className="view-details-btn px-4 py-2 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-sm">
                       <span className="!text-white font-extrabold text-xs flex items-center space-x-1">
                         <span>View Details</span>
                         <span>→</span>

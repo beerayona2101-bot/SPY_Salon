@@ -1,16 +1,19 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { validateForm, validateName, validateEmail, validatePhone, validatePassword, validateConfirmPassword } from '@/lib/validation';
 import { AnimatedButton } from '@/components/ui/animated-button';
 
-export default function RegisterPage() {
+function RegisterFormInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams?.get('redirect') || '';
+
   const { register } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -61,7 +64,8 @@ export default function RegisterPage() {
     if (res.success) {
       setSuccessMessage('Account created successfully! Redirecting to sign in page...');
       setTimeout(() => {
-        router.push(`/login?registered=true&email=${encodeURIComponent(formData.email)}`);
+        const redirectQuery = redirectTarget ? `&redirect=${encodeURIComponent(redirectTarget)}` : '';
+        router.push(`/login?registered=true&email=${encodeURIComponent(formData.email)}${redirectQuery}`);
       }, 1000);
     } else {
       setErrorMessage(res.message);
@@ -257,6 +261,18 @@ export default function RegisterPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[85vh] flex items-center justify-center">
+        <div className="text-rosegold-400 text-sm animate-pulse">Loading Account Registration Portal...</div>
+      </div>
+    }>
+      <RegisterFormInner />
+    </Suspense>
   );
 }
 

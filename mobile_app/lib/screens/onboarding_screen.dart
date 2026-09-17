@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/luxury_page_route.dart';
 import 'customer_dashboard_screen.dart';
-import 'employee_dashboard_screen.dart';
-import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final Widget? targetDashboard;
@@ -96,47 +93,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
 
-    final themeColors = AppColors.of(context);
+    _isNavigating = true;
 
-    Navigator.push(
+    // After onboarding is completed or skipped by a guest user, navigate directly to CustomerDashboardScreen (Home & Services)
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (ctx) => LoginScreen(
-          onLoginSuccess: () async {
-            final user = await ApiService.getStoredUser();
-            final role = (user?['role'] ?? 'customer').toString().toLowerCase();
-            final isAdmin = role == 'admin' || role == 'manager';
-            final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-            if (!mounted) return;
-
-            if (isAdmin) {
-              await ApiService.clearSession();
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: themeColors.error,
-                  content: const Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
-                ),
-              );
-              return;
-            }
-
-            if (isStaff) {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
-                (route) => false,
-              );
-            } else {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
-                (route) => false,
-              );
-            }
-          },
-        ),
+      LuxuryPageRoute(
+        page: const CustomerDashboardScreen(),
       ),
     );
   }

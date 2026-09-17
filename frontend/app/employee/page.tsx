@@ -1148,18 +1148,7 @@ function EmployeeDashboardContent() {
               )}
             </div>
 
-            {/* THEME TOGGLE BUTTON */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl bg-dark-800 border border-white/10 text-rosegold-400 hover:text-white hover:border-rosegold-500/40 transition-all cursor-pointer flex items-center justify-center mr-1"
-              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-purple-400" />
-              )}
-            </button>
+
 
             {shiftStatus === 'NOT_CLOCKED_IN' ? (
               <button
@@ -1790,46 +1779,46 @@ function EmployeeDashboardContent() {
           {/* TAB 5: LEAVE REQUESTS CRUD */}
           {activeTab === 'leaves' && (
             <div className="space-y-6 animate-fadeIn text-left">
-              <h2 className={`text-2xl font-bold font-serif ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>Leave Requests & Application Desk</h2>
+              <h2 className="text-2xl font-bold font-serif text-white">Leave Requests & Application Desk</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Submit New Leave Form */}
-                <form onSubmit={handleSubmitLeave} className={`p-6 rounded-3xl border space-y-4 text-xs ${theme === 'light' ? 'bg-amber-100/40 border-amber-900/20 shadow-md' : 'glass-card border-rosegold-500/30'}`}>
-                  <h3 className={`text-base font-serif font-bold ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>Apply for Leave</h3>
+                <form onSubmit={handleSubmitLeave} className="p-6 rounded-3xl border space-y-4 text-xs glass-card border-rosegold-500/30">
+                  <h3 className="text-base font-serif font-bold text-white">Apply for Leave</h3>
                   
                   <div>
-                    <label className={`font-bold block mb-1 uppercase text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>Start Date *</label>
+                    <label className="font-bold block mb-1 uppercase text-xs text-gray-300">Start Date *</label>
                     <input
                       type="date"
                       required
                       min={getTodayISTStr()}
                       value={leaveForm.startDate}
                       onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
-                      className={`w-full p-3 rounded-xl border text-xs font-bold ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800 border-white/10 text-white'}`}
+                      className="w-full p-3 rounded-xl border text-xs font-bold bg-dark-800 border-white/10 text-white"
                     />
                   </div>
 
                   <div>
-                    <label className={`font-bold block mb-1 uppercase text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>End Date *</label>
+                    <label className="font-bold block mb-1 uppercase text-xs text-gray-300">End Date *</label>
                     <input
                       type="date"
                       required
                       min={leaveForm.startDate || getTodayISTStr()}
                       value={leaveForm.endDate}
                       onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                      className={`w-full p-3 rounded-xl border text-xs font-bold ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800 border-white/10 text-white'}`}
+                      className="w-full p-3 rounded-xl border text-xs font-bold bg-dark-800 border-white/10 text-white"
                     />
                   </div>
 
                   <div>
-                    <label className={`font-bold block mb-1 uppercase text-xs ${theme === 'light' ? 'text-gray-900' : 'text-gray-300'}`}>Reason *</label>
+                    <label className="font-bold block mb-1 uppercase text-xs text-gray-300">Reason *</label>
                     <textarea
                       rows={3}
                       required
                       placeholder="e.g. Personal travel or medical appointment..."
                       value={leaveForm.reason}
                       onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
-                      className={`w-full p-3 rounded-xl border text-xs font-bold resize-none ${theme === 'light' ? 'bg-white text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800 border-white/10 text-white'}`}
+                      className="w-full p-3 rounded-xl border text-xs font-bold resize-none bg-dark-800 border-white/10 text-white"
                     />
                   </div>
 
@@ -1843,12 +1832,12 @@ function EmployeeDashboardContent() {
 
                 {/* Leaves History Table */}
                 <div className="md:col-span-2 space-y-3">
-                  <span className={`text-xs font-bold uppercase tracking-wider block ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-rosegold-400'}`}>Leave Application Status</span>
+                  <span className="text-xs font-bold uppercase tracking-wider block text-rosegold-400">Leave Application Status</span>
                   {leaves.map((leave) => (
-                    <div key={leave._id} className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${theme === 'light' ? 'bg-white text-gray-900 border-gray-300 shadow-sm' : 'glass-card border-rosegold-500/30'}`}>
+                    <div key={leave._id} className="p-4 rounded-2xl border flex items-center justify-between text-xs glass-card border-rosegold-500/30">
                       <div className="space-y-0.5">
-                        <span className={`font-bold block ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>{leave.startDate} to {leave.endDate}</span>
-                        <span className={`block ${theme === 'light' ? 'text-gray-800 font-semibold' : 'text-gray-400'}`}>Reason: {leave.reason}</span>
+                        <span className="font-bold block text-white">{leave.startDate} to {leave.endDate}</span>
+                        <span className="block text-gray-400">Reason: {leave.reason}</span>
                       </div>
                       <span className={`px-3 py-1 rounded-full font-bold text-[10px] uppercase ${
                         leave.status === 'Approved' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :

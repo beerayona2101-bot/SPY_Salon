@@ -122,8 +122,8 @@ function LoginPageInner() {
           <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white p-1 border-2 border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden animate-float">
             <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
           </div>
-          <h1 className={`text-3xl font-bold font-serif ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>Sign In to SPY Salon</h1>
-          <p className={`text-xs ${theme === 'light' ? 'text-gray-700 font-semibold' : 'text-gray-300'}`}>Enter your credentials below to access your account</p>
+          <h1 className="text-3xl font-bold font-serif text-white">Sign In to SPY Salon</h1>
+          <p className="text-xs text-gray-300">Enter your credentials below to access your account</p>
         </motion.div>
 
         {/* Login Form Card */}
@@ -131,12 +131,12 @@ function LoginPageInner() {
           initial={{ opacity: 0, y: 25, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.15 }}
-          className={`relative p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border ${theme === 'light' ? 'bg-white/95 border-amber-900/20 shadow-xl text-gray-900' : 'rosegold-glass-card border-rosegold-500/30'}`}
+          className="relative p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border rosegold-glass-card border-rosegold-500/30"
         >
           <ShineBorder
             borderWidth={2}
             duration={12}
-            shineColor={theme === 'light' ? ["#b89047", "#e6ca65", "#b89047"] : ["#e0a96d", "#c8848f", "#e0a96d"]}
+            shineColor={["#e0a96d", "#c8848f", "#e0a96d"]}
           />
           
           {/* Notifications */}
@@ -166,7 +166,7 @@ function LoginPageInner() {
             
             {/* Email Address */}
             <div className="space-y-1.5 text-left">
-              <label className={`text-xs uppercase font-bold block ${theme === 'light' ? 'text-gray-900' : 'text-gray-200'}`}>Email Address *</label>
+              <label className="text-xs uppercase font-bold block text-gray-200">Email Address *</label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-rosegold-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
@@ -175,7 +175,7 @@ function LoginPageInner() {
                   placeholder="Enter your registered email address"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-bold transition-colors focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-gray-100 text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800/90 border-white/20 text-white placeholder-gray-400'}`}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border text-sm font-bold transition-colors focus:outline-none focus:border-rosegold-500 bg-dark-800/90 border-white/20 text-white placeholder-gray-400"
                 />
               </div>
             </div>
@@ -183,8 +183,8 @@ function LoginPageInner() {
             {/* Password */}
             <div className="space-y-1.5 text-left">
               <div className="flex items-center justify-between">
-                <label className={`text-xs uppercase font-bold block ${theme === 'light' ? 'text-gray-900' : 'text-gray-200'}`}>Password *</label>
-                <Link href="/forgot-password" className={`text-[11px] font-bold hover:underline ${theme === 'light' ? 'text-amber-900' : 'text-rosegold-300'}`}>
+                <label className="text-xs uppercase font-bold block text-gray-200">Password *</label>
+                <Link href="/forgot-password" className="text-[11px] font-bold hover:underline text-rosegold-300">
                   Forgot password?
                 </Link>
               </div>
@@ -196,7 +196,7 @@ function LoginPageInner() {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`w-full pl-10 pr-10 py-3 rounded-xl border text-sm font-bold transition-colors focus:outline-none focus:border-rosegold-500 ${theme === 'light' ? 'bg-gray-100 text-gray-900 border-gray-400 focus:bg-white placeholder-gray-500' : 'bg-dark-800/90 border-white/20 text-white placeholder-gray-400'}`}
+                  className="w-full pl-10 pr-10 py-3 rounded-xl border text-sm font-bold transition-colors focus:outline-none focus:border-rosegold-500 bg-dark-800/90 border-white/20 text-white placeholder-gray-400"
                 />
                 <button
                   type="button"

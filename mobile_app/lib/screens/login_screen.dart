@@ -98,11 +98,15 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         } else if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
-            (route) => false,
-          );
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+              (route) => false,
+            );
+          }
         }
       } else {
         _showSnackBar(res['message']);
@@ -172,8 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
         _showSnackBar(res['message'], isError: false);
         widget.onLoginSuccess();
-        RealtimeService().connect();
-
         if (isStaff && mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -181,11 +183,15 @@ class _LoginScreenState extends State<LoginScreen> {
             (route) => false,
           );
         } else if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
-            (route) => false,
-          );
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (ctx) => const CustomerDashboardScreen()),
+              (route) => false,
+            );
+          }
         }
       } else {
         _showSnackBar(res['message']);

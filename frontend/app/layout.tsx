@@ -35,13 +35,8 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var savedTheme = localStorage.getItem('spy_theme');
-                  var theme = savedTheme === 'light' ? 'light' : 'dark';
-                  if (theme === 'light') {
-                    document.documentElement.classList.add('light');
-                  } else {
-                    document.documentElement.classList.remove('light');
-                  }
+                  localStorage.setItem('spy_theme', 'dark');
+                  document.documentElement.classList.remove('light');
                 } catch (e) {}
               })();
             `

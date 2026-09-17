@@ -5,8 +5,6 @@ import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
 import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
-import 'employee_dashboard_screen.dart';
-import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'update_password_screen.dart';
 
@@ -478,42 +476,7 @@ class SettingsScreen extends StatelessWidget {
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
-                          builder: (ctx) => LoginScreen(
-                            onLoginSuccess: () async {
-                              final user = await ApiService.getStoredUser();
-                              final role = (user?['role'] ?? 'customer').toString().toLowerCase();
-                              final isAdmin = role == 'admin' || role == 'manager';
-                              final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-                              if (!ctx.mounted) return;
-
-                              if (isAdmin) {
-                                await ApiService.clearSession();
-                                if (!ctx.mounted) return;
-                                ScaffoldMessenger.of(ctx).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: colors.error,
-                                    content: const Text('Admin access is not available in the mobile app. Please use the Web Admin Portal.'),
-                                  ),
-                                );
-                                return;
-                              }
-
-                              if (isStaff) {
-                                Navigator.pushAndRemoveUntil(
-                                  ctx,
-                                  MaterialPageRoute(builder: (c) => const EmployeeDashboardScreen()),
-                                  (route) => false,
-                                );
-                              } else {
-                                Navigator.pushAndRemoveUntil(
-                                  ctx,
-                                  MaterialPageRoute(builder: (c) => const CustomerDashboardScreen()),
-                                  (route) => false,
-                                );
-                              }
-                            },
-                          ),
+                          builder: (ctx) => const CustomerDashboardScreen(),
                         ),
                         (route) => false,
                       );

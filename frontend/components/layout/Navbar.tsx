@@ -34,13 +34,12 @@ import { AnimatedButton } from '@/components/ui/animated-button';
 import { motion, AnimatePresence } from 'framer-motion';
 import VIPBadge from '@/components/common/VIPBadge';
 import ProfileAvatar from '@/components/common/ProfileAvatar';
-import { AnimatedThemeToggler } from '@/registry/magicui/animated-theme-toggler';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNavVisible, setIsNavVisible] = useState(true);
   const { user, logout } = useAuth();
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const { socket } = useSocket();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
@@ -371,7 +370,7 @@ export default function Navbar() {
                   <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className={`font-serif text-sm sm:text-lg md:text-xl font-bold tracking-widest leading-none ${theme === 'light' ? 'text-gray-900 font-extrabold' : 'text-white'}`}>
+                  <span className="font-serif text-sm sm:text-lg md:text-xl font-bold tracking-widest leading-none text-white">
                     SPY <span className="rosegold-gradient-text font-bold">SALON</span>
                   </span>
                   <span className="text-[7.5px] sm:text-[9px] tracking-[0.15em] sm:tracking-[0.2em] text-rosegold-500 uppercase font-sans mt-0.5 font-bold truncate max-w-[130px] sm:max-w-none">
@@ -381,21 +380,21 @@ export default function Navbar() {
               </Link>
 
               {/* Desktop Nav Links */}
-              <div className={`hidden md:flex items-center space-x-1 p-1.5 rounded-full border backdrop-blur-xl shadow-inner ${theme === 'light' ? 'bg-white/90 border-amber-900/20' : 'bg-dark-800/80 border-rosegold-500/20'}`}>
-                <Link href="/" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+              <div className="hidden md:flex items-center space-x-1 p-1.5 rounded-full border backdrop-blur-xl shadow-inner bg-dark-800/80 border-rosegold-500/20">
+                <Link href="/" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>
                   <span className="relative z-10 pointer-events-none">Home</span>
                 </Link>
-                <Link href="/services" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/services' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                <Link href="/services" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/services' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>
                   <span className="relative z-10 pointer-events-none">Services</span>
                 </Link>
-                <Link href="/pricing" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${isPricingOrOffersActive ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                <Link href="/pricing" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${isPricingOrOffersActive ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>
                   <span className="relative z-10 pointer-events-none">Pricing</span>
                 </Link>
-                <Link href="/contact" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/contact' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                <Link href="/contact" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/contact' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>
                   <span className="relative z-10 pointer-events-none">Contact</span>
                 </Link>
                 {isCustomerUser && (
-                  <Link href="/history" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/history' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : (theme === 'light' ? 'text-gray-900 font-bold hover:text-amber-800' : 'text-gray-300 hover:text-white hover:bg-white/10')}`}>
+                  <Link href="/history" className={`relative px-3.5 py-2 rounded-full text-xs font-semibold tracking-wide transition-all duration-200 overflow-hidden inline-flex items-center justify-center ${pathname === '/history' ? 'rosegold-gradient-bg !text-white font-extrabold shadow-md' : 'text-gray-300 hover:text-white hover:bg-white/10'}`}>
                     <span className="relative z-10 pointer-events-none">History</span>
                   </Link>
                 )}
@@ -403,25 +402,15 @@ export default function Navbar() {
 
               {/* Notification Bell Icon & Profile Avatar / Executive Desk Button - Right Action Group */}
               <div className="flex items-center space-x-1.5 sm:space-x-2.5 shrink-0">
-                
-                {/* THEME TOGGLE BUTTON */}
-                <AnimatedThemeToggler
-                  theme={theme}
-                  onThemeChange={setTheme}
-                />
 
                 {/* UNIVERSAL REAL-TIME NOTIFICATION BELL */}
                 <div className="relative" ref={notifRef}>
                     <button
                       onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
                       className={`p-1.5 sm:p-2 rounded-full border notif-bell-btn transition-all cursor-pointer relative shadow-sm ${
-                        theme === 'light'
-                          ? (user && unreadCount > 0 
-                              ? 'bg-amber-100 border-amber-600 text-[#390614] ring-2 ring-amber-500/40 shadow-md' 
-                              : 'bg-white border-amber-900/20 text-[#390614] hover:bg-amber-50 hover:border-amber-700/50')
-                          : (user && unreadCount > 0 
-                              ? 'bg-dark-800 border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
-                              : 'bg-dark-800 border-white/10 text-rosegold-400 hover:border-rosegold-500/40 hover:text-white')
+                        user && unreadCount > 0 
+                          ? 'bg-dark-800 border-rosegold-400 animate-pulse shadow-glow-rosegold text-white ring-2 ring-rosegold-500/50' 
+                          : 'bg-dark-800 border-white/10 text-rosegold-400 hover:border-rosegold-500/40 hover:text-white'
                       }`}
                       title="Real-Time Notifications & System Alerts"
                     >

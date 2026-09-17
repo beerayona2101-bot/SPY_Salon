@@ -546,6 +546,43 @@ class ApiService {
     return await getStoredUser();
   }
 
+  /// Update current user profile at PUT /api/v1/auth/profile
+  static Future<bool> updateProfile({
+    String? name,
+    String? phone,
+    String? email,
+    String? dob,
+    String? gender,
+  }) async {
+    try {
+      final bodyMap = <String, dynamic>{};
+      if (name != null) bodyMap['name'] = name;
+      if (phone != null) bodyMap['phone'] = phone;
+      if (email != null) bodyMap['email'] = email;
+      if (dob != null) bodyMap['dob'] = dob;
+      if (gender != null) bodyMap['gender'] = gender;
+
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/auth/profile',
+        body: json.encode(bodyMap),
+      );
+
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        final data = json.decode(response.body);
+        final userObj = data['data']?['user'] ?? data['user'] ?? data['data'];
+        if (userObj != null && userObj is Map<String, dynamic>) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_data', json.encode(userObj));
+        }
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Update profile error: $e');
+    }
+    return true;
+  }
+
   /// Get stored session token
   static Future<String?> getStoredToken() async {
     try {
@@ -726,6 +763,22 @@ class ApiService {
       debugPrint('[ApiService] Offers fetch notice: $e');
     }
     return _fallbackOffers;
+  }
+
+  /// Fetch Landing Settings from `/api/v1/landing-settings`
+  static Future<Map<String, dynamic>?> getLandingSettings() async {
+    try {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/landing-settings');
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['success'] == true && data['data'] != null) {
+          return Map<String, dynamic>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Landing settings fetch error: $e');
+    }
+    return null;
   }
 
   /// Book Salon Appointment (Public & Customer API)

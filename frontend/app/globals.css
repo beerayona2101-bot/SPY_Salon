@@ -38,7 +38,24 @@
   z-index: 1;
 }
 
-html, body, *, input, select, textarea, button, td, th, h1, h2, h3, h4, h5, h6, .font-sans, .font-serif, .font-mono {
+html,
+body,
+*,
+input,
+select,
+textarea,
+button,
+td,
+th,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-sans,
+.font-serif,
+.font-mono {
   font-family: var(--font-poppins), 'Poppins', sans-serif !important;
 }
 
@@ -51,12 +68,21 @@ body {
   scroll-behavior: smooth;
 }
 
-h1, h2, h3, h4, h5, h6, .font-serif, .font-sans, .font-mono {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-serif,
+.font-sans,
+.font-mono {
   font-family: var(--font-poppins), 'Poppins', sans-serif !important;
 }
 
 /* Date Picker High Visibility & Dark Mode Override */
-input[type="date"], input[type="time"] {
+input[type="date"],
+input[type="time"] {
   color-scheme: dark;
   color: #FFFFFF !important;
   background-color: #14141E !important;
@@ -70,6 +96,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.95;
   width: 20px;
   height: 20px;
+}
+
+/* Light Mode Form Labels & Field Headings High Visibility Contract */
+html.light label,
+html.light .glass-card label,
+html.light .glass-panel label,
+html.light label.text-gray-300,
+html.light label.text-gray-400,
+html.light label.text-gray-500,
+html.light label.text-slate-400,
+html.light label.text-stone-300,
+html.light .procedure-step-label,
+html.light .procedure-steps-title,
+html.light .procedure-steps-title span,
+html.light .procedure-steps-container span {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
 }
 
 /* Responsive Container Card Overflow Fix for Mobile & iPad/Tablets */
@@ -153,12 +196,15 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
-input, select, textarea {
+input,
+select,
+textarea {
   max-width: 100%;
   box-sizing: border-box;
 }
 
-img, video {
+img,
+video {
   max-width: 100%;
   height: auto;
 }
@@ -294,13 +340,13 @@ a.rosegold-gradient-bg:hover * {
   visibility: visible !important;
 }
 
-.spy-btn-anim > *,
-.rosegold-gradient-bg > *,
-.gold-gradient-bg > *,
-.purple-gradient-bg > *,
-.hero-cta-btn > *,
-button.rosegold-gradient-bg > *,
-a.rosegold-gradient-bg > *,
+.spy-btn-anim>*,
+.rosegold-gradient-bg>*,
+.gold-gradient-bg>*,
+.purple-gradient-bg>*,
+.hero-cta-btn>*,
+button.rosegold-gradient-bg>*,
+a.rosegold-gradient-bg>*,
 span.rosegold-gradient-bg,
 .rosegold-gradient-bg span,
 button.rosegold-gradient-bg span,
@@ -442,6 +488,246 @@ html:not(.light) .glass-card:hover button svg:not(.brand-profile-avatar *) {
 }
 
 /* ==========================================================================
+   MASTER PERMANENT LIGHT-MODE INTERACTIVE HOVER & CONTRAST CONTRACT
+   ========================================================================== */
+
+/* Guaranteed Light-Mode Button & Control Hover Contrast (Black / Charcoal Text & Icons) */
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.nav-menu-toggle-btn):not([title*="Navigation Menu"]):hover,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):not(.nav-menu-toggle-btn):not([title*="Navigation Menu"]):hover,
+html.light [role="button"]:not(.nav-menu-toggle-btn):not([title*="Navigation Menu"]):hover,
+html.light .sidebar-link:hover,
+html.light aside a:hover,
+html.light aside button:hover,
+html.light nav a:hover,
+html.light nav button:not(.nav-menu-toggle-btn):not([title*="Navigation Menu"]):hover {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* Navigation Menu Button & Symbol Hover Contract - Pure White Text & Icon on Hover */
+.nav-menu-toggle-btn:hover,
+.nav-menu-toggle-btn:hover *,
+.nav-menu-toggle-btn:hover span,
+.nav-menu-toggle-btn:hover svg,
+html.light .nav-menu-toggle-btn:hover,
+html.light .nav-menu-toggle-btn:hover *,
+html.light .nav-menu-toggle-btn:hover span,
+html.light .nav-menu-toggle-btn:hover svg,
+button[title*="Navigation Menu"]:hover,
+button[title*="Navigation Menu"]:hover *,
+button[title*="Navigation Menu"]:hover span,
+button[title*="Navigation Menu"]:hover svg {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* CSV & Export Report Buttons High Visibility Contract (Light Mode) */
+html.light .csv-export-btn,
+html.light button.csv-export-btn,
+html.light .csv-export-btn *,
+html.light button.csv-export-btn * {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  stroke: #111827 !important;
+}
+
+html.light .csv-export-btn:hover,
+html.light button.csv-export-btn:hover,
+html.light .csv-export-btn:hover *,
+html.light button.csv-export-btn:hover * {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  stroke: #000000 !important;
+  background-color: #F3F4F6 !important;
+  border-color: #D1D5DB !important;
+}
+
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover span:not(.brand-profile-avatar *),
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover p,
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h1,
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h2,
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h3,
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h4,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover span:not(.brand-profile-avatar *),
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover p,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h1,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h2,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h3,
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover h4,
+html.light [role="button"]:hover span,
+html.light aside a:hover span,
+html.light aside button:hover span,
+html.light nav a:hover span,
+html.light nav button:hover span,
+html.light .glass-card:hover h1,
+html.light .glass-card:hover h2,
+html.light .glass-card:hover h3,
+html.light .glass-card:hover h4,
+html.light .glass-card:hover h5,
+html.light .glass-card:hover h6,
+html.light .glass-card:hover p,
+html.light .glass-card:hover span:not(.view-details-btn *):not(.rosegold-gradient-bg *):not(button *) {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+html.light button:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover svg:not(.brand-profile-avatar *),
+html.light a:not(.rosegold-gradient-bg):not(.gold-gradient-bg):not(.purple-gradient-bg):hover svg:not(.brand-profile-avatar *),
+html.light [role="button"]:hover svg,
+html.light aside a:hover svg,
+html.light aside button:hover svg,
+html.light nav a:hover svg,
+html.light nav button:hover svg {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* "View Details" Button & Gradient Buttons Pure White Text Override (Absolute Priority) */
+.view-details-btn,
+.view-details-btn *,
+.view-details-btn span,
+.view-details-btn:hover,
+.view-details-btn:hover *,
+.view-details-btn:hover span,
+.glass-card:hover .view-details-btn,
+.glass-card:hover .view-details-btn *,
+.glass-card:hover .view-details-btn span,
+html.light .view-details-btn,
+html.light .view-details-btn *,
+html.light .view-details-btn span,
+html.light .view-details-btn:hover,
+html.light .view-details-btn:hover *,
+html.light .view-details-btn:hover span,
+html.light .glass-card:hover .view-details-btn,
+html.light .glass-card:hover .view-details-btn *,
+html.light .glass-card:hover .view-details-btn span,
+html.light .glass-card:hover button.rosegold-gradient-bg,
+html.light .glass-card:hover button.rosegold-gradient-bg *,
+html.light .glass-card:hover button.rosegold-gradient-bg span,
+html.light .glass-card:hover .rosegold-gradient-bg,
+html.light .glass-card:hover .rosegold-gradient-bg * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* ==========================================================================
+   LIGHT MODE FOOTER VISIBILITY & CONTRAST CONTRACT
+   ========================================================================== */
+
+/* ==========================================================================
+   LIGHT MODE FOOTER ABSOLUTE PURE BLACK FONT CONTRACT
+   ========================================================================== */
+
+html.light footer,
+html.light .footer-desc-text,
+html.light .footer-hours-title,
+html.light .footer-hours-value,
+html.light .footer-address-text,
+html.light .footer-email-text,
+html.light .footer-copyright-text,
+html.light .footer-vip-title,
+html.light .footer-vip-desc,
+html.light .footer-brand-title,
+html.light .footer-section-title,
+html.light .footer-link-item,
+html.light .footer-phone-text,
+html.light .footer-legal-link,
+html.light footer p,
+html.light footer span:not(.rosegold-gradient-text),
+html.light footer div,
+html.light footer li,
+html.light footer a:not(:hover),
+html.light footer h4 {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+html.light footer {
+  background-color: #FAF7F2 !important;
+  border-top-color: rgba(140, 98, 40, 0.3) !important;
+}
+
+html.light footer .rosegold-gradient-text {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+html.light footer h4,
+html.light .footer-section-title {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+  font-weight: 900 !important;
+  border-bottom-color: rgba(140, 98, 40, 0.4) !important;
+}
+
+html.light .footer-brand-since {
+  color: #78350F !important;
+  -webkit-text-fill-color: #78350F !important;
+  font-weight: 800 !important;
+}
+
+html.light footer svg:not(a.w-9:hover svg) {
+  color: #78350F !important;
+  stroke: #78350F !important;
+  opacity: 1 !important;
+}
+
+html.light footer a:hover,
+html.light footer a:hover *,
+html.light .footer-link-item:hover,
+html.light .footer-legal-link:hover,
+html.light .footer-phone-text:hover {
+  color: #92400E !important;
+  -webkit-text-fill-color: #92400E !important;
+}
+
+html.light footer a.w-9,
+html.light .footer-social-btn {
+  background-color: #F0ECE1 !important;
+  border-color: rgba(140, 98, 40, 0.3) !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+html.light footer a.w-9:hover,
+html.light footer a.w-9:hover *,
+html.light .footer-social-btn:hover {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #000000 !important;
+}
+
+html.light footer a.w-9:hover svg,
+html.light .footer-social-btn:hover svg {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
+
+html.light footer .bg-dark-800\/90,
+html.light footer div[class*="bg-dark-800"],
+html.light footer div[class*="bg-dark-900"] {
+  background-color: #F0ECE1 !important;
+  border-color: rgba(140, 98, 40, 0.3) !important;
+}
+
+html.light footer .border-t,
+html.light footer div[class*="border-t"] {
+  border-top-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* ==========================================================================
    MASTER NOTIFICATION BELL BUTTON CONTRAST & HOVER CONTRACT
    ========================================================================== */
 
@@ -547,9 +833,12 @@ html.light select option:checked {
 
 /* Premium Cinematic Ken Burns Motion Effect */
 @keyframes kenBurns {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1.0) translateZ(0);
   }
+
   50% {
     transform: scale(1.08) translateZ(0);
   }
@@ -570,28 +859,63 @@ html.light select option:checked {
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px) translateZ(0); }
-  50% { transform: translateY(-8px) translateZ(0); }
+
+  0%,
+  100% {
+    transform: translateY(0px) translateZ(0);
+  }
+
+  50% {
+    transform: translateY(-8px) translateZ(0);
+  }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 15px rgba(224, 169, 109, 0.25); }
-  50% { box-shadow: 0 0 35px rgba(224, 169, 109, 0.65); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(224, 169, 109, 0.25);
+  }
+
+  50% {
+    box-shadow: 0 0 35px rgba(224, 169, 109, 0.65);
+  }
 }
 
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes ambientGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1) translateZ(0); }
-  50% { opacity: 0.75; transform: scale(1.08) translateZ(0); }
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1) translateZ(0);
+  }
+
+  50% {
+    opacity: 0.75;
+    transform: scale(1.08) translateZ(0);
+  }
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px) translateZ(0); }
-  to { opacity: 1; transform: translateY(0) translateZ(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) translateZ(0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
 }
 
 .animate-float {
@@ -609,7 +933,7 @@ html.light select option:checked {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,242,226,0.25) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 242, 226, 0.25) 50%, rgba(255, 255, 255, 0) 100%);
   background-size: 200% 100%;
   animation: shimmer 3s infinite;
 }
@@ -651,9 +975,21 @@ html.light select option:checked {
 }
 
 @keyframes shakeError {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-6px); }
-  40%, 80% { transform: translateX(6px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
 }
 
 .animate-shake {
@@ -661,8 +997,15 @@ html.light select option:checked {
 }
 
 @keyframes floatGentle {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-6px) rotate(1deg); }
+
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-6px) rotate(1deg);
+  }
 }
 
 .animate-float-gentle {
@@ -689,12 +1032,10 @@ html.light select option:checked {
   left: -60%;
   width: 50%;
   height: 200%;
-  background: linear-gradient(
-    60deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 242, 226, 0.3) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(60deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 242, 226, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%);
   transform: rotate(30deg);
   transition: left 0.6s ease-in-out;
   pointer-events: none;
@@ -712,19 +1053,29 @@ html.light select option:checked {
   background: transparent;
 }
 
-html, body, * {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+html,
+body,
+* {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 /* DEFAULT DARK MODE VARIABLES (LOGO-INSPIRED & SEMANTIC CONTRAST TOKENS) */
 :root {
-  --color-dark-950: #0E0B09; /* Deep warm espresso charcoal */
-  --color-dark-900: #13100E; /* Luxurious dark chocolate */
-  --color-dark-850: #191512; /* Warm bronze card background */
-  --color-dark-800: #221C18; /* Warm dark espresso panels/inputs */
-  --color-dark-700: #2F2722; /* Soft warm gold-espresso borders */
-  --color-dark-600: #3F342D; /* Brighter gold highlighting borders */
+  --color-dark-950: #0E0B09;
+  /* Deep warm espresso charcoal */
+  --color-dark-900: #13100E;
+  /* Luxurious dark chocolate */
+  --color-dark-850: #191512;
+  /* Warm bronze card background */
+  --color-dark-800: #221C18;
+  /* Warm dark espresso panels/inputs */
+  --color-dark-700: #2F2722;
+  /* Soft warm gold-espresso borders */
+  --color-dark-600: #3F342D;
+  /* Brighter gold highlighting borders */
 
   /* Semantic Interactive Tokens - Dark Theme */
   --spy-text-primary: #F8F3EC;
@@ -739,7 +1090,7 @@ html, body, * {
 
 .light {
   color-scheme: light;
-  
+
   /* Brand Luxury Light Palette Tokens */
   --wine-dark: #2B0C15;
   --burgundy-dark: #390614;
@@ -753,17 +1104,24 @@ html, body, * {
   --cream: #FAF7F2;
   --beige: #D5C2B4;
   --white: #FFFFFF;
-  --text-dark: #1E1B18; /* Rich Charcoal-Black for crisp readability */
-  --text-muted: #4A443E; /* Warm Muted Charcoal for descriptions */
+  --text-dark: #1E1B18;
+  /* Rich Charcoal-Black for crisp readability */
+  --text-muted: #4A443E;
+  /* Warm Muted Charcoal for descriptions */
   --spy-btn-base-bg: linear-gradient(135deg, #390614 0%, #4D1526 50%, #B8860B 100%);
   --spy-btn-hover-shade: linear-gradient(135deg, #1C070E 0%, #2B0C15 50%, #8C6228 100%);
 
   /* Standard Tailwind colors mapped to custom palette */
-  --color-dark-950: #FFFFFF; /* Pure White Card background */
-  --color-dark-900: #FAF7F2; /* Soft Warm Alabaster Cream page background */
-  --color-dark-850: #F3ECE2; /* Soft Cream Panel background */
-  --color-dark-800: #FFFFFF; /* Crisp White for cards, sub-panels & inputs */
-  --color-dark-700: #E6D9CB; /* Soft Champagne borders */
+  --color-dark-950: #FFFFFF;
+  /* Pure White Card background */
+  --color-dark-900: #FAF7F2;
+  /* Soft Warm Alabaster Cream page background */
+  --color-dark-850: #F3ECE2;
+  /* Soft Cream Panel background */
+  --color-dark-800: #FFFFFF;
+  /* Crisp White for cards, sub-panels & inputs */
+  --color-dark-700: #E6D9CB;
+  /* Soft Champagne borders */
   --font-sans: var(--font-poppins), 'Poppins', sans-serif;
   --font-serif: var(--font-poppins), 'Poppins', sans-serif;
   --font-mono: var(--font-poppins), 'Poppins', sans-serif;
@@ -776,7 +1134,10 @@ html, body, * {
   letter-spacing: -0.012em;
 }
 
-.light h1:not(.hero-title-text), .light h2, .light h3, .light .font-serif:not(.hero-title-text):not(.hero-subtitle-text):not(.hero-title-text *):not(.hero-subtitle-text *) {
+.light h1:not(.hero-title-text),
+.light h2,
+.light h3,
+.light .font-serif:not(.hero-title-text):not(.hero-subtitle-text):not(.hero-title-text *):not(.hero-subtitle-text *) {
   font-weight: 750;
   color: var(--wine-dark);
   letter-spacing: 0.015em;
@@ -1012,7 +1373,8 @@ html.light .rosegold-glass-card .brand-identity-tag,
 /* Light Mode Skill Badges & Status Contrast Fixes */
 .light .text-purple-200,
 .light .text-purple-300 {
-  color: #581C87 !important; /* Deep rich purple for skill badges */
+  color: #581C87 !important;
+  /* Deep rich purple for skill badges */
   font-weight: 700 !important;
 }
 
@@ -1030,13 +1392,15 @@ html.light .rosegold-glass-card .brand-identity-tag,
 .light .text-amber-200,
 .light .text-amber-300,
 .light .text-amber-400 {
-  color: #92400E !important; /* Deep rich amber */
+  color: #92400E !important;
+  /* Deep rich amber */
   font-weight: 700 !important;
 }
 
 .light .text-green-200,
 .light .text-green-300 {
-  color: #14532D !important; /* Deep forest green */
+  color: #14532D !important;
+  /* Deep forest green */
   font-weight: 700 !important;
 }
 
@@ -1054,7 +1418,8 @@ html.light .rosegold-glass-card .brand-identity-tag,
 .light .text-red-200,
 .light .text-red-300,
 .light .text-red-400 {
-  color: #991B1B !important; /* Deep rich crimson red */
+  color: #991B1B !important;
+  /* Deep rich crimson red */
   font-weight: 700 !important;
 }
 
@@ -1069,6 +1434,129 @@ html.light .rosegold-glass-card .brand-identity-tag,
   background-color: rgba(197, 157, 92, 0.18) !important;
   border-color: rgba(197, 157, 92, 0.45) !important;
 }
+
+/* ==========================================================================
+   MASTER LIGHT MODE FORM CONTROLS, INPUT, SELECT & TEXTAREA VISIBILITY CONTRACT
+   ========================================================================== */
+
+html.light input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+html.light select,
+html.light textarea,
+.light input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]),
+.light select,
+.light textarea {
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: #FAF6F0 !important;
+  border-color: rgba(184, 134, 11, 0.3) !important;
+  font-weight: 500 !important;
+}
+
+html.light input:focus,
+html.light select:focus,
+html.light textarea:focus,
+.light input:focus,
+.light select:focus,
+.light textarea:focus {
+  background-color: #FFFFFF !important;
+  border-color: #B8860B !important;
+  box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.2) !important;
+}
+
+/* Light Mode Input & Textarea Placeholder Text Visibility */
+html.light input::placeholder,
+html.light textarea::placeholder,
+.light input::placeholder,
+.light textarea::placeholder {
+  color: #6B7280 !important;
+  -webkit-text-fill-color: #6B7280 !important;
+  opacity: 0.85 !important;
+}
+
+/* Light Mode Form Labels & Field Guidance Text Visibility */
+html.light label,
+.light label {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+html.light label.text-gray-300,
+html.light label.text-gray-400,
+.light label.text-gray-300,
+.light label.text-gray-400 {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+/* Light Mode Select Option Dropdown Text Visibility */
+html.light select option,
+.light select option {
+  background-color: #FFFFFF !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+}
+
+html.light select option:hover,
+html.light select option:focus,
+html.light select option:checked,
+.light select option:hover,
+.light select option:focus,
+.light select option:checked {
+  background-color: #F3ECE2 !important;
+  color: #390614 !important;
+  -webkit-text-fill-color: #390614 !important;
+}
+
+/* Light Mode Date, Time & Month Picker Override */
+html.light input[type="date"],
+html.light input[type="time"],
+html.light input[type="month"],
+.light input[type="date"],
+.light input[type="time"],
+.light input[type="month"] {
+  color-scheme: light !important;
+  color: #111827 !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: #FAF6F0 !important;
+}
+
+html.light input[type="date"]::-webkit-calendar-picker-indicator,
+html.light input[type="time"]::-webkit-calendar-picker-indicator,
+html.light input[type="month"]::-webkit-calendar-picker-indicator,
+.light input[type="date"]::-webkit-calendar-picker-indicator,
+.light input[type="time"]::-webkit-calendar-picker-indicator,
+.light input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: none !important;
+  opacity: 0.85;
+}
+
+/* Light Mode Modal Backdrop & Container High Contrast Adjustments */
+html.light .glass-card h3,
+html.light .glass-card h4,
+.light .glass-card h3,
+.light .glass-card h4 {
+  color: #1E1B18 !important;
+  -webkit-text-fill-color: #1E1B18 !important;
+}
+
+html.light .glass-card p.text-gray-400,
+html.light .glass-card span.text-gray-400,
+.light .glass-card p.text-gray-400,
+.light .glass-card span.text-gray-400 {
+  color: #4B5563 !important;
+  -webkit-text-fill-color: #4B5563 !important;
+}
+
+html.light .glass-card button.text-gray-400,
+.light .glass-card button.text-gray-400 {
+  color: #4B5563 !important;
+}
+
+html.light .glass-card button.text-gray-400:hover,
+.light .glass-card button.text-gray-400:hover {
+  color: #111827 !important;
+}
+
 
 
 
@@ -1676,6 +2164,7 @@ html.loading-active #main-layout-content {
   0% {
     background-position: -200% 0;
   }
+
   100% {
     background-position: 200% 0;
   }
@@ -1728,9 +2217,11 @@ html.no-initial-loader .initial-loader {
     left: -40%;
     width: 30%;
   }
+
   50% {
     width: 60%;
   }
+
   100% {
     left: 100%;
     width: 30%;
@@ -1746,7 +2237,11 @@ body {
 }
 
 /* Prevent image distortions */
-img, video, iframe, embed, object {
+img,
+video,
+iframe,
+embed,
+object {
   max-width: 100%;
   height: auto;
 }
@@ -1816,13 +2311,16 @@ img, video, iframe, embed, object {
   .initial-loader-content {
     padding: 1rem !important;
   }
+
   .initial-loader-logo {
     width: 250px !important;
     margin-bottom: 1.75rem !important;
   }
+
   .initial-loader-pillars {
     padding-top: 1.5rem !important;
   }
+
   .initial-loader-pillar-label {
     font-size: 7.5px !important;
     letter-spacing: 0.05em !important;
@@ -2166,8 +2664,8 @@ html.light header nav a:not(.rosegold-gradient-bg):hover {
   color: #390614 !important;
 }
 
-html.light .relative input + svg,
-html.light input + svg {
+html.light .relative input+svg,
+html.light input+svg {
   color: #7A4B1A !important;
   stroke: #7A4B1A !important;
 }
@@ -2294,9 +2792,11 @@ html.light .fixed.inset-0 .glass-panel button.text-gray-400:hover {
   0% {
     background-position: 0% 0%;
   }
+
   50% {
     background-position: 100% 100%;
   }
+
   100% {
     background-position: 0% 0%;
   }
@@ -2499,12 +2999,14 @@ html.light section.hero-section-container a.hero-secondary-btn svg,
 .text-green-300,
 .text-emerald-400,
 .text-emerald-300 {
-  color: #6ee7b7 !important; /* Soft muted sage emerald */
+  color: #6ee7b7 !important;
+  /* Soft muted sage emerald */
 }
 
 .bg-green-500,
 .bg-emerald-500 {
-  background-color: #065f46 !important; /* Deep matte luxury emerald */
+  background-color: #065f46 !important;
+  /* Deep matte luxury emerald */
   color: #ecfdf5 !important;
   box-shadow: none !important;
 }
@@ -2529,7 +3031,8 @@ html.light section.hero-section-container a.hero-secondary-btn svg,
     margin: 0;
   }
 
-  html, body {
+  html,
+  body {
     background: #ffffff !important;
     color: #0e0b09 !important;
     width: 210mm !important;
@@ -2583,5 +3086,3 @@ html.light section.hero-section-container a.hero-secondary-btn svg,
     visibility: hidden !important;
   }
 }
-
-

@@ -255,7 +255,7 @@ function ServicesContent() {
                         e.stopPropagation();
                         router.push(`/services/${service.id}`);
                       }} 
-                      className="px-4 py-2.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-md cursor-pointer"
+                      className="view-details-btn px-4 py-2.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-md cursor-pointer"
                     >
                       <span className="!text-white font-extrabold text-xs tracking-wide flex items-center space-x-1">
                         <span>View Details</span>
@@ -382,7 +382,7 @@ function ServicesContent() {
                 <div className="space-y-2 pt-4 border-t border-white/10">
                   <button
                     onClick={() => router.push(`/membership/${m.code || m._id}`)}
-                    className="w-full py-2.5 rounded-full bg-dark-900 text-gray-300 font-bold text-xs border border-white/10 hover:text-white hover:bg-rosegold-500/25 hover:border-rosegold-400 transition-all cursor-pointer"
+                    className="view-details-btn w-full py-2.5 rounded-full bg-dark-900 text-white font-bold text-xs border border-white/10 hover:text-white hover:bg-rosegold-500/25 hover:border-rosegold-400 transition-all cursor-pointer"
                   >
                     View Details
                   </button>
