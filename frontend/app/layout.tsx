@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} ${poppins.className}`} suppressHydrationWarning>
+    <html lang="en" className={`dark ${poppins.variable} ${poppins.className}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -36,6 +36,7 @@ export default function RootLayout({
               (function() {
                 try {
                   localStorage.setItem('spy_theme', 'dark');
+                  document.documentElement.classList.add('dark');
                   document.documentElement.classList.remove('light');
                 } catch (e) {}
               })();

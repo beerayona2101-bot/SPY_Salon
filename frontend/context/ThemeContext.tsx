@@ -17,8 +17,10 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     try {
       localStorage.setItem('spy_theme', 'dark');
+      document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');
     } catch (e) {
+      document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');
     }
   }, []);

@@ -125,15 +125,15 @@ export default function Footer() {
                 <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <span className="footer-brand-title font-serif text-2xl font-extrabold tracking-widest text-black dark:text-white">
+                <span className="footer-brand-title font-serif text-2xl font-extrabold tracking-widest text-white">
                   SPY <span className="rosegold-gradient-text font-extrabold">SALON</span>
                 </span>
-                <span className="footer-brand-since block text-[10px] tracking-[0.25em] font-extrabold dark:font-semibold uppercase -mt-0.5 font-sans text-amber-900 dark:text-rosegold-400">
+                <span className="footer-brand-since block text-[10px] tracking-[0.25em] font-bold uppercase -mt-0.5 font-sans text-rosegold-400">
                   Since 2026
                 </span>
               </div>
             </Link>
-            <p className="footer-desc-text text-xs sm:text-sm leading-relaxed font-bold dark:font-medium text-black dark:text-gray-300">
+            <p className="footer-desc-text text-xs sm:text-sm leading-relaxed font-normal text-gray-300">
               India's premier luxury salon & spa studio. Delivering bespoke hair transformations, 24K gold skin rituals, and soothing aromatics.
             </p>
             <div className="flex space-x-3 pt-2">
@@ -142,7 +142,7 @@ export default function Footer() {
                 target="_blank" 
                 rel="noopener noreferrer" 
                 title="Follow SPY Salon on Instagram"
-                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-[#F0ECE1] dark:bg-dark-800 border border-amber-900/20 dark:border-white/10 text-black dark:text-rosegold-400 hover:bg-black hover:text-white dark:hover:text-white dark:hover:border-rosegold-500"
+                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-dark-800 border border-white/10 text-rosegold-400 hover:bg-rosegold-500 hover:text-white hover:border-rosegold-500"
               >
                 <Instagram className="w-4 h-4" />
               </a>
@@ -151,7 +151,7 @@ export default function Footer() {
                 target="_blank" 
                 rel="noopener noreferrer" 
                 title="Follow SPY Salon on Facebook"
-                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-[#F0ECE1] dark:bg-dark-800 border border-amber-900/20 dark:border-white/10 text-black dark:text-rosegold-400 hover:bg-black hover:text-white dark:hover:text-white dark:hover:border-rosegold-500"
+                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-dark-800 border border-white/10 text-rosegold-400 hover:bg-rosegold-500 hover:text-white hover:border-rosegold-500"
               >
                 <Facebook className="w-4 h-4" />
               </a>
@@ -160,7 +160,7 @@ export default function Footer() {
                 target="_blank" 
                 rel="noopener noreferrer" 
                 title="Subscribe to SPY Salon on YouTube"
-                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-[#F0ECE1] dark:bg-dark-800 border border-amber-900/20 dark:border-white/10 text-black dark:text-rosegold-400 hover:bg-black hover:text-white dark:hover:text-white dark:hover:border-rosegold-500"
+                className="footer-social-btn w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-dark-800 border border-white/10 text-rosegold-400 hover:bg-rosegold-500 hover:text-white hover:border-rosegold-500"
               >
                 <Youtube className="w-4 h-4" />
               </a>
@@ -169,13 +169,13 @@ export default function Footer() {
 
           {/* Col 2: Quick Links */}
           <div>
-            <h4 className="footer-section-title font-serif text-lg font-black dark:font-bold mb-4 border-b border-amber-900/30 dark:border-rosegold-500/30 pb-2 inline-block text-black dark:text-white">Quick Links</h4>
-            <ul className="space-y-2.5 text-xs sm:text-sm font-bold dark:font-medium text-black dark:text-gray-300">
+            <h4 className="footer-section-title font-serif text-lg font-bold mb-4 border-b border-rosegold-500/30 pb-2 inline-block text-white">Quick Links</h4>
+            <ul className="space-y-2.5 text-xs sm:text-sm font-medium text-gray-300">
               {websiteLinks
                 .filter((l: any) => l.isActive !== false)
                 .map((link: any) => (
                   <li key={link.id || link.url}>
-                    <Link href={link.url || '#'} className="footer-link-item text-black dark:text-gray-300 hover:text-amber-800 dark:hover:text-rosegold-400 transition-colors">
+                    <Link href={link.url || '#'} className="footer-link-item text-gray-300 hover:text-rosegold-400 transition-colors">
                       {link.label}
                     </Link>
                   </li>
@@ -185,18 +185,18 @@ export default function Footer() {
 
           {/* Col 3: Operating Hours */}
           <div>
-            <h4 className="footer-section-title font-serif text-lg font-black dark:font-bold mb-4 border-b border-amber-900/30 dark:border-rosegold-500/30 pb-2 inline-block text-black dark:text-white">Salon Timing</h4>
+            <h4 className="footer-section-title font-serif text-lg font-bold mb-4 border-b border-rosegold-500/30 pb-2 inline-block text-white">Salon Timing</h4>
             <div className="space-y-3 text-xs sm:text-sm">
               <div className="flex items-start space-x-3">
-                <Clock className="w-5 h-5 shrink-0 mt-0.5 text-amber-800 dark:text-rosegold-400" />
+                <Clock className="w-5 h-5 shrink-0 mt-0.5 text-rosegold-400" />
                 <div>
-                  <p className="footer-hours-title font-extrabold dark:font-bold text-black dark:text-white">Hours & Availability</p>
-                  <p className="footer-hours-value text-xs font-extrabold dark:font-medium text-black dark:text-gray-300">{contactInfo.openingHours}</p>
+                  <p className="footer-hours-title font-bold text-white">Hours & Availability</p>
+                  <p className="footer-hours-value text-xs font-medium text-gray-300">{contactInfo.openingHours}</p>
                 </div>
               </div>
-              <div className="p-3 rounded-xl text-xs font-medium bg-[#F0ECE1] dark:bg-dark-800/90 text-black dark:text-gray-200 border border-amber-900/20 dark:border-rosegold-500/30">
-                <span className="footer-vip-title font-black dark:font-extrabold block mb-1 text-black dark:text-amber-400">⭐ VIP Concierge Hours</span>
-                <p className="footer-vip-desc font-bold dark:font-semibold leading-relaxed text-black dark:text-gray-300">
+              <div className="p-3 rounded-xl text-xs font-medium bg-dark-800/90 text-gray-200 border border-rosegold-500/30">
+                <span className="footer-vip-title font-extrabold block mb-1 text-amber-400">⭐ VIP Concierge Hours</span>
+                <p className="footer-vip-desc font-normal leading-relaxed text-gray-300">
                   Early morning & late evening private appointments available on request.
                 </p>
               </div>
@@ -205,19 +205,19 @@ export default function Footer() {
 
           {/* Col 4: Contact & Locations */}
           <div>
-            <h4 className="footer-section-title font-serif text-lg font-black dark:font-bold mb-4 border-b border-amber-900/30 dark:border-rosegold-500/30 pb-2 inline-block text-black dark:text-white">Flagship Studio</h4>
-            <ul className="space-y-3 text-xs sm:text-sm font-bold dark:font-medium text-black dark:text-gray-300">
+            <h4 className="footer-section-title font-serif text-lg font-bold mb-4 border-b border-rosegold-500/30 pb-2 inline-block text-white">Flagship Studio</h4>
+            <ul className="space-y-3 text-xs sm:text-sm font-medium text-gray-300">
               <li className="flex items-start space-x-3">
-                <MapPin className="w-5 h-5 shrink-0 mt-0.5 text-amber-800 dark:text-rosegold-400" />
-                <span className="footer-address-text text-black dark:text-gray-300 font-extrabold dark:font-medium">{contactInfo.studioAddress}</span>
+                <MapPin className="w-5 h-5 shrink-0 mt-0.5 text-rosegold-400" />
+                <span className="footer-address-text text-gray-300 font-medium">{contactInfo.studioAddress}</span>
               </li>
               <li className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 shrink-0 text-amber-800 dark:text-rosegold-400" />
-                <a href={`tel:${contactInfo.hotlinePhone}`} className="footer-phone-text text-black dark:text-gray-300 hover:text-amber-800 dark:hover:text-rosegold-400 transition-colors font-extrabold dark:font-medium">{contactInfo.hotlinePhone}</a>
+                <Phone className="w-5 h-5 shrink-0 text-rosegold-400" />
+                <a href={`tel:${contactInfo.hotlinePhone}`} className="footer-phone-text text-gray-300 hover:text-rosegold-400 transition-colors font-medium">{contactInfo.hotlinePhone}</a>
               </li>
               <li className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 shrink-0 text-amber-800 dark:text-rosegold-400" />
-                <span className="footer-email-text text-black dark:text-gray-300 font-extrabold dark:font-medium">{contactInfo.supportEmail}</span>
+                <Mail className="w-5 h-5 shrink-0 text-rosegold-400" />
+                <span className="footer-email-text text-gray-300 font-medium">{contactInfo.supportEmail}</span>
               </li>
             </ul>
           </div>
@@ -225,11 +225,11 @@ export default function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t border-amber-900/20 dark:border-white/10 flex flex-col md:flex-row items-center justify-between text-xs font-bold dark:font-medium gap-4 text-black dark:text-gray-400">
-          <p className="footer-copyright-text text-black dark:text-gray-400 font-bold dark:font-medium">© {new Date().getFullYear()} SPY Salon Management System. All Rights Reserved.</p>
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-xs font-medium gap-4 text-gray-400">
+          <p className="footer-copyright-text text-gray-400 font-medium">© {new Date().getFullYear()} SPY Salon Management System. All Rights Reserved.</p>
           <div className="flex space-x-6">
-            <Link href="/privacy" className="footer-legal-link text-black dark:text-gray-400 hover:text-amber-800 dark:hover:text-rosegold-400 transition-colors font-bold dark:font-medium">Privacy Policy</Link>
-            <Link href="/terms" className="footer-legal-link text-black dark:text-gray-400 hover:text-amber-800 dark:hover:text-rosegold-400 transition-colors font-bold dark:font-medium">Terms & Conditions</Link>
+            <Link href="/privacy" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Privacy Policy</Link>
+            <Link href="/terms" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Terms & Conditions</Link>
           </div>
         </div>
 

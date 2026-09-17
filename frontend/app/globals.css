@@ -624,107 +624,29 @@ html.light .glass-card:hover .rosegold-gradient-bg * {
    ========================================================================== */
 
 /* ==========================================================================
-   LIGHT MODE FOOTER ABSOLUTE PURE BLACK FONT CONTRACT
+   DARK MODE FOOTER CRISP WHITE FONT CONTRACT
    ========================================================================== */
 
-html.light footer,
-html.light .footer-desc-text,
-html.light .footer-hours-title,
-html.light .footer-hours-value,
-html.light .footer-address-text,
-html.light .footer-email-text,
-html.light .footer-copyright-text,
-html.light .footer-vip-title,
-html.light .footer-vip-desc,
-html.light .footer-brand-title,
-html.light .footer-section-title,
-html.light .footer-link-item,
-html.light .footer-phone-text,
-html.light .footer-legal-link,
-html.light footer p,
-html.light footer span:not(.rosegold-gradient-text),
-html.light footer div,
-html.light footer li,
-html.light footer a:not(:hover),
-html.light footer h4 {
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
-  opacity: 1 !important;
-  visibility: visible !important;
+footer,
+footer p,
+footer .footer-desc-text,
+footer .footer-hours-value,
+footer .footer-address-text,
+footer .footer-email-text,
+footer .footer-copyright-text,
+footer .footer-link-item,
+footer .footer-phone-text,
+footer .footer-legal-link {
+  color: #E2E8F0 !important;
+  -webkit-text-fill-color: #E2E8F0 !important;
 }
 
-html.light footer {
-  background-color: #FAF7F2 !important;
-  border-top-color: rgba(140, 98, 40, 0.3) !important;
-}
-
-html.light footer .rosegold-gradient-text {
-  color: transparent !important;
-  -webkit-text-fill-color: transparent !important;
-}
-
-html.light footer h4,
-html.light .footer-section-title {
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
-  font-weight: 900 !important;
-  border-bottom-color: rgba(140, 98, 40, 0.4) !important;
-}
-
-html.light .footer-brand-since {
-  color: #78350F !important;
-  -webkit-text-fill-color: #78350F !important;
-  font-weight: 800 !important;
-}
-
-html.light footer svg:not(a.w-9:hover svg) {
-  color: #78350F !important;
-  stroke: #78350F !important;
-  opacity: 1 !important;
-}
-
-html.light footer a:hover,
-html.light footer a:hover *,
-html.light .footer-link-item:hover,
-html.light .footer-legal-link:hover,
-html.light .footer-phone-text:hover {
-  color: #92400E !important;
-  -webkit-text-fill-color: #92400E !important;
-}
-
-html.light footer a.w-9,
-html.light .footer-social-btn {
-  background-color: #F0ECE1 !important;
-  border-color: rgba(140, 98, 40, 0.3) !important;
-  color: #000000 !important;
-  -webkit-text-fill-color: #000000 !important;
-}
-
-html.light footer a.w-9:hover,
-html.light footer a.w-9:hover *,
-html.light .footer-social-btn:hover {
-  background-color: #000000 !important;
+footer h4,
+footer .footer-section-title,
+footer .footer-brand-title,
+footer .footer-hours-title {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  border-color: #000000 !important;
-}
-
-html.light footer a.w-9:hover svg,
-html.light .footer-social-btn:hover svg {
-  color: #FFFFFF !important;
-  stroke: #FFFFFF !important;
-}
-
-html.light footer .bg-dark-800\/90,
-html.light footer div[class*="bg-dark-800"],
-html.light footer div[class*="bg-dark-900"] {
-  background-color: #F0ECE1 !important;
-  border-color: rgba(140, 98, 40, 0.3) !important;
-}
-
-html.light footer .border-t,
-html.light footer div[class*="border-t"] {
-  border-top-color: rgba(0, 0, 0, 0.15) !important;
 }
 
 /* ==========================================================================
