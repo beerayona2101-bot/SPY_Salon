@@ -28,6 +28,7 @@ export interface TextAnimateProps {
   by?: 'text' | 'word' | 'character' | 'line';
   animation?: AnimationType;
   segmentClassName?: string;
+  style?: React.CSSProperties;
 }
 
 const defaultAnimationVariants: Record<AnimationType, Variants> = {
@@ -85,6 +86,7 @@ export function TextAnimate({
   by = 'character',
   animation = 'blurInUp',
   segmentClassName,
+  style,
 }: TextAnimateProps) {
   const textString = typeof children === 'string' ? children : String(children || '');
 
@@ -121,20 +123,30 @@ export function TextAnimate({
       animate={startOnView ? undefined : 'show'}
       viewport={{ once }}
       className={cn('inline-flex flex-wrap items-center justify-center', className)}
+      style={style}
     >
       {segments.map((segment, index) => {
         if (by === 'character' && segment === ' ') {
           return (
-            <span key={index} className="inline-block w-[0.25em]">
+            <span key={index} className="inline-block w-[0.25em]" style={style}>
               &nbsp;
             </span>
           );
         }
 
+        const segmentStyle = style
+          ? {
+              ...style,
+              color: style.color,
+              WebkitTextFillColor: style.WebkitTextFillColor || style.color,
+            }
+          : undefined;
+
         return (
           <motion.span
             key={index}
             variants={selectedVariants}
+            style={segmentStyle}
             className={cn(
               'inline-block whitespace-pre',
               by === 'word' && index < segments.length - 1 ? 'mr-[0.25em]' : '',

@@ -776,7 +776,7 @@ html, body, * {
   letter-spacing: -0.012em;
 }
 
-.light h1, .light h2, .light h3, .light .font-serif {
+.light h1:not(.hero-title-text), .light h2, .light h3, .light .font-serif:not(.hero-title-text):not(.hero-subtitle-text):not(.hero-title-text *):not(.hero-subtitle-text *) {
   font-weight: 750;
   color: var(--wine-dark);
   letter-spacing: 0.015em;
@@ -871,35 +871,53 @@ html.light a[href*="login"] span,
 
 /* 2. Hero Section Light Mode Contrast Overrides */
 html.light .hero-title-text,
+html.light .hero-title-text *,
+html.light .hero-title-text span,
 .light .hero-title-text,
+.light .hero-title-text *,
+.light .hero-title-text span,
 .light h1.hero-title-text,
-.light section .hero-title-text {
+.light h1.hero-title-text *,
+.light section .hero-title-text,
+.light section .hero-title-text * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   font-weight: 800 !important;
 }
 
 html.light .hero-subtitle-text,
+html.light .hero-subtitle-text *,
+html.light .hero-subtitle-text span,
 .light .hero-subtitle-text,
+.light .hero-subtitle-text *,
+.light .hero-subtitle-text span,
 .light p.hero-subtitle-text,
-.light section .hero-subtitle-text {
+.light p.hero-subtitle-text *,
+.light section .hero-subtitle-text,
+.light section .hero-subtitle-text * {
   color: #FFF2E2 !important;
   -webkit-text-fill-color: #FFF2E2 !important;
   opacity: 0.95 !important;
 }
 
 html.light .hero-tagline-text,
-.light .hero-tagline-text {
+html.light .hero-tagline-text *,
+.light .hero-tagline-text,
+.light .hero-tagline-text * {
   color: #F5EBE1 !important;
   -webkit-text-fill-color: #F5EBE1 !important;
 }
 
-html.light .hero-perk-text,
-.light .hero-perk-text,
 html.light .hero-perk-text span,
 .light .hero-perk-text span {
   color: #F3ECE2 !important;
   -webkit-text-fill-color: #F3ECE2 !important;
+}
+
+html.light .hero-perk-text svg,
+.light .hero-perk-text svg {
+  color: #E0A96D !important;
+  stroke: #E0A96D !important;
 }
 
 html.light .hero-cta-btn,
@@ -1399,12 +1417,32 @@ html.light form .quick-template-btn.selected {
   background-color: var(--wine-dark) !important;
 }
 
-.light section[class*="pt-2"] h1 {
-  color: var(--white) !important;
+.light section[class*="pt-2"] h1,
+.light section[class*="pt-2"] h1 *,
+.light section[class*="pt-2"] .hero-title-text,
+.light section[class*="pt-2"] .hero-title-text * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
-.light section[class*="pt-2"] p {
-  color: var(--champagne) !important;
+.light section[class*="pt-2"] p,
+.light section[class*="pt-2"] p *,
+.light section[class*="pt-2"] .hero-subtitle-text,
+.light section[class*="pt-2"] .hero-subtitle-text * {
+  color: #F5EBE1 !important;
+  -webkit-text-fill-color: #F5EBE1 !important;
+}
+
+.light section[class*="pt-2"] .hero-tagline-text,
+.light section[class*="pt-2"] .hero-tagline-text * {
+  color: #F5EBE1 !important;
+  -webkit-text-fill-color: #F5EBE1 !important;
+}
+
+.light section[class*="pt-2"] .hero-perk-text span,
+.light section[class*="pt-2"] .hero-perk-text span * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 
 .light section[class*="pt-2"] a[class*="rosegold-gradient-bg"] {
@@ -2351,60 +2389,81 @@ html.light .quick-template-pill-unselected:hover span {
 }
 
 /* ========================================================
-   HERO SECTION LIGHT MODE HIGH-CONTRAST TEXT FIX (PURE WHITE)
+   HERO SECTION LIGHT MODE HIGH-CONTRAST TEXT FIX (EXPLICIT)
    ======================================================== */
-html.light section.hero-section-container,
-html.light section.hero-section-container *,
-html.light section.hero-section-container h1,
-html.light section.hero-section-container h2,
-html.light section.hero-section-container h3,
-html.light section.hero-section-container p,
-html.light section.hero-section-container span,
-html.light section.hero-section-container div,
-html.light section.hero-section-container a,
-html.light section.hero-section-container button,
-.light section.hero-section-container,
-.light section.hero-section-container *,
-.light section.hero-section-container h1,
-.light section.hero-section-container h2,
-.light section.hero-section-container h3,
-.light section.hero-section-container p,
-.light section.hero-section-container span,
-.light section.hero-section-container div,
-.light section.hero-section-container a,
-.light section.hero-section-container button {
-  color: #FFFFFF !important;
-  -webkit-text-fill-color: #FFFFFF !important;
-}
 
-html.light section.hero-section-container p.hero-subtitle-text,
-.light section.hero-section-container p.hero-subtitle-text {
-  color: #FFF2E2 !important;
-  -webkit-text-fill-color: #FFF2E2 !important;
-  opacity: 0.95 !important;
-}
-
-html.light section.hero-section-container .hero-tagline-badge,
-html.light section.hero-section-container .hero-tagline-badge *,
-.light section.hero-section-container .hero-tagline-badge,
-.light section.hero-section-container .hero-tagline-badge * {
+/* 1. Tagline Badge Text ("Luxury Beauty Studio & Botanical Spa • Est. 2026") */
+html.light .hero-tagline-text,
+html.light .hero-tagline-text *,
+html.light .hero-tagline-badge span,
+.light .hero-tagline-text,
+.light .hero-tagline-text *,
+.light .hero-tagline-badge span {
   color: #F5EBE1 !important;
   -webkit-text-fill-color: #F5EBE1 !important;
 }
 
-html.light section.hero-section-container .hero-tagline-badge {
+html.light section.hero-section-container .hero-tagline-badge,
+.light section.hero-section-container .hero-tagline-badge {
   background: rgba(255, 255, 255, 0.12) !important;
   border-color: rgba(224, 169, 109, 0.4) !important;
 }
 
+/* 2. Main Headline ("Hairs make perfectly") */
+html.light .hero-title-text,
+html.light .hero-title-text *,
+html.light .hero-title-text span,
+.light .hero-title-text,
+.light .hero-title-text *,
+.light .hero-title-text span,
+.light h1.hero-title-text,
+.light h1.hero-title-text * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* 3. Subtitle ("Beauty is not created—it is unveiled from within.") */
+html.light .hero-subtitle-text,
+html.light .hero-subtitle-text *,
+html.light .hero-subtitle-text span,
+.light .hero-subtitle-text,
+.light .hero-subtitle-text *,
+.light .hero-subtitle-text span,
+.light p.hero-subtitle-text,
+.light p.hero-subtitle-text * {
+  color: #F5EBE1 !important;
+  -webkit-text-fill-color: #F5EBE1 !important;
+  opacity: 0.95 !important;
+}
+
+/* 4, 5, 6. Perk Text ("100% Sanitized", "Verified Experts", "Instant Slot Lock") */
+html.light .hero-perk-text span,
+html.light .hero-perk-text div span,
+.light .hero-perk-text span,
+.light .hero-perk-text div span {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* Keep existing gold/rose-gold icons unchanged */
+html.light .hero-perk-text svg,
+.light .hero-perk-text svg {
+  color: #E0A96D !important;
+  stroke: #E0A96D !important;
+}
+
 html.light section.hero-section-container a.hero-secondary-btn,
-html.light section.hero-section-container a.hero-secondary-btn *,
 html.light section.hero-section-container a.hero-secondary-btn span,
 .light section.hero-section-container a.hero-secondary-btn,
-.light section.hero-section-container a.hero-secondary-btn *,
 .light section.hero-section-container a.hero-secondary-btn span {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html.light section.hero-section-container a.hero-secondary-btn svg,
+.light section.hero-section-container a.hero-secondary-btn svg {
+  color: #E0A96D !important;
+  stroke: #E0A96D !important;
 }
 
 /* Global Green Color Glow Reduction & Muted Luxury Emerald Palette */

@@ -346,27 +346,29 @@ export default function Home() {
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full glass-panel border border-rosegold-500/40 text-rosegold-400 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
+                className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/10 border border-rosegold-500/40 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
               >
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse hero-tagline-star" />
-                <span className="hero-tagline-text font-bold">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
+                <span style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }} className="hero-tagline-text font-bold text-[#F5EBE1] !text-[#F5EBE1]">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
               </motion.div>
 
               {/* Main Responsive Headline */}
-              <h1 className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif">
-                <TextAnimate animation="blurInUp" by="character" once className="!text-white font-serif">
+              <h1 style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif">
+                <TextAnimate animation="blurInUp" by="character" once className="!text-white font-serif" segmentClassName="!text-white" style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}>
                   {homeSettings.heroTitle}
                 </TextAnimate>
               </h1>
 
               {/* Sub-description / Quote */}
-              <p className="hero-subtitle-text text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic">
+              <p style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }} className="hero-subtitle-text text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic text-[#F5EBE1] !text-[#F5EBE1]">
                 <TextAnimate
                   animation="blurInUp"
                   by="character"
                   delay={0.5}
                   once
-                  className="text-rosegold-300/90 text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic"
+                  className="text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic !text-[#F5EBE1]"
+                  segmentClassName="!text-[#F5EBE1]"
+                  style={{ color: '#F5EBE1', WebkitTextFillColor: '#F5EBE1' }}
                 >
                   {homeSettings.heroSubtitle}
                 </TextAnimate>
@@ -410,15 +412,15 @@ export default function Home() {
               >
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">100% Sanitized</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="font-semibold text-white !text-white">100% Sanitized</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">Verified Experts</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="font-semibold text-white !text-white">Verified Experts</span>
                 </div>
                 <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start space-y-0.5 sm:space-y-0 sm:space-x-2 text-[11px] sm:text-sm text-gray-300">
                   <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rosegold-400 shrink-0" />
-                  <span style={{ color: '#F3ECE2', WebkitTextFillColor: '#F3ECE2' }} className="font-semibold">Instant Slot Lock</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="font-semibold text-white !text-white">Instant Slot Lock</span>
                 </div>
               </motion.div>
 
