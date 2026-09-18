@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
-import 'backend_settings_screen.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
 
@@ -210,16 +209,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _openBackendSettings() async {
-    final updated = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (ctx) => const BackendSettingsScreen()),
-    );
-    if (updated == true && mounted) {
-      setState(() {});
-    }
-  }
-
   void _showForgotPasswordDialog() {
     final emailCtrl = TextEditingController(text: _loginIdentifierCtrl.text.trim());
     bool isSending = false;
@@ -395,14 +384,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: Column(
                           children: [
-                            // Top Header Bar: Back button & Settings icon
+                            // Top Header Bar: Back button
                             Padding(
                               padding: EdgeInsets.only(
                                 top: (screenHeight * 0.012).clamp(6.0, 16.0),
                                 bottom: 4.0,
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   if (Navigator.canPop(context))
                                     IconButton(
@@ -416,12 +404,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     )
                                   else
                                     const SizedBox(width: 48),
-                                  IconButton(
-                                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                                    tooltip: 'Backend Settings',
-                                    icon: Icon(Icons.settings_outlined, color: primaryColor, size: 22),
-                                    onPressed: _openBackendSettings,
-                                  ),
                                 ],
                               ),
                             ),
@@ -514,19 +496,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             // Flexible bottom spacer
                             const Spacer(flex: 2),
 
-                            const SizedBox(height: 8),
-                            TextButton.icon(
-                              onPressed: _openBackendSettings,
-                              icon: Icon(Icons.tune_rounded, color: themeColors.textMuted, size: 15),
-                              label: Text(
-                                'Backend Settings',
-                                style: TextStyle(
-                                  color: themeColors.textMuted,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
                             const SizedBox(height: 12),
                           ],
                         ),
