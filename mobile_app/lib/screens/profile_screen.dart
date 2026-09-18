@@ -130,9 +130,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
         if (isSuccess) {
-          final updatedUser = (res['user'] is Map<String, dynamic>)
-              ? res['user'] as Map<String, dynamic>
-              : await ApiService.fetchCurrentUserProfile();
+          // Always re-fetch from backend after save to guarantee latest data is shown.
+          // This avoids stale state if the save response omits or mis-nests the user object.
+          final updatedUser = await ApiService.fetchCurrentUserProfile();
           if (mounted) {
             setState(() {
               if (updatedUser != null) {
@@ -452,24 +452,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Gender Dropdown
-        DropdownButtonFormField<String>(
-          initialValue: ['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(_gender) ? _gender : null,
-          dropdownColor: colors.cardSurface,
-          style: TextStyle(color: colors.textPrimary, fontSize: 14),
-          hint: Text(
-            'Select Gender',
-            style: TextStyle(color: colors.textMuted, fontSize: 14),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'Female', child: Text('Female')),
-            DropdownMenuItem(value: 'Male', child: Text('Male')),
-            DropdownMenuItem(value: 'Non-Binary', child: Text('Non-Binary')),
-            DropdownMenuItem(value: 'Prefer Not to Say', child: Text('Prefer Not to Say')),
-          ],
-          onChanged: (val) {
-            if (val != null) setState(() => _gender = val);
-          },
+        // Gender Dropdown — uses DropdownButton (not DropdownButtonFormField) so that
+        // the selected value is fully controlled by _gender state and re-renders on setState.
+        InputDecorator(
           decoration: InputDecoration(
             labelText: 'Gender',
             labelStyle: TextStyle(color: colors.textMuted),
@@ -478,6 +463,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fillColor: colors.inputBackground,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colors.cardBorder)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: ['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(_gender) ? _gender : null,
+              isExpanded: true,
+              dropdownColor: colors.cardSurface,
+              style: TextStyle(color: colors.textPrimary, fontSize: 14),
+              hint: Text('Select Gender', style: TextStyle(color: colors.textMuted, fontSize: 14)),
+              items: const [
+                DropdownMenuItem(value: 'Female', child: Text('Female')),
+                DropdownMenuItem(value: 'Male', child: Text('Male')),
+                DropdownMenuItem(value: 'Non-Binary', child: Text('Non-Binary')),
+                DropdownMenuItem(value: 'Prefer Not to Say', child: Text('Prefer Not to Say')),
+              ],
+              onChanged: (val) {
+                if (val != null) setState(() => _gender = val);
+              },
+            ),
           ),
         ),
         const SizedBox(height: 20),
