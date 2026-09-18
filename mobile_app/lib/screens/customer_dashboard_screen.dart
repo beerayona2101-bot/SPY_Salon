@@ -6,10 +6,9 @@ import '../services/api_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/theme_controller.dart';
-import 'history_screen.dart';
+import 'book_appointment_screen.dart';
 import 'login_screen.dart';
-import 'profile_screen.dart';
-import 'update_password_screen.dart';
+import 'settings_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
   const CustomerDashboardScreen({super.key});
@@ -101,6 +100,37 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     }
   }
 
+  void _openBookAppointmentPage({String? initialService}) async {
+    final booked = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => BookAppointmentScreen(
+          user: _user,
+          services: _services,
+          specialists: _specialists,
+          initialService: initialService,
+        ),
+      ),
+    );
+    if (booked == true) {
+      _loadCustomerData(quiet: true);
+    }
+  }
+
+  /// Opens login screen for authentication only (without auto-launching booking screen)
+  void _openLoginOnly() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => LoginScreen(
+          onLoginSuccess: () {
+            _loadCustomerData();
+          },
+        ),
+      ),
+    );
+  }
+
   /// Triggers booking process. If user is guest (not logged in), prompt Login / Create Account first.
   void _triggerBooking({String? initialService}) {
     if (_user == null) {
@@ -111,488 +141,15 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
             onLoginSuccess: () async {
               await _loadCustomerData();
               if (mounted) {
-                _showBookAppointmentModal(initialService: initialService);
+                _openBookAppointmentPage(initialService: initialService);
               }
             },
           ),
         ),
       );
     } else {
-      _showBookAppointmentModal(initialService: initialService);
+      _openBookAppointmentPage(initialService: initialService);
     }
-  }
-
-  bool _isSlotInPast(String dateStr, String timeStr) {
-    try {
-      final now = DateTime.now();
-      final dateParts = dateStr.trim().split('-');
-      if (dateParts.length < 3) return false;
-      final selectedDate = DateTime(int.parse(dateParts[0]), int.parse(dateParts[1]), int.parse(dateParts[2]));
-      final todayDate = DateTime(now.year, now.month, now.day);
-
-      if (selectedDate.isBefore(todayDate)) return true;
-      if (selectedDate.isAfter(todayDate)) return false;
-
-      final parts = timeStr.trim().split(RegExp(r'\s+'));
-      if (parts.length < 2) return false;
-      final timeParts = parts[0].split(':');
-      int hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
-      final isPm = parts[1].toUpperCase() == 'PM';
-      if (isPm && hour < 12) hour += 12;
-      if (!isPm && hour == 12) hour = 0;
-
-      final slotTime = DateTime(now.year, now.month, now.day, hour, minute);
-      return slotTime.isBefore(now);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // --- MODAL: BOOK NEW APPOINTMENT ---
-  void _showBookAppointmentModal({String? initialService}) async {
-    final nameCtrl = TextEditingController(text: _user?['name'] ?? '');
-    final phoneCtrl = TextEditingController(text: _user?['phone'] ?? '');
-    final notesCtrl = TextEditingController();
-    final dateCtrl = TextEditingController(text: DateTime.now().add(const Duration(days: 1)).toString().split(' ')[0]);
-
-    List<dynamic> fetchedServices = _services.isNotEmpty ? _services : await ApiService.getServices();
-    List<dynamic> fetchedSpecialists = _specialists.isNotEmpty ? _specialists : await ApiService.getSpecialists();
-
-    String selectedService = initialService ?? (fetchedServices.isNotEmpty
-        ? (fetchedServices[0]['name'] ?? fetchedServices[0]['title'] ?? 'Hair Cut & Styling')
-        : 'Hair Cut & Styling');
-    String selectedBranch = 'Jubilee Hills';
-    String selectedSpecialist = 'Any Available Specialist';
-    String selectedTime = '11:30 AM';
-    List<String> bookedSlots = [];
-    bool isLoadingSlots = false;
-
-    final timeOptions = ['09:30 AM', '10:30 AM', '11:30 AM', '01:00 PM', '02:30 PM', '04:00 PM', '05:30 PM', '07:00 PM'];
-    final branchOptions = ['Jubilee Hills', 'Banjara Hills', 'Gachibowli'];
-
-    if (!mounted) return;
-    final themeColors = AppColors.of(context);
-    final primaryColor = themeColors.primary;
-    final buttonTextColor = themeColors.buttonTextPrimary;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: themeColors.cardSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (modalCtx) {
-        return StatefulBuilder(
-          builder: (dialogCtx, setModalState) {
-            Future<void> refreshBookedSlots() async {
-              setModalState(() => isLoadingSlots = true);
-              final slots = await ApiService.getBookedSlots(dateCtrl.text.trim(), specialist: selectedSpecialist);
-              setModalState(() {
-                bookedSlots = slots;
-                isLoadingSlots = false;
-
-                final isCurrentPast = _isSlotInPast(dateCtrl.text.trim(), selectedTime);
-                final isCurrentBooked = bookedSlots.contains(selectedTime);
-                if (isCurrentPast || isCurrentBooked) {
-                  for (final opt in timeOptions) {
-                    if (!bookedSlots.contains(opt) && !_isSlotInPast(dateCtrl.text.trim(), opt)) {
-                      selectedTime = opt;
-                      break;
-                    }
-                  }
-                }
-              });
-            }
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 20,
-              ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Book New Appointment',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(Icons.close, color: themeColors.textMuted),
-                          onPressed: () => Navigator.pop(modalCtx),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: nameCtrl,
-                      style: TextStyle(color: themeColors.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Your Full Name *',
-                        labelStyle: TextStyle(color: themeColors.textMuted),
-                        prefixIcon: Icon(Icons.person_outline, color: primaryColor),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: themeColors.cardBorder),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: phoneCtrl,
-                      keyboardType: TextInputType.phone,
-                      style: TextStyle(color: themeColors.textPrimary),
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number *',
-                        labelStyle: TextStyle(color: themeColors.textMuted),
-                        prefixIcon: Icon(Icons.phone_outlined, color: primaryColor),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: themeColors.cardBorder),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text('Select Service *', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
-                    const SizedBox(height: 6),
-                    Builder(
-                      builder: (ctx) {
-                        final rawList = fetchedServices.isNotEmpty ? fetchedServices : [
-                          {'name': 'Hair Cut & Styling'},
-                          {'name': 'Beard Shaving'},
-                          {'name': 'Botanical Facial Spa'},
-                          {'name': 'Luxury Manicure'},
-                        ];
-
-                        final Set<String> uniqueTitles = {};
-                        for (final s in rawList) {
-                          final t = (s['name'] ?? s['title'] ?? '').toString().trim();
-                          if (t.isNotEmpty) uniqueTitles.add(t);
-                        }
-                        if (uniqueTitles.isEmpty) {
-                          uniqueTitles.addAll(['Hair Cut & Styling', 'Beard Shaving', 'Botanical Facial Spa', 'Luxury Manicure']);
-                        }
-
-                        final validTitles = uniqueTitles.toList();
-                        if (!validTitles.contains(selectedService)) {
-                          selectedService = validTitles.first;
-                        }
-
-                        return DropdownButtonFormField<String>(
-                          initialValue: selectedService,
-                          dropdownColor: themeColors.cardSurface,
-                          style: TextStyle(color: themeColors.textPrimary),
-                          items: validTitles.map<DropdownMenuItem<String>>((title) {
-                            return DropdownMenuItem<String>(
-                              value: title,
-                              child: Text(title),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setModalState(() => selectedService = val);
-                            }
-                          },
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: themeColors.inputBackground,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: themeColors.cardBorder),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Select Branch *', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              DropdownButtonFormField<String>(
-                                initialValue: selectedBranch,
-                                dropdownColor: themeColors.cardSurface,
-                                style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                                items: branchOptions.map<DropdownMenuItem<String>>((b) {
-                                  return DropdownMenuItem<String>(value: b, child: Text(b));
-                                }).toList(),
-                                onChanged: (val) {
-                                  if (val != null) setModalState(() => selectedBranch = val);
-                                },
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: themeColors.inputBackground,
-                                  isDense: true,
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: themeColors.cardBorder)),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Specialist', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              Builder(
-                                builder: (ctx) {
-                                  final specNames = <String>['Any Available Specialist'];
-                                  for (final spec in fetchedSpecialists) {
-                                    final name = (spec['name'] ?? spec['username'] ?? '').toString().trim();
-                                    if (name.isNotEmpty && !specNames.contains(name)) {
-                                      specNames.add(name);
-                                    }
-                                  }
-                                  if (!specNames.contains(selectedSpecialist)) {
-                                    selectedSpecialist = specNames.first;
-                                  }
-
-                                  return DropdownButtonFormField<String>(
-                                    initialValue: selectedSpecialist,
-                                    dropdownColor: themeColors.cardSurface,
-                                    style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                                    items: specNames.map<DropdownMenuItem<String>>((sp) {
-                                      return DropdownMenuItem<String>(value: sp, child: Text(sp, overflow: TextOverflow.ellipsis));
-                                    }).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) {
-                                        setModalState(() => selectedSpecialist = val);
-                                        refreshBookedSlots();
-                                      }
-                                    },
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: themeColors.inputBackground,
-                                      isDense: true,
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: themeColors.cardBorder)),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Date *', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              InkWell(
-                                onTap: () async {
-                                  final picked = await showDatePicker(
-                                    context: modalCtx,
-                                    initialDate: DateTime.now(),
-                                    firstDate: DateTime.now(),
-                                    lastDate: DateTime.now().add(const Duration(days: 180)),
-                                  );
-                                  if (picked != null) {
-                                    setModalState(() {
-                                      dateCtrl.text = picked.toString().split(' ')[0];
-                                    });
-                                    refreshBookedSlots();
-                                  }
-                                },
-                                child: IgnorePointer(
-                                  child: TextField(
-                                    controller: dateCtrl,
-                                    style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: themeColors.inputBackground,
-                                      isDense: true,
-                                      prefixIcon: Icon(Icons.calendar_month, color: primaryColor, size: 18),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: themeColors.cardBorder)),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Text('Select Time Slot *', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
-                        if (isLoadingSlots) ...[
-                          const SizedBox(width: 8),
-                          SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: primaryColor)),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: timeOptions.map((t) {
-                        final isPast = _isSlotInPast(dateCtrl.text.trim(), t);
-                        final isBooked = bookedSlots.contains(t);
-                        final isUnavailable = isPast || isBooked;
-                        final isSelected = t == selectedTime && !isUnavailable;
-
-                        String labelText = t;
-                        if (isBooked) labelText = '$t (Booked)';
-                        if (isPast) labelText = '$t (Past)';
-
-                        return ChoiceChip(
-                          label: Text(
-                            labelText,
-                            style: TextStyle(
-                              color: isUnavailable
-                                  ? themeColors.textMuted
-                                  : (isSelected ? buttonTextColor : themeColors.textPrimary),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              decoration: isUnavailable ? TextDecoration.lineThrough : null,
-                            ),
-                          ),
-                          selected: isSelected,
-                          selectedColor: primaryColor,
-                          backgroundColor: isUnavailable
-                              ? themeColors.inputBackground.withValues(alpha: 0.3)
-                              : themeColors.inputBackground,
-                          onSelected: isUnavailable
-                              ? null
-                              : (val) => setModalState(() => selectedTime = t),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: notesCtrl,
-                      style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                      decoration: InputDecoration(
-                        labelText: 'Notes / Special Instructions (Optional)',
-                        labelStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                        prefixIcon: Icon(Icons.notes, color: primaryColor, size: 18),
-                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: themeColors.cardBorder)),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          foregroundColor: buttonTextColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                        onPressed: () async {
-                          final name = nameCtrl.text.trim();
-                          final phone = phoneCtrl.text.trim();
-                          final dateStr = dateCtrl.text.trim();
-
-                          if (name.isEmpty || phone.isEmpty || dateStr.isEmpty) {
-                            if (modalCtx.mounted) {
-                              ScaffoldMessenger.of(modalCtx).showSnackBar(
-                                const SnackBar(content: Text('Please enter name, phone, and appointment date')),
-                              );
-                            }
-                            return;
-                          }
-
-                          if (_isSlotInPast(dateStr, selectedTime)) {
-                            if (modalCtx.mounted) {
-                              ScaffoldMessenger.of(modalCtx).showSnackBar(
-                                SnackBar(backgroundColor: themeColors.warning, content: const Text('Please select a future time slot for your appointment.')),
-                              );
-                            }
-                            return;
-                          }
-
-                          if (bookedSlots.contains(selectedTime)) {
-                            if (modalCtx.mounted) {
-                              ScaffoldMessenger.of(modalCtx).showSnackBar(
-                                SnackBar(backgroundColor: themeColors.error, content: const Text('This time slot is already booked. Please select another slot.')),
-                              );
-                            }
-                            return;
-                          }
-
-                          final res = await ApiService.bookAppointment(
-                            customerName: name,
-                            customerPhone: phone,
-                            customerEmail: _user?['email'],
-                            service: selectedService,
-                            branch: selectedBranch,
-                            specialistName: selectedSpecialist,
-                            appointmentDate: dateStr,
-                            appointmentTime: selectedTime,
-                            notes: notesCtrl.text.trim(),
-                          );
-
-                          if (modalCtx.mounted) {
-                            Navigator.pop(modalCtx);
-                            ScaffoldMessenger.of(modalCtx).showSnackBar(
-                              SnackBar(
-                                backgroundColor: res['success'] == true ? themeColors.success : themeColors.error,
-                                content: Text(
-                                  res['success'] == true
-                                      ? 'Appointment booked successfully!'
-                                      : 'Booking Failed: ${res['message']}',
-                                ),
-                              ),
-                            );
-                            if (res['success'] == true) {
-                              _loadCustomerData();
-                            }
-                          }
-                        },
-                        child: Text(
-                          'Confirm Booking',
-                          style: TextStyle(
-                            color: buttonTextColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   // --- MODAL: VIEW SERVICE DETAILS ---
@@ -806,380 +363,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     );
   }
 
-  Future<void> _confirmSignOut() async {
-    final themeColors = AppColors.of(context);
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: themeColors.cardSurface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: themeColors.primary, width: 0.8),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.logout, color: themeColors.error, size: 22),
-            const SizedBox(width: 10),
-            Text('Sign Out', style: TextStyle(color: themeColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Text('Are you sure you want to sign out from Client Desk?', style: TextStyle(color: themeColors.textSecondary, fontSize: 14)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: Text('Cancel', style: TextStyle(color: themeColors.textMuted)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: themeColors.error,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      await ApiService.logout();
-      if (!mounted) return;
-      setState(() {
-        _user = null;
-      });
-      await _loadCustomerData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: themeColors.primary,
-            content: const Text('Signed out successfully. Welcome to SPY Salon Home.'),
-          ),
-        );
-      }
-    }
-  }
-
-  // --- MODAL: SETTINGS & QUICK ACTIONS (Profile, Theme, Update Password) ---
-  void _showSettingsModal() {
-    final themeColors = AppColors.of(context);
-    final primaryColor = themeColors.primary;
-    final cardBg = themeColors.cardSurface;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: cardBg,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return Consumer<ThemeController>(
-          builder: (modalCtx, themeCtrl, _) {
-            final isDark = themeCtrl.isDarkMode;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(modalCtx).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Header Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              color: primaryColor.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
-                            ),
-                            child: Icon(Icons.settings_outlined, color: primaryColor, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Settings & Quick Menu',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: themeColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                'Profile, appearance & security',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: themeColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: themeColors.textMuted, size: 20),
-                        onPressed: () => Navigator.pop(modalCtx),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Divider(color: themeColors.cardBorder, height: 1),
-                  const SizedBox(height: 16),
-
-                  // Option 1: Profile
-                  Container(
-                    decoration: BoxDecoration(
-                      color: themeColors.inputBackground.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: themeColors.cardBorder),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.person_outline, color: primaryColor, size: 20),
-                      ),
-                      title: Text(
-                        'Profile',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      subtitle: Text(
-                        _user != null
-                            ? 'Personal info, contact & preferences'
-                            : 'Sign in to view & edit profile',
-                        style: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                      ),
-                      trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
-                      onTap: () {
-                        Navigator.pop(modalCtx);
-                        if (_user != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (c) => const ProfileScreen()),
-                          );
-                        } else {
-                          _triggerBooking();
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Option: Appointment History
-                  Container(
-                    decoration: BoxDecoration(
-                      color: themeColors.inputBackground.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: themeColors.cardBorder),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.history_rounded, color: primaryColor, size: 20),
-                      ),
-                      title: Text(
-                        'Appointment History',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'View past bookings, status & schedules',
-                        style: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                      ),
-                      trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
-                      onTap: () {
-                        Navigator.pop(modalCtx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (c) => const HistoryScreen()),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Option 2: Theme Toggle
-                  Container(
-                    decoration: BoxDecoration(
-                      color: themeColors.inputBackground.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: themeColors.cardBorder),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(
-                          isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-                          color: primaryColor,
-                          size: 20,
-                        ),
-                      ),
-                      title: Text(
-                        'Theme',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      subtitle: Text(
-                        isDark ? 'Dark Mode Active' : 'Light Mode Active',
-                        style: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                      ),
-                      trailing: Switch(
-                        value: isDark,
-                        activeThumbColor: primaryColor,
-                        activeTrackColor: primaryColor.withValues(alpha: 0.35),
-                        inactiveThumbColor: themeColors.textMuted,
-                        inactiveTrackColor: themeColors.inputBackground,
-                        onChanged: (val) {
-                          themeCtrl.toggleTheme();
-                        },
-                      ),
-                      onTap: () {
-                        themeCtrl.toggleTheme();
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Option 3: Update Password
-                  Container(
-                    decoration: BoxDecoration(
-                      color: themeColors.inputBackground.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: themeColors.cardBorder),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
-                        ),
-                        child: Icon(Icons.lock_reset_outlined, color: primaryColor, size: 20),
-                      ),
-                      title: Text(
-                        'Update Password',
-                        style: TextStyle(
-                          color: themeColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                      subtitle: Text(
-                        _user != null
-                            ? 'Change account password securely'
-                            : 'Sign in to update password',
-                        style: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                      ),
-                      trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
-                      onTap: () {
-                        Navigator.pop(modalCtx);
-                        if (_user != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (c) => const UpdatePasswordScreen()),
-                          );
-                        } else {
-                          _triggerBooking();
-                        }
-                      },
-                    ),
-                  ),
-
-
-                  // Option 4: Sign Out (for logged in users)
-                  if (_user != null) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.25)),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.logout_rounded, color: Colors.redAccent, size: 20),
-                        ),
-                        title: const Text(
-                          'Sign Out',
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'Sign out of your account cleanly',
-                          style: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                        ),
-                        trailing: Icon(Icons.chevron_right_rounded, color: themeColors.textMuted),
-                        onTap: () {
-                          Navigator.pop(modalCtx);
-                          _confirmSignOut();
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final themeColors = AppColors.of(context);
@@ -1257,18 +440,26 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                 size: 22,
               ),
               tooltip: 'Settings, Profile & Theme',
-              onPressed: () => _showSettingsModal(),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (c) => const SettingsScreen(isFromDashboard: true)),
+              ),
             ),
           ] else ...[
-            // For Guest Users: Settings Icon + Sign In Button
-            IconButton(
-              icon: Icon(
-                Icons.settings_outlined,
-                color: primaryColor,
-                size: 22,
-              ),
-              tooltip: 'Settings & Theme',
-              onPressed: () => _showSettingsModal(),
+            // For Guest Users: Clean Theme Toggle Icon + Sign In Button
+            Consumer<ThemeController>(
+              builder: (context, themeCtrl, _) {
+                final isDark = themeCtrl.isDarkMode;
+                return IconButton(
+                  icon: Icon(
+                    isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                    color: primaryColor,
+                    size: 22,
+                  ),
+                  tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+                  onPressed: () => themeCtrl.toggleTheme(),
+                );
+              },
             ),
             Padding(
               padding: const EdgeInsets.only(right: 12, top: 8, bottom: 8),
@@ -1281,7 +472,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
-                onPressed: () => _triggerBooking(),
+                onPressed: () => _openLoginOnly(),
                 icon: Icon(Icons.login_rounded, color: themeColors.buttonTextPrimary, size: 16),
                 label: Text(
                   'Sign In',

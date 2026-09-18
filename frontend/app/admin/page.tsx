@@ -1908,21 +1908,21 @@ function AdminDashboardContent() {
     },
     {
       type: 'accordion',
+      id: 'acc_finance',
+      label: 'Finance',
+      icon: DollarSign,
+      children: [
+        { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign }
+      ]
+    },
+    {
+      type: 'accordion',
       id: 'acc_services',
       label: 'Services & Memberships',
       icon: Scissors,
       children: [
         { id: 'services', label: 'Services & Pricing Menu', icon: Scissors },
         { id: 'memberships', label: 'VIP Memberships', icon: Crown }
-      ]
-    },
-    {
-      type: 'accordion',
-      id: 'acc_finance',
-      label: 'Finance',
-      icon: DollarSign,
-      children: [
-        { id: 'earnings', label: 'Earnings & Payroll Payouts', icon: DollarSign }
       ]
     },
     {
