@@ -21,7 +21,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _emailCtrl = TextEditingController();
   final _dobCtrl = TextEditingController();
 
-  String _gender = 'Female';
+  String _gender = '';
   String _language = 'English';
   String _communication = 'WhatsApp';
 
@@ -67,17 +67,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _emailCtrl.text = user['email'] ?? '';
     _dobCtrl.text = user['dob'] ?? '';
 
-    final g = (user['gender'] ?? '').toString();
+    final g = (user['gender'] ?? '').toString().trim();
     if (['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(g)) {
       _gender = g;
+    } else {
+      _gender = '';
     }
 
-    final lang = (user['preferredLanguage'] ?? '').toString();
+    final lang = (user['preferredLanguage'] ?? '').toString().trim();
     if (['English', 'Telugu', 'Hindi'].contains(lang)) {
       _language = lang;
     }
 
-    final comm = (user['preferredCommunication'] ?? '').toString();
+    final comm = (user['preferredCommunication'] ?? '').toString().trim();
     if (['WhatsApp', 'SMS', 'Email'].contains(comm)) {
       _communication = comm;
     }
@@ -89,17 +91,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _whatsappAlerts = notif['whatsappAlerts'] ?? true;
       _promoOffers = notif['promoOffers'] ?? true;
     }
-  }
-
-  int _calculateCompleteness() {
-    int score = 0;
-    if (_nameCtrl.text.trim().isNotEmpty) score += 20;
-    if (_emailCtrl.text.trim().isNotEmpty) score += 20;
-    if (_phoneCtrl.text.trim().isNotEmpty) score += 20;
-    if ((_user?['avatar'] ?? '').toString().isNotEmpty) score += 20;
-    if (_dobCtrl.text.trim().isNotEmpty) score += 10;
-    if (_gender.isNotEmpty) score += 10;
-    return score > 100 ? 100 : score;
   }
 
   Future<void> _handleSaveProfile(AppColors colors) async {
@@ -139,10 +130,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
         if (isSuccess) {
-          await _loadProfileData(quiet: true);
-          setState(() {
-            _isEditMode = false;
-          });
+          final updatedUser = (res['user'] is Map<String, dynamic>)
+              ? res['user'] as Map<String, dynamic>
+              : await ApiService.fetchCurrentUserProfile();
+          if (mounted) {
+            setState(() {
+              if (updatedUser != null) {
+                _user = updatedUser;
+                _populateFields(updatedUser);
+              }
+              _isEditMode = false;
+            });
+          }
         }
       }
     } catch (e) {
@@ -158,7 +157,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final completeness = _calculateCompleteness();
 
     return Scaffold(
       backgroundColor: colors.mainBackground,
@@ -226,10 +224,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     // --- HEADER PROFILE CARD ---
                     _buildHeaderCard(colors),
-                    const SizedBox(height: 16),
-
-                    // --- COMPLETENESS CARD ---
-                    _buildCompletenessCard(colors, completeness),
                     const SizedBox(height: 20),
 
                     // --- PROFILE CONTENT (VIEW MODE OR EDIT MODE) ---
@@ -332,58 +326,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildCompletenessCard(AppColors colors, int score) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Profile Completeness',
-                    style: TextStyle(color: colors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ],
-              ),
-              Text(
-                '$score%',
-                style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: score / 100.0,
-              minHeight: 8,
-              backgroundColor: colors.inputBackground,
-              color: colors.primary,
-            ),
-          ),
-          if (score < 100) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Complete missing details for 100% VIP guest status & seamless appointment updates.',
-              style: TextStyle(color: colors.textMuted, fontSize: 11),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   // READ-ONLY VIEW MODE
   Widget _buildViewDetails(AppColors colors) {
     return Column(
@@ -395,7 +337,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildInfoTile(colors, Icons.person_outline, 'Full Name', _nameCtrl.text.isNotEmpty ? _nameCtrl.text : 'Not Specified'),
           _buildInfoTile(colors, Icons.phone_outlined, 'Mobile Phone', _phoneCtrl.text.isNotEmpty ? _phoneCtrl.text : 'Not Specified'),
           _buildInfoTile(colors, Icons.email_outlined, 'Email Address', _emailCtrl.text.isNotEmpty ? _emailCtrl.text : 'Not Specified'),
-          _buildInfoTile(colors, Icons.wc_outlined, 'Gender', _gender),
+          _buildInfoTile(
+            colors,
+            Icons.wc_outlined,
+            'Gender',
+            (['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(_gender))
+                ? _gender
+                : 'Not Specified',
+          ),
         ]),
         const SizedBox(height: 20),
 
@@ -505,9 +454,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Gender Dropdown
         DropdownButtonFormField<String>(
-          initialValue: _gender,
+          initialValue: ['Female', 'Male', 'Non-Binary', 'Prefer Not to Say'].contains(_gender) ? _gender : null,
           dropdownColor: colors.cardSurface,
           style: TextStyle(color: colors.textPrimary, fontSize: 14),
+          hint: Text(
+            'Select Gender',
+            style: TextStyle(color: colors.textMuted, fontSize: 14),
+          ),
           items: const [
             DropdownMenuItem(value: 'Female', child: Text('Female')),
             DropdownMenuItem(value: 'Male', child: Text('Male')),

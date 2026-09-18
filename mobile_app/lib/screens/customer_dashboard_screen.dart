@@ -138,11 +138,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         context,
         MaterialPageRoute(
           builder: (ctx) => LoginScreen(
-            onLoginSuccess: () async {
-              await _loadCustomerData();
-              if (mounted) {
-                _openBookAppointmentPage(initialService: initialService);
-              }
+            onLoginSuccess: () {
+              _loadCustomerData();
             },
           ),
         ),

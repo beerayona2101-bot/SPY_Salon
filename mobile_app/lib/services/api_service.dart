@@ -1220,11 +1220,18 @@ class ApiService {
       );
       if (response != null) {
         final result = json.decode(response.body);
-        if (response.statusCode == 200 && result['user'] != null) {
+        final userObj = result['data']?['user'] ?? result['user'] ?? result['data'];
+        final isSuccess = (response.statusCode == 200 || response.statusCode == 201) &&
+            (result['success'] == true || userObj != null);
+        if (isSuccess && userObj != null && userObj is Map<String, dynamic>) {
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('user_data', json.encode(result['user']));
+          await prefs.setString('user_data', json.encode(userObj));
         }
-        return {'success': response.statusCode == 200, 'message': result['message'] ?? 'Profile updated', 'user': result['user']};
+        return {
+          'success': isSuccess,
+          'message': result['message'] ?? 'Profile updated',
+          'user': userObj
+        };
       }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
