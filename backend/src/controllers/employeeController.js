@@ -413,7 +413,10 @@ exports.getTodayAttendance = async (req, res, next) => {
     await autoCheckoutPastUnclosedShifts(employeeId);
 
     const todayStr = getKolkataDateStr();
-    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    const log = await Attendance.findOne({
+      $or: [{ employeeId }, { employee: req.user._id }],
+      date: todayStr
+    });
 
     const approvedLeave = await Leave.findOne({
       $or: [{ employeeId: req.user._id }, { employee: req.user._id }],

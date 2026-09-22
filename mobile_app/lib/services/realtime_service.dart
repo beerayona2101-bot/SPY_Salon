@@ -56,6 +56,8 @@ class RealtimeService with WidgetsBindingObserver {
     'employee:updated',
     'employee:deleted',
     'attendance:clock_in',
+    'attendance:start_break',
+    'attendance:end_break',
     'attendance:clock_out',
     'leave:requested',
     'leave:status_updated',

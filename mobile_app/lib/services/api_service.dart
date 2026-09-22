@@ -1065,6 +1065,22 @@ class ApiService {
     };
   }
 
+  /// Fetch Today's Attendance Record for Logged-In Staff
+  static Future<Map<String, dynamic>?> getTodayAttendance() async {
+    try {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/employee/attendance/today');
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map && data['data'] != null && data['data'] is Map) {
+          return Map<String, dynamic>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Today attendance fetch error: $e');
+    }
+    return null;
+  }
+
   /// Fetch Staff Attendance Log
   static Future<List<dynamic>?> getEmployeeAttendance() async {
     try {

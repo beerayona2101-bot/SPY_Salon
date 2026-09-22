@@ -32,6 +32,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   List<dynamic> _payrolls = [];
 
   String _shiftStatus = 'NOT_CLOCKED_IN'; // NOT_CLOCKED_IN, CLOCKED_IN, ON_BREAK, CLOCKED_OUT, ON_LEAVE
+  bool _isAttendanceProcessing = false;
 
   @override
   void initState() {
@@ -139,12 +140,13 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
       return;
     }
 
-    // Fetch 4 staff modules from real backend API endpoints
+    // Fetch 5 staff modules from real backend API endpoints
     final results = await Future.wait([
       ApiService.getEmployeeAppointments(),
       ApiService.getEmployeeAttendance(),
       ApiService.getEmployeeLeaves(),
       ApiService.getEmployeePayrolls(),
+      ApiService.getTodayAttendance(),
     ]);
 
     if (!mounted) return;
@@ -179,11 +181,14 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     }
 
     final List<dynamic> attList = (results[1] != null) ? List<dynamic>.from(results[1] as List) : _attendance;
+    final Map<String, dynamic>? todayRec = results[4] as Map<String, dynamic>?;
+
     String currentShift = 'NOT_CLOCKED_IN';
-    if (attList.isNotEmpty) {
-      final todayRec = attList.first;
-      if (todayRec['attendanceState'] != null) {
-        currentShift = todayRec['attendanceState'];
+    if (todayRec != null) {
+      if (todayRec['isOnApprovedLeave'] == true || todayRec['attendanceState'] == 'ON_LEAVE') {
+        currentShift = 'ON_LEAVE';
+      } else if (todayRec['attendanceState'] != null && todayRec['attendanceState'].toString().isNotEmpty) {
+        currentShift = todayRec['attendanceState'].toString();
       } else if (todayRec['clockOut'] != null) {
         currentShift = 'CLOCKED_OUT';
       } else if (todayRec['clockIn'] != null) {
@@ -876,14 +881,26 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                       height: 44,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white),
-                        onPressed: () async {
-                          final res = await ApiService.clockInAttendance();
-                          _loadStaffData();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: res['success'] == true ? themeColors.success : themeColors.error, content: Text(res['message'] ?? 'Clocked in')));
+                        onPressed: _isAttendanceProcessing ? null : () async {
+                          setState(() => _isAttendanceProcessing = true);
+                          try {
+                            final res = await ApiService.clockInAttendance();
+                            await _loadStaffData(quiet: true);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: res['success'] == true ? themeColors.success : themeColors.error,
+                                  content: Text(res['message'] ?? (res['success'] == true ? 'Clocked in successfully!' : 'Clock-in failed')),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isAttendanceProcessing = false);
                           }
                         },
-                        icon: const Icon(Icons.login, size: 18),
+                        icon: _isAttendanceProcessing
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.login, size: 18),
                         label: const Text('Clock In Now', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
@@ -893,14 +910,26 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(backgroundColor: themeColors.warning, foregroundColor: Colors.black),
-                            onPressed: () async {
-                              final res = await ApiService.startBreakAttendance();
-                              _loadStaffData();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: themeColors.warning, content: Text(res['message'] ?? 'Break started')));
+                            onPressed: _isAttendanceProcessing ? null : () async {
+                              setState(() => _isAttendanceProcessing = true);
+                              try {
+                                final res = await ApiService.startBreakAttendance();
+                                await _loadStaffData(quiet: true);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: res['success'] == true ? themeColors.warning : themeColors.error,
+                                      content: Text(res['message'] ?? (res['success'] == true ? 'Break started!' : 'Start break failed')),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _isAttendanceProcessing = false);
                               }
                             },
-                            icon: const Icon(Icons.free_breakfast, size: 18),
+                            icon: _isAttendanceProcessing
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                                : const Icon(Icons.free_breakfast, size: 18),
                             label: const Text('Start Break', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -908,14 +937,26 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         Expanded(
                           child: ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(backgroundColor: themeColors.error, foregroundColor: Colors.white),
-                            onPressed: () async {
-                              final res = await ApiService.clockOutAttendance();
-                              _loadStaffData();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: themeColors.error, content: Text(res['message'] ?? 'Clocked out')));
+                            onPressed: _isAttendanceProcessing ? null : () async {
+                              setState(() => _isAttendanceProcessing = true);
+                              try {
+                                final res = await ApiService.clockOutAttendance();
+                                await _loadStaffData(quiet: true);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: res['success'] == true ? themeColors.error : themeColors.error,
+                                      content: Text(res['message'] ?? (res['success'] == true ? 'Clocked out successfully!' : 'Clock-out failed')),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _isAttendanceProcessing = false);
                               }
                             },
-                            icon: const Icon(Icons.logout, size: 18),
+                            icon: _isAttendanceProcessing
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.logout, size: 18),
                             label: const Text('Clock Out', style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
@@ -927,17 +968,31 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                       height: 44,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white),
-                        onPressed: () async {
-                          final res = await ApiService.endBreakAttendance();
-                          _loadStaffData();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: themeColors.success, content: Text(res['message'] ?? 'Break ended')));
+                        onPressed: _isAttendanceProcessing ? null : () async {
+                          setState(() => _isAttendanceProcessing = true);
+                          try {
+                            final res = await ApiService.endBreakAttendance();
+                            await _loadStaffData(quiet: true);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: res['success'] == true ? themeColors.success : themeColors.error,
+                                  content: Text(res['message'] ?? (res['success'] == true ? 'Break ended! Resumed work.' : 'End break failed')),
+                                ),
+                              );
+                            }
+                          } finally {
+                            if (mounted) setState(() => _isAttendanceProcessing = false);
                           }
                         },
-                        icon: const Icon(Icons.play_arrow, size: 18),
+                        icon: _isAttendanceProcessing
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Icon(Icons.play_arrow, size: 18),
                         label: const Text('End Break & Resume Work', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
+                  ] else if (_shiftStatus == 'ON_LEAVE') ...[
+                    Text('On Approved Leave Today 🟣', style: TextStyle(color: Colors.purple.shade300, fontSize: 13, fontWeight: FontWeight.bold)),
                   ] else ...[
                     Text('Shift Completed for Today', style: TextStyle(color: themeColors.textMuted, fontSize: 13)),
                   ],
