@@ -3,35 +3,48 @@
  */
 
 /**
- * Parse dateStr (YYYY-MM-DD) and timeStr (e.g. "10:30 AM", "05:00 PM") in Asia/Kolkata timezone.
+ * Parse dateStr (YYYY-MM-DD or ISO string) and timeStr (e.g. "10:30 AM", "05:00 PM", "11:30", "10") in Asia/Kolkata timezone.
  * Returns a JS Date object representing the exact moment in UTC.
  */
 function parseKolkataDateTime(dateStr, timeStr) {
   if (!dateStr || !timeStr) return null;
 
-  const cleanDate = dateStr.trim();
-  const cleanTime = timeStr.trim();
+  const rawDateStr = String(dateStr).trim();
+  const cleanTime = String(timeStr).trim();
 
   // If time is non-standard string like "Immediate Walk-In"
   if (/walk-in|immediate/i.test(cleanTime)) {
     return new Date();
   }
 
+  let ymd = '';
+  const dateOnly = rawDateStr.split('T')[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    ymd = dateOnly;
+  } else {
+    const dObj = new Date(rawDateStr);
+    if (!isNaN(dObj.getTime())) {
+      ymd = dObj.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    } else {
+      return null;
+    }
+  }
+
   let hours = 0;
   let minutes = 0;
 
-  const match12 = cleanTime.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  const match12 = cleanTime.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(AM|PM)$/i);
   if (match12) {
     hours = parseInt(match12[1], 10);
-    minutes = parseInt(match12[2], 10);
+    minutes = match12[2] ? parseInt(match12[2], 10) : 0;
     const period = match12[3].toUpperCase();
     if (period === 'PM' && hours < 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
   } else {
-    const match24 = cleanTime.match(/^(\d{1,2}):(\d{2})$/);
+    const match24 = cleanTime.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?$/);
     if (match24) {
       hours = parseInt(match24[1], 10);
-      minutes = parseInt(match24[2], 10);
+      minutes = match24[2] ? parseInt(match24[2], 10) : 0;
     } else {
       return null;
     }
@@ -41,7 +54,7 @@ function parseKolkataDateTime(dateStr, timeStr) {
   const paddedMinutes = String(minutes).padStart(2, '0');
 
   // Construct ISO 8601 string explicitly specifying Asia/Kolkata (+05:30) offset
-  const isoStr = `${cleanDate}T${paddedHours}:${paddedMinutes}:00+05:30`;
+  const isoStr = `${ymd}T${paddedHours}:${paddedMinutes}:00+05:30`;
   const dt = new Date(isoStr);
   return isNaN(dt.getTime()) ? null : dt;
 }
@@ -56,6 +69,27 @@ function isPastDateTimeKolkata(dateStr, timeStr) {
   
   // Return true if appointment timestamp is <= current timestamp
   return dt.getTime() <= Date.now();
+}
+
+/**
+ * Returns true if appointment scheduled date + time has arrived or passed (in Asia/Kolkata timezone).
+ * Returns false if appointment scheduled date + time is strictly in the future.
+ */
+function hasAppointmentStarted(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return true;
+  if (/walk-in|immediate/i.test(String(timeStr))) return true;
+
+  const dt = parseKolkataDateTime(dateStr, timeStr);
+  if (!dt) {
+    const dateOnly = String(dateStr).trim().split('T')[0];
+    const todayYMD = getKolkataCurrentDateStr();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly) && dateOnly > todayYMD) {
+      return false;
+    }
+    return true;
+  }
+
+  return Date.now() >= dt.getTime();
 }
 
 /**
@@ -80,6 +114,8 @@ function getKolkataCurrentTimeStr() {
 module.exports = {
   parseKolkataDateTime,
   isPastDateTimeKolkata,
+  hasAppointmentStarted,
   getKolkataCurrentDateStr,
   getKolkataCurrentTimeStr
 };
+

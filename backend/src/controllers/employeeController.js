@@ -55,7 +55,10 @@ exports.getAssignedAppointments = async (req, res, next) => {
       $or: nameConditions
     }).sort({ appointmentDate: -1, appointmentTime: -1 });
 
-    return ApiResponse.success(res, appointments, 'Assigned appointments list retrieved');
+    const adminService = require('../services/adminService');
+    const sanitized = await adminService.sanitizeAppointmentsList(appointments);
+
+    return ApiResponse.success(res, sanitized, 'Assigned appointments list retrieved');
   } catch (error) {
     next(error);
   }
@@ -684,6 +687,10 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       }
     } catch (sErr) {}
 
+    const { hasAppointmentStarted } = require('../utils/timezoneHelper');
+    const finalAppTime = appointmentTime || 'Immediate Walk-In';
+    const walkInStatus = hasAppointmentStarted(targetDateStr, finalAppTime) ? 'In Progress' : 'Pending';
+
     const newApp = await Appointment.create({
       bookingId,
       customerName,
@@ -699,12 +706,12 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       branchId: req.user.branchId,
       bookingDateTime,
       bookingDate: targetDateStr,
-      bookingTimeFormatted: appointmentTime || bookingTimeFormattedStr,
+      bookingTimeFormatted: finalAppTime,
       appointmentDate: targetDateStr,
-      appointmentTime: appointmentTime || 'Immediate Walk-In',
+      appointmentTime: finalAppTime,
       paymentMethod: paymentMethod || 'Cash',
       paymentStatus: 'Paid',
-      status: 'In Progress',
+      status: walkInStatus,
       notes: notes || 'Direct Walk-In Client added by Stylist Desk.',
       customerId: null
     });

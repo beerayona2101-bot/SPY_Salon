@@ -556,33 +556,48 @@ function EmployeeDashboardContent() {
 
   const hasAppointmentStarted = (dateStr?: string, timeStr?: string) => {
     if (!dateStr || !timeStr) return true;
+    if (/walk-in|immediate/i.test(String(timeStr))) return true;
     try {
-      const now = new Date();
+      const cleanTime = String(timeStr).trim();
+      const rawDateStr = String(dateStr).trim();
+      const dateOnly = rawDateStr.split('T')[0];
+
       let year: number, month: number, day: number;
-      if (dateStr.includes('-')) {
-        const parts = dateStr.trim().split('T')[0].split('-');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        const parts = dateOnly.split('-');
         year = parseInt(parts[0], 10);
         month = parseInt(parts[1], 10) - 1;
         day = parseInt(parts[2], 10);
       } else {
-        const parsedDate = new Date(dateStr);
+        const parsedDate = new Date(rawDateStr);
         if (isNaN(parsedDate.getTime())) return true;
         year = parsedDate.getFullYear();
         month = parsedDate.getMonth();
         day = parsedDate.getDate();
       }
 
-      const timeParts = timeStr.trim().split(/\s+/);
-      if (timeParts.length < 2) return true;
-      const clockParts = timeParts[0].split(':');
-      let hour = parseInt(clockParts[0], 10);
-      const minute = parseInt(clockParts[1], 10);
-      const isPm = timeParts[1].toUpperCase() === 'PM';
-      if (isPm && hour < 12) hour += 12;
-      if (!isPm && hour === 12) hour = 0;
+      let hour = 0;
+      let minute = 0;
+
+      const match12 = cleanTime.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*(AM|PM)$/i);
+      if (match12) {
+        hour = parseInt(match12[1], 10);
+        minute = match12[2] ? parseInt(match12[2], 10) : 0;
+        const period = match12[3].toUpperCase();
+        if (period === 'PM' && hour < 12) hour += 12;
+        if (period === 'AM' && hour === 12) hour = 0;
+      } else {
+        const match24 = cleanTime.match(/^(\d{1,2})(?::(\d{2}))?(?::\d{2})?$/);
+        if (match24) {
+          hour = parseInt(match24[1], 10);
+          minute = match24[2] ? parseInt(match24[2], 10) : 0;
+        } else {
+          return true;
+        }
+      }
 
       const scheduledDateTime = new Date(year, month, day, hour, minute);
-      return now >= scheduledDateTime;
+      return new Date() >= scheduledDateTime;
     } catch (e) {
       return true;
     }
@@ -596,17 +611,17 @@ function EmployeeDashboardContent() {
       { value: 'Cancelled', label: 'Cancelled ❌' }
     ];
     if (appointment && !hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime)) {
-      options = options.filter(opt => opt.value !== 'Completed');
+      options = options.filter(opt => opt.value !== 'Completed' && opt.value !== 'In Progress');
     }
     return options;
   };
 
   // Update Service Status (In Progress, Completed, Cancelled, Staff_Accepted, Staff_Rejected)
   const handleUpdateStatus = async (id: string, newStatus: string, rejectionReason?: string) => {
-    if (newStatus === 'Completed') {
+    if (newStatus === 'Completed' || newStatus === 'In Progress') {
       const app = appointments.find(a => a._id === id);
       if (app && !hasAppointmentStarted(app.appointmentDate, app.appointmentTime)) {
-        showToast(`Cannot mark appointment as Completed before its scheduled time (${app.appointmentDate} ${app.appointmentTime}).`, 'error');
+        showToast(`Cannot set appointment to ${newStatus} before its scheduled time (${app.appointmentDate} ${app.appointmentTime}).`, 'error');
         return;
       }
     }

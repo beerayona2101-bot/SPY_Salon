@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../models/appointment_model.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
@@ -771,7 +772,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                                     child: Text('Decline', style: TextStyle(color: themeColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
-                                if (status == 'confirmed' || status == 'staff_accepted') ...[
+                                if ((status == 'confirmed' || status == 'staff_accepted') && AppointmentModel.hasAppointmentStarted(date, time)) ...[
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
                                     onPressed: () async {

@@ -20,19 +20,8 @@ const ApiError = require('../utils/apiError');
 const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const { broadcastEvent } = require('../utils/socket');
-const { parseKolkataDateTime, isPastDateTimeKolkata, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+const { parseKolkataDateTime, isPastDateTimeKolkata, hasAppointmentStarted, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
 
-function hasAppointmentStarted(dateStr, timeStr) {
-  if (!dateStr || !timeStr) return true;
-  if (/walk-in|immediate/i.test(String(timeStr))) return true;
-  try {
-    const dt = parseKolkataDateTime(dateStr, timeStr);
-    if (!dt) return true;
-    return Date.now() >= dt.getTime();
-  } catch (e) {
-    return true;
-  }
-}
 
 class AdminService {
   // Summary Analytics Loading (Calculated directly from database)
@@ -622,6 +611,50 @@ class AdminService {
     return true;
   }
 
+  async sanitizeAppointmentStatus(appDoc) {
+    if (!appDoc) return appDoc;
+    const currentStatus = appDoc.status;
+    if (currentStatus === 'In Progress') {
+      const started = hasAppointmentStarted(appDoc.appointmentDate, appDoc.appointmentTime);
+      if (!started) {
+        try {
+          console.warn(`[Auto-Correct] Appointment #${appDoc.bookingId || appDoc._id} scheduled for ${appDoc.appointmentDate} at ${appDoc.appointmentTime} has invalid future 'In Progress' status. Auto-correcting to 'Pending'.`);
+          const updated = await Appointment.findByIdAndUpdate(
+            appDoc._id,
+            {
+              status: 'Pending',
+              $push: {
+                statusHistory: {
+                  fromStatus: 'In Progress',
+                  toStatus: 'Pending',
+                  updatedBy: 'System Auto-Correction',
+                  updatedRole: 'system',
+                  timestamp: new Date(),
+                  note: 'System auto-corrected invalid future In Progress status to Pending'
+                }
+              }
+            },
+            { new: true }
+          );
+          return updated || appDoc;
+        } catch (err) {
+          console.error('[Auto-Correct Error]:', err.message);
+        }
+      }
+    }
+    return appDoc;
+  }
+
+  async sanitizeAppointmentsList(list) {
+    if (!Array.isArray(list) || list.length === 0) return list;
+    const sanitized = [];
+    for (const app of list) {
+      const clean = await this.sanitizeAppointmentStatus(app);
+      sanitized.push(clean);
+    }
+    return sanitized;
+  }
+
   // Appointment Desk & Auto-Ledger Updates
   async getAppointments(queryParams) {
     const { page = 1, limit = 10, branchId, search, date } = queryParams;
@@ -641,7 +674,8 @@ class AdminService {
       ];
     }
 
-    const data = await Appointment.find(filter).skip(skip).limit(limitNum).sort({ createdAt: -1 });
+    const rawData = await Appointment.find(filter).skip(skip).limit(limitNum).sort({ createdAt: -1 });
+    const data = await this.sanitizeAppointmentsList(rawData);
     const total = await Appointment.countDocuments(filter);
 
     return { data, total, page: pageNum, limit: limitNum };
@@ -800,6 +834,15 @@ class AdminService {
     const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];
     if (!allowed.includes(targetStatus)) {
       throw ApiError.badRequest(`Invalid status transition from '${currentStatus}' to '${targetStatus}'. Allowed options: ${allowed.join(', ')}`);
+    }
+
+    if (targetStatus === 'In Progress') {
+      const hasStarted = hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime);
+      if (!hasStarted) {
+        throw ApiError.badRequest(
+          `Cannot set appointment to In Progress before its scheduled start time (${appointment.appointmentDate} at ${appointment.appointmentTime}).`
+        );
+      }
     }
 
     if (targetStatus === 'Completed') {

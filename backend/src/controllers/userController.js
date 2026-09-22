@@ -124,7 +124,10 @@ exports.getUserAppointments = async (req, res, next) => {
       $or: userConditions
     }).sort({ createdAt: -1 });
 
-    return ApiResponse.success(res, appointments, 'User appointments retrieved');
+    const adminService = require('../services/adminService');
+    const sanitized = await adminService.sanitizeAppointmentsList(appointments);
+
+    return ApiResponse.success(res, sanitized, 'User appointments retrieved');
   } catch (error) {
     next(error);
   }
