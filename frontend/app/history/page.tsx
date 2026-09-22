@@ -147,6 +147,7 @@ function CustomerHistoryContent() {
             return [app, ...prev];
           }
         });
+        fetchCustomerHistory();
       }
     };
 
@@ -156,6 +157,9 @@ function CustomerHistoryContent() {
     socket.on('appointment:accepted', handleRealtimeUpdate);
     socket.on('appointment:cancelled', handleRealtimeUpdate);
     socket.on('appointment:status_changed', handleRealtimeUpdate);
+    socket.on('appointment:rescheduled', handleRealtimeUpdate);
+    socket.on('booking_updated', handleRealtimeUpdate);
+    socket.on('booking:status_changed', handleRealtimeUpdate);
 
     return () => {
       socket.off('appointment:new', handleRealtimeUpdate);
@@ -164,6 +168,9 @@ function CustomerHistoryContent() {
       socket.off('appointment:accepted', handleRealtimeUpdate);
       socket.off('appointment:cancelled', handleRealtimeUpdate);
       socket.off('appointment:status_changed', handleRealtimeUpdate);
+      socket.off('appointment:rescheduled', handleRealtimeUpdate);
+      socket.off('booking_updated', handleRealtimeUpdate);
+      socket.off('booking:status_changed', handleRealtimeUpdate);
     };
   }, [socket, user]);
 

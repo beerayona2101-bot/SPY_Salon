@@ -367,31 +367,38 @@ function EmployeeDashboardContent() {
     }
     socket.emit('join_room', 'room:employee');
 
-    socket.on('appointment:updated', (data: any) => {
+    const handleRealtimeAppointment = (data: any) => {
       const app = data?.appointment || data;
-      if (app?._id) {
-        setAppointments(prev => prev.map(a => a._id === app._id ? { ...a, ...app } : a));
+      if (app && (app._id || app.bookingId)) {
+        setAppointments(prev => {
+          const exists = prev.some(a => a._id === app._id || a.bookingId === app.bookingId);
+          if (exists) {
+            return prev.map(a => (a._id === app._id || a.bookingId === app.bookingId) ? { ...a, ...app } : a);
+          } else {
+            return [app, ...prev];
+          }
+        });
       }
-    });
+      fetchEmployeeData();
+    };
 
-    socket.on('appointment:created', (data: any) => {
-      const app = data?.appointment || data;
-      if (app?._id) {
-        setAppointments(prev => [app, ...prev.filter(a => a._id !== app._id)]);
-      }
-    });
-
-    socket.on('appointment:new', (data: any) => {
-      const app = data?.appointment || data;
-      if (app?._id) {
-        setAppointments(prev => [app, ...prev.filter(a => a._id !== app._id)]);
-      }
-    });
+    socket.on('appointment:updated', handleRealtimeAppointment);
+    socket.on('appointment:created', handleRealtimeAppointment);
+    socket.on('appointment:new', handleRealtimeAppointment);
+    socket.on('appointment:status_changed', handleRealtimeAppointment);
+    socket.on('appointment:rescheduled', handleRealtimeAppointment);
+    socket.on('appointment:cancelled', handleRealtimeAppointment);
+    socket.on('appointment:accepted', handleRealtimeAppointment);
+    socket.on('appointment:rejected', handleRealtimeAppointment);
+    socket.on('booking_created', handleRealtimeAppointment);
+    socket.on('booking_updated', handleRealtimeAppointment);
+    socket.on('booking:status_changed', handleRealtimeAppointment);
 
     socket.on('leave:updated', (data: any) => {
       if (data?.leave) {
         setLeaves(prev => prev.map(l => l._id === data.leave._id ? { ...l, ...data.leave } : l));
       }
+      fetchEmployeeData();
     });
 
     socket.on('notification:new', (notif: NotificationItem) => {
@@ -402,6 +409,7 @@ function EmployeeDashboardContent() {
       if (!notif.isRead) {
         setUnreadNotifCount(prev => prev + 1);
       }
+      fetchEmployeeData();
     });
 
     socket.on('notifications:updated', () => fetchNotifications());
@@ -409,9 +417,17 @@ function EmployeeDashboardContent() {
     socket.on('notifications:deleted', () => fetchNotifications());
 
     return () => {
-      socket.off('appointment:updated');
-      socket.off('appointment:created');
-      socket.off('appointment:new');
+      socket.off('appointment:updated', handleRealtimeAppointment);
+      socket.off('appointment:created', handleRealtimeAppointment);
+      socket.off('appointment:new', handleRealtimeAppointment);
+      socket.off('appointment:status_changed', handleRealtimeAppointment);
+      socket.off('appointment:rescheduled', handleRealtimeAppointment);
+      socket.off('appointment:cancelled', handleRealtimeAppointment);
+      socket.off('appointment:accepted', handleRealtimeAppointment);
+      socket.off('appointment:rejected', handleRealtimeAppointment);
+      socket.off('booking_created', handleRealtimeAppointment);
+      socket.off('booking_updated', handleRealtimeAppointment);
+      socket.off('booking:status_changed', handleRealtimeAppointment);
       socket.off('leave:updated');
       socket.off('notification:new');
       socket.off('notifications:updated');
