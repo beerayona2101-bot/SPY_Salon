@@ -112,13 +112,15 @@ export default function AppointmentStatusBadge({
       break;
 
     case 'No Show':
+    case 'No_Show':
+    case 'Hold':
       config = {
-        label: 'No Show',
+        label: 'Hold (No Show)',
         icon: UserX,
-        bg: 'bg-gray-500/20',
-        text: 'text-gray-300',
-        border: 'border-gray-500/40',
-        emoji: '⚫'
+        bg: 'bg-amber-500/20',
+        text: 'text-amber-300',
+        border: 'border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]',
+        emoji: '⏸️'
       };
       break;
   }

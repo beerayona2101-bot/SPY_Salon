@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   Crown,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import AppointmentStatusBadge from './AppointmentStatusBadge';
 import AppointmentJourneyTimeline from './AppointmentJourneyTimeline';
@@ -265,6 +266,24 @@ export default function AppointmentCard({
               </button>
             )}
           </>
+        )}
+
+        {/* NO SHOW / HOLD MISSED APPOINTMENT ACTIONS */}
+        {(normStatus === 'No Show' || normStatus === 'No_Show') && (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 gap-2">
+            <div className="text-amber-300 text-xs font-bold flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>You missed this appointment. Request a new time slot to reactivate service.</span>
+            </div>
+            {onReschedule && (
+              <button
+                onClick={() => onReschedule(appointment)}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-dark-900 font-extrabold text-xs shadow-md transition-all cursor-pointer whitespace-nowrap"
+              >
+                Request Reschedule 🗓️
+              </button>
+            )}
+          </div>
         )}
 
         {/* IN PROGRESS ACTIONS */}

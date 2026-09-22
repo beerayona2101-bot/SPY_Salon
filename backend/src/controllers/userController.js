@@ -150,7 +150,7 @@ exports.requestReschedule = async (req, res, next) => {
 
     // Eligibility check
     const currentStatus = appointment.status || 'Pending';
-    if (['Completed', 'Cancelled', 'No Show'].includes(currentStatus)) {
+    if (['Completed', 'Cancelled'].includes(currentStatus)) {
       throw ApiError.badRequest(`Cannot request reschedule for appointment with status '${currentStatus}'.`);
     }
 

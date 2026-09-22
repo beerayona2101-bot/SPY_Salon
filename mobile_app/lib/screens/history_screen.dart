@@ -492,6 +492,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ],
 
+                // Action Button for Missed / No Show Bookings (Request Reschedule)
+                if (status.toLowerCase() == 'no show' || status.toLowerCase() == 'no_show') ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.warningSoft,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.warning.withValues(alpha: 0.4)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: colors.warning, size: 16),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'You missed this scheduled appointment.',
+                                style: TextStyle(color: colors.warning, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colors.warning,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                            ),
+                            onPressed: () => _showRescheduleDialog(app),
+                            icon: const Icon(Icons.event_repeat_rounded, size: 16, color: Colors.black),
+                            label: const Text(
+                              'Request Reschedule 🗓️',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Action Button for Upcoming Bookings (Cancel)
                 if (isUpcoming) ...[
                   const SizedBox(height: 14),
@@ -518,6 +566,100 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showRescheduleDialog(Map<String, dynamic> app) {
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    TimeOfDay selectedTime = const TimeOfDay(hour: 11, minute: 30);
+    final id = (app['_id'] ?? app['bookingId'] ?? '').toString();
+    final colors = AppColors.of(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: colors.cardSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Request Reschedule 🗓️', style: TextStyle(color: colors.primary, fontWeight: FontWeight.bold, fontSize: 16)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Select a new date and time for your missed appointment:', style: TextStyle(color: colors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 16),
+              ListTile(
+                tileColor: colors.inputBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Icon(Icons.calendar_today, color: colors.primary),
+                title: Text('New Date: ${selectedDate.toString().split(' ')[0]}', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 90)),
+                  );
+                  if (picked != null) {
+                    setDialogState(() {
+                      selectedDate = picked;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                tileColor: colors.inputBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Icon(Icons.access_time, color: colors.primary),
+                title: Text('New Time: ${selectedTime.format(ctx)}', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: ctx,
+                    initialTime: selectedTime,
+                  );
+                  if (picked != null) {
+                    setDialogState(() {
+                      selectedTime = picked;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: colors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: colors.primary, foregroundColor: colors.buttonTextPrimary),
+              onPressed: () async {
+                final dateStr = selectedDate.toString().split(' ')[0];
+                final timeStr = selectedTime.format(ctx);
+                Navigator.pop(ctx);
+                final res = await ApiService.requestCustomerReschedule(id, {
+                  'newDate': dateStr,
+                  'newTime': timeStr,
+                  'reason': 'Customer requested reschedule for missed appointment',
+                });
+                if (mounted) {
+                  if (res['success'] == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Reschedule request submitted successfully! Staff will confirm shortly.')),
+                    );
+                    _loadHistoryData();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(res['message'] ?? 'Failed to submit reschedule request.')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Submit Request', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
       ),
     );
   }

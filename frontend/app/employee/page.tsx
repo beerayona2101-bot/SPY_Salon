@@ -68,6 +68,12 @@ interface AssignedAppointment {
   bookingDate?: string;
   bookingTimeFormatted?: string;
   notes?: string;
+  rescheduleRequested?: boolean;
+  rescheduleData?: {
+    requestedDate?: string;
+    requestedTime?: string;
+    reason?: string;
+  };
 }
 
 interface LeaveRequest {
@@ -1374,6 +1380,40 @@ function EmployeeDashboardContent() {
                       </div>
 
                       <div className="flex items-center space-x-2">
+                        {app.status === 'Reschedule Requested' && (
+                          <div className="flex items-center space-x-1.5 mr-1">
+                            <button
+                              onClick={async () => {
+                                const reqDate = app.rescheduleData?.requestedDate || app.appointmentDate;
+                                const reqTime = app.rescheduleData?.requestedTime || app.appointmentTime;
+                                if (confirm(`Approve customer reschedule request for ${reqDate} at ${reqTime}?`)) {
+                                  try {
+                                    const res = await apiFetch(`${API_BASE_URL}/admin/appointments/${app._id}/reschedule-respond`, {
+                                      method: 'PUT',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ action: 'Approve' })
+                                    });
+                                    if (res.ok) {
+                                      showToast(`Reschedule approved for ${reqDate} at ${reqTime}!`, 'success');
+                                      fetchEmployeeData();
+                                    } else {
+                                      const data = await res.json();
+                                      showToast(data.message || 'Failed to approve reschedule request', 'error');
+                                    }
+                                  } catch (e: any) {
+                                    showToast(e.message || 'Error approving reschedule', 'error');
+                                  }
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-dark-900 font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center space-x-1"
+                              title="Approve Customer Reschedule Request"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Confirm Reschedule 🗓️</span>
+                            </button>
+                          </div>
+                        )}
+
                         {app.status === 'Pending' && (
                           <div className="flex items-center space-x-1.5 mr-1">
                             <button

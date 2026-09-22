@@ -890,6 +890,51 @@ class ApiService {
     }
   }
 
+  /// Customer Request Reschedule for Appointment (including Hold/No-Show)
+  static Future<Map<String, dynamic>> requestCustomerReschedule(String id, Map<String, dynamic> body) async {
+    try {
+      final response = await _requestWithRetry(
+        'POST',
+        '${ApiConfig.baseUrl}/api/v1/user/appointments/$id/reschedule',
+        body: json.encode(body),
+      );
+      if (response != null) {
+        final result = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': result['data'] ?? result};
+        }
+        return {'success': false, 'message': result['message'] ?? 'Failed to submit reschedule request'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+    return {'success': false, 'message': 'Network connection failed.'};
+  }
+
+  /// Staff/Admin Respond & Confirm Reschedule Request
+  static Future<Map<String, dynamic>> respondReschedule(String id, String action, {String? rejectionReason}) async {
+    try {
+      final response = await _requestWithRetry(
+        'PUT',
+        '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule-respond',
+        body: json.encode({
+          'action': action,
+          if (rejectionReason != null) 'rejectionReason': rejectionReason,
+        }),
+      );
+      if (response != null) {
+        final result = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': result['data'] ?? result};
+        }
+        return {'success': false, 'message': result['message'] ?? 'Failed to process reschedule approval'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+    return {'success': false, 'message': 'Network connection failed.'};
+  }
+
   /// Seat Direct Walk-In Client by Staff
   static Future<Map<String, dynamic>> createEmployeeWalkIn(Map<String, dynamic> data) async {
     try {

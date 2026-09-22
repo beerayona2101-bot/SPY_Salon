@@ -614,34 +614,62 @@ class AdminService {
   async sanitizeAppointmentStatus(appDoc) {
     if (!appDoc) return appDoc;
     const currentStatus = appDoc.status;
-    if (currentStatus === 'In Progress') {
-      const started = hasAppointmentStarted(appDoc.appointmentDate, appDoc.appointmentTime);
-      if (!started) {
-        try {
-          console.warn(`[Auto-Correct] Appointment #${appDoc.bookingId || appDoc._id} scheduled for ${appDoc.appointmentDate} at ${appDoc.appointmentTime} has invalid future 'In Progress' status. Auto-correcting to 'Pending'.`);
-          const updated = await Appointment.findByIdAndUpdate(
-            appDoc._id,
-            {
-              status: 'Pending',
-              $push: {
-                statusHistory: {
-                  fromStatus: 'In Progress',
-                  toStatus: 'Pending',
-                  updatedBy: 'System Auto-Correction',
-                  updatedRole: 'system',
-                  timestamp: new Date(),
-                  note: 'System auto-corrected invalid future In Progress status to Pending'
-                }
+    const started = hasAppointmentStarted(appDoc.appointmentDate, appDoc.appointmentTime);
+
+    // 1. Invalid Future In Progress -> revert to Pending
+    if (currentStatus === 'In Progress' && !started) {
+      try {
+        console.warn(`[Auto-Correct] Appointment #${appDoc.bookingId || appDoc._id} scheduled for ${appDoc.appointmentDate} at ${appDoc.appointmentTime} has invalid future 'In Progress' status. Auto-correcting to 'Pending'.`);
+        const updated = await Appointment.findByIdAndUpdate(
+          appDoc._id,
+          {
+            status: 'Pending',
+            $push: {
+              statusHistory: {
+                fromStatus: 'In Progress',
+                toStatus: 'Pending',
+                updatedBy: 'System Auto-Correction',
+                updatedRole: 'system',
+                timestamp: new Date(),
+                note: 'System auto-corrected invalid future In Progress status to Pending'
               }
-            },
-            { new: true }
-          );
-          return updated || appDoc;
-        } catch (err) {
-          console.error('[Auto-Correct Error]:', err.message);
-        }
+            }
+          },
+          { new: true }
+        );
+        return updated || appDoc;
+      } catch (err) {
+        console.error('[Auto-Correct Error]:', err.message);
       }
     }
+
+    // 2. Missed Appointment (Past scheduled time, never started/completed) -> move to No Show (Hold)
+    if (started && ['Pending', 'Confirmed', 'Staff_Accepted', 'Rescheduled'].includes(currentStatus)) {
+      try {
+        console.warn(`[Auto-Hold] Appointment #${appDoc.bookingId || appDoc._id} scheduled for ${appDoc.appointmentDate} at ${appDoc.appointmentTime} was missed. Moving to 'No Show' (Hold).`);
+        const updated = await Appointment.findByIdAndUpdate(
+          appDoc._id,
+          {
+            status: 'No Show',
+            $push: {
+              statusHistory: {
+                fromStatus: currentStatus,
+                toStatus: 'No Show',
+                updatedBy: 'System Auto-Correction',
+                updatedRole: 'system',
+                timestamp: new Date(),
+                note: 'System auto-moved missed appointment to No Show (Hold) state'
+              }
+            }
+          },
+          { new: true }
+        );
+        return updated || appDoc;
+      } catch (err) {
+        console.error('[Auto-Hold Error]:', err.message);
+      }
+    }
+
     return appDoc;
   }
 
@@ -670,6 +698,7 @@ class AdminService {
       filter.$or = [
         { customerName: new RegExp(q, 'i') },
         { customerPhone: new RegExp(q, 'i') },
+        { customerEmail: new RegExp(q, 'i') },
         { bookingId: new RegExp(q, 'i') }
       ];
     }
@@ -828,7 +857,7 @@ class AdminService {
       'In Progress': ['In Progress', 'Completed', 'Cancelled'],
       'Completed': ['Completed'],
       'Cancelled': ['Cancelled'],
-      'No Show': ['No Show']
+      'No Show': ['No Show', 'Reschedule Requested', 'Cancelled']
     };
 
     const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];

@@ -753,6 +753,16 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
+                                if (status == 'reschedule requested' || status == 'reschedule_requested') ...[
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: themeColors.warning, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                                    onPressed: () async {
+                                      await ApiService.respondReschedule(id, 'Approve');
+                                      _loadStaffData();
+                                    },
+                                    child: const Text('Confirm Reschedule 🗓️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
                                 if (status == 'pending') ...[
                                   ElevatedButton(
                                     style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
