@@ -768,10 +768,10 @@ function BookingContent() {
           <span>Change Service (Return to {selectedServiceObj?.category || 'Salon'} Catalogue)</span>
         </button>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           {allServicesList.length > 0 && (
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-400 font-bold">Select Service:</span>
+            <div className="flex items-center space-x-2 whitespace-nowrap">
+              <span className="text-xs font-semibold text-gray-400 shrink-0 whitespace-nowrap">Select Service:</span>
               <select
                 value={selectedServiceObj?.id || ''}
                 onChange={(e) => {
@@ -818,7 +818,7 @@ function BookingContent() {
                     }
                   }
                 }}
-                className="bg-dark-800 text-rosegold-400 font-bold text-xs px-3 py-1.5 rounded-xl border border-rosegold-500/30 focus:outline-none cursor-pointer"
+                className="bg-dark-800 text-rosegold-400 font-bold text-xs px-3.5 py-1.5 rounded-xl border border-rosegold-500/40 focus:outline-none focus:border-rosegold-400 cursor-pointer max-w-[220px] sm:max-w-xs truncate shadow-sm shrink-0"
               >
                 <option value="no_package">No Package (Individual Services Only)</option>
                 {allServicesList
@@ -832,9 +832,9 @@ function BookingContent() {
             </div>
           )}
 
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-gray-400">Branch:</span>
-            <span className="text-xs font-bold text-white bg-dark-800 px-3 py-1 rounded-full border border-white/10">
+          <div className="flex items-center space-x-2 whitespace-nowrap">
+            <span className="text-xs font-semibold text-gray-400 shrink-0 whitespace-nowrap">Branch:</span>
+            <span className="text-xs font-bold text-white bg-dark-800 px-3.5 py-1.5 rounded-xl border border-white/10 shadow-sm shrink-0 whitespace-nowrap">
               {selectedBranch}
             </span>
           </div>

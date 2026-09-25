@@ -431,38 +431,56 @@ export default function Navbar() {
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.93, y: -10 }}
                           transition={{ type: 'spring', stiffness: 350, damping: 26 }}
-                          className="absolute right-0 mt-2 w-80 sm:w-[410px] max-h-[calc(100vh-120px)] flex flex-col rounded-3xl bg-[#141012] border-2 border-rosegold-500/50 shadow-[0_25px_60px_rgba(0,0,0,0.95)] p-4 space-y-3.5 z-[9999] text-left ring-1 ring-black/80 notif-dropdown-card"
+                          className="fixed top-16 left-3 right-3 sm:left-auto sm:right-0 sm:absolute sm:top-full sm:mt-2 w-auto sm:w-[410px] max-w-[calc(100vw-24px)] max-h-[calc(100vh-100px)] flex flex-col rounded-3xl bg-[#141012] border-2 border-rosegold-500/50 shadow-[0_25px_60px_rgba(0,0,0,0.95)] p-4 sm:p-5 space-y-3 z-[9999] text-left ring-1 ring-black/80 notif-dropdown-card"
                         >
-                          <div className="flex items-center justify-between border-b border-white/10 pb-2.5 shrink-0">
-                            <div className="flex items-center space-x-2">
-                              <Bell className="w-4 h-4 text-rosegold-400" />
-                              <h4 className="text-white font-serif font-bold text-sm">Notifications & Alerts</h4>
-                              {unreadCount > 0 && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-                                  {unreadCount} unread
-                                </span>
-                              )}
+                          <div className="border-b border-white/10 pb-3 space-y-2 shrink-0">
+                            {/* TOP HEADER ROW: TITLE & CLOSE BUTTON */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Bell className="w-4 h-4 text-rosegold-400 shrink-0" />
+                                <h4 className="text-white font-serif font-bold text-sm sm:text-base">Notifications & Alerts</h4>
+                              </div>
+                              <button 
+                                onClick={() => setNotifDropdownOpen(false)} 
+                                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white flex items-center justify-center text-xs cursor-pointer shrink-0 transition-colors"
+                                aria-label="Close notifications"
+                              >
+                                ✕
+                              </button>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {unreadCount > 0 && (
-                                <button
-                                  onClick={handleMarkAllAsRead}
-                                  className="text-[10px] text-rosegold-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"
-                                  title="Mark all notifications as read"
-                                >
-                                  <CheckCheck className="w-3 h-3" />
-                                  <span>Read All</span>
-                                </button>
-                              )}
-                              {notifications.length > 0 && (
-                                <button
-                                  onClick={handleClearAllNotifs}
-                                  className="text-[10px] text-gray-400 hover:text-red-400 font-bold underline cursor-pointer"
-                                >
-                                  Clear All
-                                </button>
-                              )}
-                              <button onClick={() => setNotifDropdownOpen(false)} className="text-gray-400 hover:text-white text-xs cursor-pointer p-1">✕</button>
+
+                            {/* BOTTOM HEADER ROW: UNREAD BADGE & QUICK ACTIONS */}
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center space-x-2">
+                                {unreadCount > 0 ? (
+                                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold font-mono">
+                                    {unreadCount} unread
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-gray-400 font-mono">All caught up</span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center space-x-3">
+                                {unreadCount > 0 && (
+                                  <button
+                                    onClick={handleMarkAllAsRead}
+                                    className="text-[10px] text-rosegold-300 hover:text-white font-bold flex items-center space-x-1 cursor-pointer"
+                                    title="Mark all notifications as read"
+                                  >
+                                    <CheckCheck className="w-3 h-3" />
+                                    <span>Read All</span>
+                                  </button>
+                                )}
+                                {notifications.length > 0 && (
+                                  <button
+                                    onClick={handleClearAllNotifs}
+                                    className="text-[10px] text-gray-400 hover:text-red-400 font-bold underline cursor-pointer"
+                                  >
+                                    Clear All
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
 

@@ -368,12 +368,13 @@ export default function Home() {
                 <AnimatedButton
                   as={Link}
                   href={user ? "/book" : "/login?redirect=/book"}
-                  className="hero-cta-btn flex-1 sm:flex-none px-3 sm:px-8 py-3 sm:py-4 rounded-full rosegold-gradient-bg !text-white font-bold text-xs sm:text-base shadow-glow-rosegold hover:scale-105 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2.5 cursor-pointer relative overflow-hidden group whitespace-nowrap text-center"
+                  className="hero-cta-btn flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs sm:text-base shadow-glow-rosegold hover:scale-105 transition-all flex items-center justify-center space-x-2 sm:space-x-2.5 cursor-pointer relative overflow-hidden group whitespace-nowrap text-center shrink-0"
                 >
                   <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <Calendar className="w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0 !text-white" />
-                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hidden sm:inline !text-white font-bold">Book Appointment Now</span>
-                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="sm:hidden !text-white font-bold">Book Appointment</span>
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 !text-white" />
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hidden sm:inline !text-white font-extrabold whitespace-nowrap leading-none">Book Appointment Now</span>
+                  <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="sm:hidden !text-white font-extrabold whitespace-nowrap leading-none">Book Appointment</span>
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 !text-white ml-0.5" />
                 </AnimatedButton>
 
                 <AnimatedButton

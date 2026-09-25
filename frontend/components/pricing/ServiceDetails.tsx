@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, Clock, Tag, Calendar, MessageSquare, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sparkles, Clock, Tag, Calendar, ArrowRight, ShieldCheck } from 'lucide-react';
 import { ServiceItem } from '@/lib/servicesData';
 import PackageCard, { PackageTier } from './PackageCard';
 import PriceTable from './PriceTable';
@@ -72,6 +72,8 @@ export default function ServiceDetails({
     }
   ];
 
+  const [selectedPackageId, setSelectedPackageId] = React.useState<string>(packages[1]?.id || packages[0]?.id);
+
   return (
     <motion.div
       initial={{ opacity: 1, y: 0 }}
@@ -137,14 +139,6 @@ export default function ServiceDetails({
                 <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="!text-white font-extrabold whitespace-nowrap leading-none">Book Appointment Now</span>
                 <ArrowRight className="w-3.5 h-3.5 shrink-0 !text-white" />
               </Link>
-
-              <Link
-                href="/contact"
-                className="px-5 py-3.5 rounded-full bg-white/90 dark:bg-dark-800 border border-rosegold-500/40 text-gray-900 dark:text-gray-200 font-bold text-xs flex items-center space-x-2 transition-colors cursor-pointer shadow-md"
-              >
-                <MessageSquare className="w-4 h-4 text-rosegold-600 dark:text-rosegold-400" />
-                <span>Inquire</span>
-              </Link>
             </div>
           </div>
         </div>
@@ -161,7 +155,7 @@ export default function ServiceDetails({
               Available Package Options
             </h2>
           </div>
-          <span className="text-xs font-mono text-gray-400">3 Tiers Available</span>
+          <span className="text-xs font-mono text-gray-400">3 Tiers Available • Tap to View Details</span>
         </div>
 
         <div className="grid grid-cols-1 gap-6">
@@ -171,6 +165,8 @@ export default function ServiceDetails({
               packageData={pkg}
               serviceName={service.name}
               onEnquireClick={onEnquireClick}
+              isSelected={selectedPackageId === pkg.id}
+              onSelectPackage={(p) => setSelectedPackageId(p.id)}
             />
           ))}
         </div>

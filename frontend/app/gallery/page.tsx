@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, X, Maximize2 } from 'lucide-react';
+import { Sparkles, X, Maximize2, Filter } from 'lucide-react';
 import LazyImage from '@/components/ui/LazyImage';
 import { GallerySkeleton } from '@/components/common/Skeleton';
 
@@ -133,22 +133,44 @@ function GalleryContent() {
         <p className="text-gray-400 text-sm max-w-xl mx-auto">Explore client transformations, luxury interiors, and artistry from our senior stylists.</p>
       </motion.div>
 
-      <div className="flex items-center justify-center space-x-2 overflow-x-auto pb-2">
-        {categories.map((cat) => (
-          <motion.button
-            key={cat}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleCategoryChange(cat)}
-            className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-              activeFilter === cat 
-                ? 'rosegold-gradient-bg text-dark-900 shadow-md font-bold' 
-                : 'bg-dark-800 text-gray-300 border border-white/10 hover:text-white'
-            }`}
+      {/* Filter Dropdown Option Bar & Clean Badges */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 p-4 rounded-3xl bg-dark-850 border border-white/10 max-w-2xl mx-auto shadow-lg">
+        <div className="w-full sm:w-auto flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2 px-3.5 py-2 rounded-full bg-dark-900 border border-rosegold-500/40 text-rosegold-400 text-xs font-bold shrink-0">
+            <Filter className="w-3.5 h-3.5 text-rosegold-400" />
+            <span className="whitespace-nowrap">Filter Option:</span>
+          </div>
+
+          <select
+            value={activeFilter}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className="w-full sm:w-auto bg-dark-800 text-rosegold-300 font-bold text-xs px-4 py-2 rounded-full border border-rosegold-500/40 focus:outline-none focus:border-rosegold-400 cursor-pointer shadow-sm truncate"
           >
-            {cat}
-          </motion.button>
-        ))}
+            {categories.map((cat) => (
+              <option key={cat} value={cat} className="bg-dark-900 text-white">
+                {cat === 'All' ? '✨ All Gallery Categories' : cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="hidden sm:flex items-center flex-wrap gap-2">
+          {categories.map((cat) => (
+            <motion.button
+              key={cat}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleCategoryChange(cat)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                activeFilter === cat 
+                  ? 'rosegold-gradient-bg text-dark-900 shadow-md font-bold' 
+                  : 'bg-dark-800 text-gray-300 border border-white/10 hover:text-white'
+              }`}
+            >
+              {cat}
+            </motion.button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
