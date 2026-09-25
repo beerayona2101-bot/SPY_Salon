@@ -198,12 +198,13 @@ function ServicesContent() {
                   alt={service.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-dark-900/80 backdrop-blur-md text-rosegold-300 text-[10px] font-bold uppercase border border-white/10">
+                <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-0" />
+                <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-dark-950/95 backdrop-blur-md text-amber-300 text-[10.5px] font-extrabold tracking-wider uppercase border border-amber-500/40 shadow-lg z-10">
                   {service.category}
                 </span>
                 {service.popular && (
-                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase border border-amber-500/30 flex items-center space-x-1">
-                    <Star className="w-3 h-3 fill-current" />
+                  <span className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-dark-950/95 backdrop-blur-md text-amber-400 text-[10.5px] font-extrabold uppercase border border-amber-500/40 flex items-center space-x-1 shadow-lg z-10">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     <span>Popular</span>
                   </span>
                 )}

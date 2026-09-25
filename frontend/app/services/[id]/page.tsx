@@ -349,15 +349,15 @@ export default function ServiceDetailPage() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             onClick={() => router.push(`/book?service=${encodeURIComponent(service.title)}`)}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl rosegold-gradient-bg text-dark-900 font-bold text-sm shadow-glow-rosegold flex items-center justify-center space-x-2 cursor-pointer relative overflow-hidden group"
+            className="w-full sm:w-auto px-4 sm:px-8 py-3 sm:py-3.5 rounded-2xl rosegold-gradient-bg !text-white font-extrabold text-xs sm:text-sm shadow-glow-rosegold flex items-center justify-center space-x-2 sm:space-x-2.5 cursor-pointer relative overflow-hidden group whitespace-nowrap text-center shrink-0"
           >
             <div className="absolute inset-0 animate-shimmer opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Calendar className="w-4 h-4" />
-            <span>Book This Treatment Now</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
+            <Calendar className="w-4 h-4 shrink-0 !text-white" />
+            <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="!text-white font-extrabold whitespace-nowrap leading-none">Book This Treatment Now</span>
+            <ArrowRight className="w-4 h-4 shrink-0 !text-white" />
           </motion.button>
         </motion.div>
 

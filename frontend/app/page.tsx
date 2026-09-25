@@ -325,28 +325,12 @@ export default function Home() {
               className="lg:col-span-7 space-y-4 sm:space-y-5 text-center lg:text-left"
             >
 
-              {/* Mobile, Tablet & iPad Brand Logo Showcase Image */}
-              <div className="lg:hidden flex justify-center pt-3 sm:pt-2 pb-2">
-                <motion.div
-                  initial={{ opacity: 1, scale: 1 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto rounded-3xl bg-dark-850/80 border border-rosegold-500/35 p-3 shadow-glow-rosegold backdrop-blur-md flex items-center justify-center overflow-hidden"
-                >
-                  <img
-                    src="/logo-mobile-transparent.png?v=3"
-                    alt="SPY Salon Luxury Brand Identity"
-                    className="w-full h-full object-contain rounded-2xl mx-auto animate-float"
-                  />
-                </motion.div>
-              </div>
-
               {/* Tagline Badge */}
               <motion.div
                 initial={{ opacity: 1, y: 0 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/10 border border-rosegold-500/40 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
+                className="hidden sm:inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/10 border border-rosegold-500/40 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
               >
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse hero-tagline-star" />
                 <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-tagline-text font-bold text-white !text-white">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
@@ -587,11 +571,12 @@ export default function Home() {
                       className="w-full h-full object-cover"
                       duration={18}
                     />
-                    <div className="absolute top-3 right-3 bg-dark-900/85 backdrop-blur-md px-2.5 py-1 rounded-full text-xs text-rosegold-400 font-bold flex items-center space-x-1 border border-rosegold-500/30 shadow-md z-10">
-                      <Star className="w-3.5 h-3.5 fill-rosegold-400" />
+                    <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none z-0" />
+                    <div className="absolute top-3 right-3 bg-dark-950/95 backdrop-blur-md px-2.5 py-1 rounded-full text-xs text-amber-400 font-extrabold flex items-center space-x-1 border border-amber-500/40 shadow-lg z-10">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                       <span>{service.rating}</span>
                     </div>
-                    <div className="absolute top-3 left-3 bg-purple-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md z-10">
+                    <div className="absolute top-3 left-3 bg-dark-950/95 backdrop-blur-md text-amber-300 text-[11px] font-extrabold px-3 py-1 rounded-full border border-amber-500/40 shadow-lg z-10 tracking-wide uppercase">
                       {service.category} Ritual
                     </div>
                   </div>
