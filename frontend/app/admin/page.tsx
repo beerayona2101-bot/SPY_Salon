@@ -1983,7 +1983,7 @@ function AdminDashboardContent() {
       )}
 
       {/* SIDEBAR NAVIGATION */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-850 border-r border-rosegold-500/20 flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-850 border-r border-rosegold-500/20 flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen h-[100dvh] max-h-[100dvh] overflow-hidden ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}>
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -2092,7 +2092,7 @@ function AdminDashboardContent() {
           </nav>
         </div>
 
-        <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
+        <div className="p-3.5 pb-8 lg:pb-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 min-w-0">
               <ProfileAvatar user={user} name={user?.name || "System Administrator"} size="md" onClick={() => setIsSettingsModalOpen(true)} />
@@ -2102,16 +2102,25 @@ function AdminDashboardContent() {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 text-rosegold-400 hover:text-white border border-white/10 hover:border-rosegold-500/40 transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Change Password & Security Settings"
-            >
-              <Settings className="w-4 h-4 text-rosegold-400" />
-            </button>
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <button
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 text-rosegold-400 hover:text-white border border-white/10 hover:border-rosegold-500/40 transition-all cursor-pointer shadow-sm"
+                title="Change Password & Security Settings"
+              >
+                <Settings className="w-4 h-4 text-rosegold-400" />
+              </button>
+              <button
+                onClick={handleAdminLogout}
+                className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 transition-all cursor-pointer shadow-sm"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          <button onClick={handleAdminLogout} className="w-full mt-3 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer">
+          <button onClick={handleAdminLogout} className="w-full mt-2 py-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 font-bold text-xs flex items-center justify-center space-x-2 border border-red-500/30 transition-colors cursor-pointer">
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
           </button>
@@ -2154,7 +2163,15 @@ function AdminDashboardContent() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 text-xs">
+          <div className="flex items-center space-x-2.5 text-xs">
+            <button
+              onClick={handleAdminLogout}
+              className="lg:hidden p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 transition-all cursor-pointer flex items-center space-x-1 shadow-sm"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-[10px] font-bold hidden sm:inline">Sign Out</span>
+            </button>
 
 
             <div className="relative" ref={adminNotifRef}>

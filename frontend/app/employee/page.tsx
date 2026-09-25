@@ -953,7 +953,7 @@ function EmployeeDashboardContent() {
       )}
 
       {/* SIDEBAR NAVIGATION */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-800/95 border-r border-rosegold-500/20 backdrop-blur-2xl flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen overflow-hidden ${
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-dark-800/95 border-r border-rosegold-500/20 backdrop-blur-2xl flex flex-col justify-between transition-transform duration-300 ease-in-out h-screen h-[100dvh] max-h-[100dvh] overflow-hidden ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
@@ -1013,7 +1013,7 @@ function EmployeeDashboardContent() {
           </nav>
         </div>
 
-        <div className="p-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
+        <div className="p-3.5 pb-8 lg:pb-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 min-w-0">
               <ProfileAvatar user={user} name={employeeName} size="md" onClick={() => setIsSettingsModalOpen(true)} />
@@ -1023,13 +1023,22 @@ function EmployeeDashboardContent() {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsSettingsModalOpen(true)}
-              className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 text-rosegold-400 hover:text-white border border-white/10 hover:border-rosegold-500/40 transition-all cursor-pointer shrink-0 shadow-sm"
-              title="Change Security Password & Settings"
-            >
-              <Settings className="w-4 h-4 text-rosegold-400" />
-            </button>
+            <div className="flex items-center space-x-1.5 shrink-0">
+              <button
+                onClick={() => setIsSettingsModalOpen(true)}
+                className="p-2 rounded-xl bg-dark-800 hover:bg-dark-750 text-rosegold-400 hover:text-white border border-white/10 hover:border-rosegold-500/40 transition-all cursor-pointer shadow-sm"
+                title="Change Security Password & Settings"
+              >
+                <Settings className="w-4 h-4 text-rosegold-400" />
+              </button>
+              <button
+                onClick={() => { setSidebarOpen(false); handleLogout(); }}
+                className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 transition-all cursor-pointer shadow-sm"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           <button
@@ -1071,6 +1080,14 @@ function EmployeeDashboardContent() {
           </div>
 
           <div className="flex items-center space-x-2 text-xs">
+            <button
+              onClick={handleLogout}
+              className="lg:hidden p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 transition-all cursor-pointer flex items-center space-x-1 shadow-sm"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="text-[10px] font-bold hidden sm:inline">Sign Out</span>
+            </button>
             {/* NOTIFICATIONS DROPDOWN BUTTON & PANEL */}
             <div className="relative">
               <button
