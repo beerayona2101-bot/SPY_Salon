@@ -1031,13 +1031,6 @@ function EmployeeDashboardContent() {
               >
                 <Settings className="w-4 h-4 text-rosegold-400" />
               </button>
-              <button
-                onClick={() => { setSidebarOpen(false); handleLogout(); }}
-                className="p-2 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-400 hover:text-red-300 border border-red-500/30 transition-all cursor-pointer shadow-sm"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           </div>
 
@@ -1080,14 +1073,6 @@ function EmployeeDashboardContent() {
           </div>
 
           <div className="flex items-center space-x-2 text-xs">
-            <button
-              onClick={handleLogout}
-              className="lg:hidden p-2 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 transition-all cursor-pointer flex items-center space-x-1 shadow-sm"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-[10px] font-bold hidden sm:inline">Sign Out</span>
-            </button>
             {/* NOTIFICATIONS DROPDOWN BUTTON & PANEL */}
             <div className="relative">
               <button
