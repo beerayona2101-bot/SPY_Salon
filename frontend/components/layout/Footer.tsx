@@ -6,10 +6,13 @@ import { usePathname } from 'next/navigation';
 import { MapPin, Phone, Mail, Clock, Instagram, Facebook, Youtube, Heart, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '@/lib/api';
 import { useSocket } from '@/context/SocketContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Footer() {
   const pathname = usePathname();
   const { socket } = useSocket();
+  const { user } = useAuth();
+  const isCustomerLoggedIn = !!user && user.role === 'customer';
   const [socialLinks, setSocialLinks] = useState({
     instagramUrl: 'https://instagram.com/spysalon',
     facebookUrl: 'https://facebook.com/spysalon',
@@ -227,9 +230,12 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-xs font-medium gap-4 text-gray-400">
           <p className="footer-copyright-text text-gray-400 font-medium">© {new Date().getFullYear()} SPY Salon Management System. All Rights Reserved.</p>
-          <div className="flex space-x-6">
+          <div className="flex flex-wrap items-center space-x-6">
             <Link href="/privacy-policy" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Privacy Policy</Link>
             <Link href="/terms-and-conditions" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Terms & Conditions</Link>
+            {isCustomerLoggedIn && (
+              <Link href="/delete-account" className="footer-legal-link text-gray-400 hover:text-red-400 transition-colors font-medium">Delete Account</Link>
+            )}
           </div>
         </div>
 
