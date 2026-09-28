@@ -34,7 +34,9 @@ import {
   MessageSquare,
   Laptop,
   Smartphone,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -140,6 +142,7 @@ function UserProfileContent() {
   // Account Delete Confirmation Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
@@ -438,6 +441,7 @@ function UserProfileContent() {
       if (res.ok && data?.success) {
         setShowDeleteModal(false);
         setDeletePassword('');
+        setShowDeletePassword(false);
         alert('Your account has been deleted successfully.');
         await logout();
         router.replace('/');
@@ -1266,19 +1270,34 @@ function UserProfileContent() {
             
             <div className="space-y-1.5 text-left pt-1">
               <label className="text-xs font-bold text-gray-300 block">Password</label>
-              <input
-                type="password"
-                disabled={isDeletingAccount}
-                value={deletePassword}
-                onChange={e => setDeletePassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full p-3 rounded-xl bg-dark-900 border border-white/20 text-white text-xs focus:outline-none focus:border-red-500 disabled:opacity-50"
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && deletePassword && !isDeletingAccount) {
-                    handleDeleteAccount();
-                  }
-                }}
-              />
+              <div className="relative">
+                <input
+                  type={showDeletePassword ? 'text' : 'password'}
+                  disabled={isDeletingAccount}
+                  value={deletePassword}
+                  onChange={e => setDeletePassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full p-3 pr-11 rounded-xl bg-dark-900 border border-white/20 text-white text-xs focus:outline-none focus:border-red-500 disabled:opacity-50"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && deletePassword && !isDeletingAccount) {
+                      handleDeleteAccount();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePassword(prev => !prev)}
+                  tabIndex={-1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors p-1 cursor-pointer"
+                  title={showDeletePassword ? 'Hide password' : 'Show password'}
+                >
+                  {showDeletePassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
             
             {deleteError && (
@@ -1295,6 +1314,7 @@ function UserProfileContent() {
                   if (!isDeletingAccount) {
                     setShowDeleteModal(false);
                     setDeletePassword('');
+                    setShowDeletePassword(false);
                     setDeleteError(null);
                   }
                 }}
