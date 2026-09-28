@@ -713,56 +713,126 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
             ),
             const SizedBox(height: 12),
 
-            // Search Bar for Services
-            TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
-              style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Search treatments, spa & styling...',
-                hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
-                prefixIcon: Icon(Icons.search, color: primaryColor, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: themeColors.textMuted, size: 18),
-                        onPressed: () => setState(() => _searchQuery = ''),
-                      )
-                    : null,
-                filled: true,
-                fillColor: cardBg,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: themeColors.cardBorder)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: primaryColor, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Category Filter Pills Row
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              child: Row(
-                children: categoriesList.map((cat) {
-                  final isSelected = _selectedCategory == cat;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      avatar: cat != 'All'
-                          ? Icon(_getCategoryIcon(cat), size: 14, color: isSelected ? buttonTextColor : primaryColor)
+            // Search Bar & Filter Button for Services
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (val) => setState(() => _searchQuery = val),
+                    style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Search treatments, spa & styling...',
+                      hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+                      prefixIcon: Icon(Icons.search, color: primaryColor, size: 20),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(Icons.clear, color: themeColors.textMuted, size: 18),
+                              onPressed: () => setState(() => _searchQuery = ''),
+                            )
                           : null,
-                      label: Text(cat, style: TextStyle(color: isSelected ? buttonTextColor : themeColors.textPrimary, fontSize: 11, fontWeight: FontWeight.bold)),
-                      selected: isSelected,
-                      selectedColor: primaryColor,
-                      backgroundColor: cardBg,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: isSelected ? primaryColor : themeColors.cardBorder),
-                      ),
-                      onSelected: (val) => setState(() => _selectedCategory = cat),
+                      filled: true,
+                      fillColor: cardBg,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: themeColors.cardBorder)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: primaryColor, width: 1.5)),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Sleek Filter Button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => _showFilterBottomSheet(context, categoriesList, themeColors),
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: _selectedCategory != 'All'
+                            ? primaryColor.withValues(alpha: 0.18)
+                            : cardBg,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _selectedCategory != 'All'
+                              ? primaryColor
+                              : themeColors.cardBorder,
+                          width: _selectedCategory != 'All' ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 20,
+                            color: _selectedCategory != 'All'
+                                ? primaryColor
+                                : themeColors.textPrimary,
+                          ),
+                          if (_selectedCategory != 'All') ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
+            if (_selectedCategory != 'All') ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: primaryColor.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Category: $_selectedCategory',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => setState(() => _selectedCategory = 'All'),
+                          child: Icon(Icons.close_rounded, size: 14, color: primaryColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedCategory = 'All'),
+                    child: Text(
+                      'Clear Filter',
+                      style: TextStyle(
+                        color: themeColors.textMuted,
+                        fontSize: 12,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 14),
 
             // Treatment Cards List
@@ -1086,6 +1156,227 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
           ],
         ),
       ),
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context, List<String> categoriesList, AppColors themeColors) {
+    final primaryColor = themeColors.primary;
+    final cardBg = themeColors.cardSurface;
+    final buttonTextColor = themeColors.buttonTextPrimary;
+    String tempSelected = _selectedCategory;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+              ),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  // Drag handle
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: themeColors.textMuted.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Header with Title & Reset
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.tune_rounded, color: primaryColor, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Filter Treatments',
+                              style: TextStyle(
+                                color: themeColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (tempSelected != 'All')
+                          TextButton(
+                            onPressed: () {
+                              setSheetState(() => tempSelected = 'All');
+                            },
+                            child: Text(
+                              'Reset',
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        else
+                          IconButton(
+                            icon: Icon(Icons.close, color: themeColors.textMuted, size: 20),
+                            onPressed: () => Navigator.pop(sheetCtx),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Select a category to view specialized treatments',
+                        style: TextStyle(
+                          color: themeColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Divider(color: themeColors.cardBorder, height: 1),
+
+                  // Categories List
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: categoriesList.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (ctx, idx) {
+                        final cat = categoriesList[idx];
+                        final isSelected = tempSelected == cat;
+                        final count = cat == 'All'
+                            ? _services.length
+                            : _services.where((s) {
+                                final c = (s['category'] ?? '').toString().toLowerCase();
+                                return c.contains(cat.toLowerCase());
+                              }).length;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              setSheetState(() => tempSelected = cat);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isSelected ? primaryColor.withValues(alpha: 0.12) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isSelected ? primaryColor : themeColors.cardBorder.withValues(alpha: 0.5),
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    cat,
+                                    style: TextStyle(
+                                      color: isSelected ? primaryColor : themeColors.textPrimary,
+                                      fontSize: 14,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? primaryColor.withValues(alpha: 0.2) : themeColors.cardBorder.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        color: isSelected ? primaryColor : themeColors.textMuted,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Icon(
+                                    isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                                    size: 18,
+                                    color: isSelected ? primaryColor : themeColors.textMuted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Bottom Action Button
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      16,
+                      MediaQuery.of(context).padding.bottom + 16,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          foregroundColor: buttonTextColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        onPressed: () {
+                          setState(() => _selectedCategory = tempSelected);
+                          Navigator.pop(sheetCtx);
+                        },
+                        child: Text(
+                          tempSelected == 'All' ? 'Show All Services' : 'Apply Filter ($tempSelected)',
+                          style: TextStyle(
+                            color: buttonTextColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
