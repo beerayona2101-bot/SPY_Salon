@@ -434,14 +434,23 @@ function UserProfileContent() {
         method: 'DELETE',
         body: JSON.stringify({ password: deletePassword })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.success) {
         setShowDeleteModal(false);
         setDeletePassword('');
+        alert('Your account has been deleted successfully.');
         await logout();
-        router.push('/');
+        router.replace('/');
       } else {
-        setDeleteError(data.message || 'Security verification failed. Incorrect password.');
+        if (res.status === 401) {
+          setDeleteError('Your session has expired. Please sign in again.');
+        } else if (res.status === 403) {
+          setDeleteError('You are not authorized to delete this account.');
+        } else if (res.status === 400) {
+          setDeleteError(data?.message || 'Incorrect password. Please try again.');
+        } else {
+          setDeleteError(data?.message || 'Security verification failed. Incorrect password.');
+        }
       }
     } catch (e: any) {
       setDeleteError('We couldn\'t delete your account right now. Please try again later.');
@@ -630,7 +639,7 @@ function UserProfileContent() {
           { id: 'packages', label: '🎟️ My Packages', icon: Package },
           { id: 'schedules', label: '📅 Active Schedules', icon: Calendar },
           { id: 'history', label: '📜 Booking History', icon: Clock },
-          { id: 'security', label: '🔒 Security & Alerts', icon: Lock }
+          { id: 'security', label: '🔒 Security & Account Management', icon: Lock }
         ].map(tab => (
           <button
             key={tab.id}
@@ -1201,19 +1210,31 @@ function UserProfileContent() {
             </div>
           </div>
 
-          {/* Delete Account Warning Box (CUSTOMER ONLY) */}
+          {/* Delete Account Settings Card (CUSTOMER ONLY) */}
           {user?.role === 'customer' && (
-            <div className="p-6 rounded-3xl border border-red-500/30 bg-red-500/10 space-y-4">
-              <h4 className="font-serif font-bold text-red-400 text-base">Delete SPY Salon Account</h4>
-              <p className="text-xs text-gray-300">
-                Permanently remove your account and associated personal information. You will be logged out after the account is deleted.
-              </p>
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="px-6 py-2.5 rounded-full bg-red-600 text-white font-bold text-xs hover:bg-red-500 cursor-pointer"
-              >
-                Delete Account
-              </button>
+            <div className="glass-card p-6 sm:p-8 rounded-3xl border border-red-500/30 bg-red-500/5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <h4 className="font-serif font-bold text-red-400 text-base flex items-center space-x-2">
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                    <span>Delete Account</span>
+                  </h4>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Permanently remove your SPY Salon account and associated personal information.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setDeletePassword('');
+                    setShowDeleteModal(true);
+                  }}
+                  className="px-6 py-2.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 font-bold text-xs border border-red-500/40 hover:border-red-500 transition-colors cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                >
+                  Delete Account
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -1231,33 +1252,53 @@ function UserProfileContent() {
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md rosegold-glass-card border border-red-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
-            <h3 className="text-xl font-serif font-bold text-red-400">Delete your account?</h3>
+          <div className="w-full max-w-md rosegold-glass-card border border-red-500/40 rounded-3xl p-6 sm:p-8 space-y-5 shadow-2xl relative animate-fadeIn">
+            <div className="flex items-center space-x-3 text-red-400">
+              <div className="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="text-xl font-serif font-bold text-white">Delete your account?</h3>
+            </div>
+            
             <p className="text-xs text-gray-300 leading-relaxed">
               Are you sure you want to delete your SPY Salon account? This action will permanently delete your account and associated personal information. You will be logged out after the account is deleted.
             </p>
-            <div className="space-y-1 text-left pt-1">
-              <label className="text-xs font-bold text-gray-300 uppercase block">Confirm Account Password *</label>
+            
+            <div className="space-y-1.5 text-left pt-1">
+              <label className="text-xs font-bold text-gray-300 block">Password</label>
               <input
                 type="password"
+                disabled={isDeletingAccount}
                 value={deletePassword}
                 onChange={e => setDeletePassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full p-3 rounded-xl bg-dark-900 border border-white/20 text-white text-xs focus:outline-none focus:border-red-500"
+                className="w-full p-3 rounded-xl bg-dark-900 border border-white/20 text-white text-xs focus:outline-none focus:border-red-500 disabled:opacity-50"
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && deletePassword && !isDeletingAccount) {
+                    handleDeleteAccount();
+                  }
+                }}
               />
             </div>
+            
             {deleteError && (
-              <p className="text-red-400 text-xs font-semibold">{deleteError}</p>
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
+                {deleteError}
+              </div>
             )}
-            <div className="flex justify-end space-x-3 pt-2">
+            
+            <div className="flex justify-end items-center space-x-3 pt-2">
               <button
                 type="button"
+                disabled={isDeletingAccount}
                 onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeletePassword('');
-                  setDeleteError(null);
+                  if (!isDeletingAccount) {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                    setDeleteError(null);
+                  }
                 }}
-                className="px-5 py-2.5 rounded-full bg-dark-800 hover:bg-dark-750 text-gray-300 font-bold text-xs border border-white/10 cursor-pointer"
+                className="px-5 py-2.5 rounded-full bg-dark-800 hover:bg-dark-750 text-gray-300 font-bold text-xs border border-white/10 cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1267,7 +1308,10 @@ function UserProfileContent() {
                 disabled={!deletePassword || isDeletingAccount}
                 className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs shadow-lg disabled:opacity-50 cursor-pointer flex items-center space-x-2"
               >
-                {isDeletingAccount ? 'Deleting account...' : 'Delete Account'}
+                {isDeletingAccount && (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                )}
+                <span>{isDeletingAccount ? 'Deleting account...' : 'Delete Account'}</span>
               </button>
             </div>
           </div>
