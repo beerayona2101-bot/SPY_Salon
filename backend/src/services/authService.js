@@ -171,7 +171,7 @@ class AuthService {
   }
 
   // Dedicated Public Customer Account Registration
-  async register(name, email, phone, password, reqMeta = {}) {
+  async register(name, email, phone, password, reqMeta = {}, consentData = {}) {
     if (!name || (!email && !phone) || !password) {
       throw ApiError.badRequest('Please provide your full name, email address or phone number, and password.');
     }
@@ -199,6 +199,11 @@ class AuthService {
       }
     }
 
+    const termsAccepted = consentData.termsAccepted !== false;
+    const privacyPolicyAccepted = consentData.privacyPolicyAccepted !== false;
+    const termsVersion = consentData.termsVersion || '1.0';
+    const privacyPolicyVersion = consentData.privacyPolicyVersion || '1.0';
+
     // Create User record in MongoDB
     const newUser = await User.create({
       name: name.trim(),
@@ -206,7 +211,14 @@ class AuthService {
       phone: cleanPhone,
       password: password,
       role: 'customer',
-      isVerified: true
+      isVerified: true,
+      consent: {
+        termsAccepted,
+        privacyPolicyAccepted,
+        termsVersion,
+        privacyPolicyVersion,
+        acceptedAt: (termsAccepted && privacyPolicyAccepted) ? new Date() : null
+      }
     });
 
     const accessToken = this.generateAccessToken(newUser);
@@ -629,6 +641,140 @@ class AuthService {
       );
     }
     return { success: true };
+  }
+
+  // Dedicated Customer Account Deletion Handler (Enforces Role & Security Verification)
+  async deleteAccount(userId, password = '', otp = '') {
+    if (!userId) {
+      throw ApiError.unauthorized('User session is invalid or expired. Please sign in again.');
+    }
+
+    if (!password && !otp) {
+      throw ApiError.badRequest('Security verification required. Please enter your password or 6-digit OTP code to confirm deletion.');
+    }
+
+    // 1. Find User Document with password field
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      throw ApiError.notFound('Account not found or has already been deleted.');
+    }
+
+    // 2. Enforce Role Restriction (CUSTOMER ONLY)
+    if (user.role !== 'customer') {
+      throw ApiError.forbidden('Only customer accounts can be deleted via self-service options. Staff and Administrator accounts must be managed by System Administrators.');
+    }
+
+    // 3. Security Verification: Password or OTP verification
+    let isVerified = false;
+    if (password) {
+      isVerified = await user.matchPassword(password);
+    } else if (otp) {
+      const hashedInputOtp = this.hashOtp(otp);
+      const otpRecord = await Otp.findOne({
+        identifier: user.email,
+        hashedOtp: hashedInputOtp,
+        purpose: { $in: ['login', 'reset-password', 'account-deletion'] }
+      });
+      if (otpRecord && new Date() <= otpRecord.expiresAt) {
+        isVerified = true;
+        await Otp.deleteOne({ _id: otpRecord._id });
+      }
+    }
+
+    if (!isVerified) {
+      throw ApiError.badRequest('Security verification failed. Invalid password or 6-digit verification code.');
+    }
+
+    const userEmail = user.email ? String(user.email).toLowerCase().trim() : '';
+    const userPhone = user.phone ? String(user.phone).trim() : '';
+
+    // 4. Handle Customer Appointments (Cancel pending/active, anonymize historical records)
+    try {
+      const Appointment = require('../models/Appointment');
+      
+      // Cancel active/pending bookings
+      await Appointment.updateMany(
+        {
+          $or: [
+            { customerId: userId.toString() },
+            { customerEmail: userEmail },
+            { customerPhone: userPhone }
+          ],
+          status: { $in: ['Pending', 'Confirmed', 'Reschedule Requested'] }
+        },
+        {
+          $set: {
+            status: 'Cancelled',
+            notes: 'Cancelled due to customer account deletion',
+            customerName: 'Deleted Customer',
+            customerEmail: 'deleted.customer@spysalon.com',
+            customerPhone: '0000000000'
+          }
+        }
+      );
+
+      // Anonymize personal info on completed/historical appointments for revenue/staff audit integrity
+      await Appointment.updateMany(
+        {
+          $or: [
+            { customerId: userId.toString() },
+            { customerEmail: userEmail },
+            { customerPhone: userPhone }
+          ]
+        },
+        {
+          $set: {
+            customerName: 'Deleted Customer',
+            customerEmail: 'deleted.customer@spysalon.com',
+            customerPhone: '0000000000'
+          }
+        }
+      );
+    } catch (err) {
+      console.warn('[authService] Notice anonymizing appointments during deletion:', err.message);
+    }
+
+    // 5. Delete FCM Device Tokens
+    try {
+      const DeviceToken = require('../models/DeviceToken');
+      await DeviceToken.deleteMany({
+        $or: [
+          { userId: userId.toString() },
+          { email: userEmail }
+        ]
+      });
+    } catch (err) {
+      console.warn('[authService] Notice removing device tokens during deletion:', err.message);
+    }
+
+    // 6. Revoke / Delete All Active Refresh Sessions
+    await RefreshToken.deleteMany({ user: userId });
+
+    // 7. Remove Customer Memberships if present
+    try {
+      const CustomerMembership = require('../models/CustomerMembership');
+      await CustomerMembership.deleteMany({
+        $or: [
+          { customerId: userId.toString() },
+          { customerEmail: userEmail }
+        ]
+      });
+    } catch (err) {}
+
+    // 8. Delete Customer Account Record from MongoDB
+    await User.deleteOne({ _id: userId });
+
+    // 9. Audit Logging
+    await ActivityLog.create({
+      action: 'Customer Account Deleted',
+      details: `Customer profile (${user.name} / ${userEmail}) deleted permanently upon verified user request.`,
+      user: 'System'
+    });
+
+    return {
+      success: true,
+      message: 'Your account has been deleted successfully.'
+    };
   }
 }
 

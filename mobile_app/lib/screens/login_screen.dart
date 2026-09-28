@@ -4,6 +4,8 @@ import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
 import 'customer_dashboard_screen.dart';
 import 'employee_dashboard_screen.dart';
+import 'terms_and_conditions_screen.dart';
+import 'privacy_policy_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
@@ -32,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _regObscure = true;
   bool _regConfirmObscure = true;
   bool _isSubmittingRegister = false;
+  bool _regAgreedToTerms = false;
 
   @override
   void dispose() {
@@ -137,13 +140,13 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (password.length < 6) {
-      _showSnackBar('Password must be at least 6 characters long');
+    if (password != confirmPassword) {
+      _showSnackBar('Passwords do not match');
       return;
     }
 
-    if (password != confirmPassword) {
-      _showSnackBar('Passwords do not match');
+    if (!_regAgreedToTerms) {
+      _showSnackBar('Please accept the Terms & Conditions and Privacy Policy to create your account.');
       return;
     }
 
@@ -154,6 +157,10 @@ class _LoginScreenState extends State<LoginScreen> {
       email: email,
       phone: phone,
       password: password,
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: '1.0',
+      privacyPolicyVersion: '1.0',
     );
 
     if (mounted) {
@@ -684,6 +691,67 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            Text(
+              'By continuing, you acknowledge our ',
+              style: TextStyle(
+                color: themeColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const TermsAndConditionsScreen()),
+                );
+              },
+              child: Text(
+                'Terms & Conditions',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            Text(
+              ' and ',
+              style: TextStyle(
+                color: themeColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (ctx) => const PrivacyPolicyScreen()),
+                );
+              },
+              child: Text(
+                'Privacy Policy',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+            Text(
+              '.',
+              style: TextStyle(
+                color: themeColors.textMuted,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -814,7 +882,106 @@ class _LoginScreenState extends State<LoginScreen> {
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: primaryColor, width: 1.5)),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
+
+        // Consent Checkbox Row
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _regAgreedToTerms = !_regAgreedToTerms;
+            });
+          },
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: _regAgreedToTerms,
+                  activeColor: primaryColor,
+                  checkColor: themeColors.buttonTextPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  side: BorderSide(color: themeColors.cardBorder, width: 1.5),
+                  onChanged: (val) {
+                    setState(() {
+                      _regAgreedToTerms = val ?? false;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Wrap(
+                  children: [
+                    Text(
+                      'I agree to the ',
+                      style: TextStyle(
+                        color: themeColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (ctx) => const TermsAndConditionsScreen()),
+                        );
+                      },
+                      child: Text(
+                        'Terms & Conditions',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      ' and ',
+                      style: TextStyle(
+                        color: themeColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (ctx) => const PrivacyPolicyScreen()),
+                        );
+                      },
+                      child: Text(
+                        'Privacy Policy',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          decoration: TextDecoration.underline,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '.',
+                      style: TextStyle(
+                        color: themeColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 18),
         SizedBox(
           height: 50,
           child: ElevatedButton(
@@ -825,7 +992,7 @@ class _LoginScreenState extends State<LoginScreen> {
               shadowColor: primaryColor.withValues(alpha: 0.45),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
             ),
-            onPressed: _isSubmittingRegister ? null : _handleRegister,
+            onPressed: (_isSubmittingRegister || !_regAgreedToTerms) ? null : _handleRegister,
             child: _isSubmittingRegister
                 ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: buttonTextColor))
                 : Row(

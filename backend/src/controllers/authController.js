@@ -30,9 +30,14 @@ exports.loginUser = async (req, res, next) => {
 
 exports.registerUser = async (req, res, next) => {
   try {
-    const { name, email, phone, password } = req.body;
+    const { name, email, phone, password, termsAccepted, privacyPolicyAccepted, termsVersion, privacyPolicyVersion } = req.body;
     const reqMeta = getReqMeta(req);
-    const result = await authService.register(name, email, phone, password, reqMeta);
+    const result = await authService.register(name, email, phone, password, reqMeta, {
+      termsAccepted,
+      privacyPolicyAccepted,
+      termsVersion,
+      privacyPolicyVersion
+    });
     return ApiResponse.created(res, {
       user: result.user,
       token: result.token,
@@ -184,6 +189,17 @@ exports.logoutAllSessions = async (req, res, next) => {
     const userId = req.user._id || req.user.id;
     const currentRefreshToken = req.headers['x-refresh-token'] || req.body?.refreshToken;
     const result = await authService.logoutAll(userId, currentRefreshToken);
+    return ApiResponse.success(res, null, result.message);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.deleteAccount = async (req, res, next) => {
+  try {
+    const userId = req.user._id || req.user.id;
+    const { password, otp } = req.body;
+    const result = await authService.deleteAccount(userId, password, otp);
     return ApiResponse.success(res, null, result.message);
   } catch (error) {
     next(error);

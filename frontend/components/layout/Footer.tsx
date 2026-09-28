@@ -32,8 +32,8 @@ export default function Footer() {
     { id: '6', label: 'Frequently Asked Questions', url: '/faqs', isActive: true },
     { id: '7', label: 'VIP Membership', url: '/membership', isActive: true },
     { id: '8', label: 'Career Opportunities', url: '/careers', isActive: true },
-    { id: '9', label: 'Privacy Policy', url: '/privacy', isActive: true },
-    { id: '10', label: 'Terms & Conditions', url: '/terms', isActive: true }
+    { id: '9', label: 'Privacy Policy', url: '/privacy-policy', isActive: true },
+    { id: '10', label: 'Terms & Conditions', url: '/terms-and-conditions', isActive: true }
   ];
 
   const [websiteLinks, setWebsiteLinks] = useState<any[]>(DEFAULT_WEBSITE_LINKS);
@@ -228,8 +228,8 @@ export default function Footer() {
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between text-xs font-medium gap-4 text-gray-400">
           <p className="footer-copyright-text text-gray-400 font-medium">© {new Date().getFullYear()} SPY Salon Management System. All Rights Reserved.</p>
           <div className="flex space-x-6">
-            <Link href="/privacy" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Privacy Policy</Link>
-            <Link href="/terms" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Terms & Conditions</Link>
+            <Link href="/privacy-policy" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Privacy Policy</Link>
+            <Link href="/terms-and-conditions" className="footer-legal-link text-gray-400 hover:text-rosegold-400 transition-colors font-medium">Terms & Conditions</Link>
           </div>
         </div>
 

@@ -23,6 +23,7 @@ function RegisterFormInner() {
     password: '',
     confirmPassword: ''
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,6 +34,11 @@ function RegisterFormInner() {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
+    if (!acceptedTerms) {
+      setErrorMessage('Please accept the Terms & Conditions and Privacy Policy to create your account.');
+      return;
+    }
 
     const { isValid, errors } = validateForm(formData, {
       name: [validateName('Full Name')],
@@ -56,7 +62,11 @@ function RegisterFormInner() {
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
-      password: formData.password
+      password: formData.password,
+      termsAccepted: true,
+      privacyPolicyAccepted: true,
+      termsVersion: '1.0',
+      privacyPolicyVersion: '1.0'
     });
 
     setIsSubmitting(false);
@@ -232,10 +242,48 @@ function RegisterFormInner() {
               {fieldErrors.confirmPassword && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.confirmPassword}</p>}
             </div>
 
+            {/* Mandatory Terms & Privacy Consent Checkbox */}
+            <div className="pt-2 pb-1">
+              <label className="flex items-start space-x-3 cursor-pointer select-none group">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => {
+                    setAcceptedTerms(e.target.checked);
+                    if (e.target.checked && errorMessage?.includes('Terms')) {
+                      setErrorMessage(null);
+                    }
+                  }}
+                  className="mt-0.5 w-4 h-4 rounded border-white/20 text-rosegold-500 focus:ring-rosegold-500 bg-dark-800 accent-rosegold-500 shrink-0 cursor-pointer"
+                />
+                <span className="text-xs text-gray-300 leading-normal">
+                  I agree to the{' '}
+                  <Link
+                    href="/terms-and-conditions"
+                    target="_blank"
+                    className="text-rosegold-400 font-bold hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Terms & Conditions
+                  </Link>
+                  {' '}and{' '}
+                  <Link
+                    href="/privacy-policy"
+                    target="_blank"
+                    className="text-rosegold-400 font-bold hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+            </div>
+
             {/* Submit Button */}
             <AnimatedButton
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !acceptedTerms}
               className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mt-2 cursor-pointer"
             >
               <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>

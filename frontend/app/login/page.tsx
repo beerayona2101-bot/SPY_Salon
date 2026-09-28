@@ -219,12 +219,25 @@ function LoginPageInner() {
             </AnimatedButton>
           </form>
 
-          {/* Register Link */}
-          <div className="pt-4 border-t border-white/10 text-center text-xs text-gray-300">
-            <span>New client? </span>
-            <Link href="/register" className="text-rosegold-300 font-bold hover:underline ml-1">
-              Create Account →
-            </Link>
+          {/* Register Link & Legal Acknowledgement */}
+          <div className="pt-4 border-t border-white/10 text-center space-y-2 text-xs text-gray-300">
+            <div>
+              <span>New client? </span>
+              <Link href="/register" className="text-rosegold-300 font-bold hover:underline ml-1">
+                Create Account →
+              </Link>
+            </div>
+            <p className="text-[11px] text-gray-400 pt-1 leading-normal">
+              By continuing, you acknowledge our{' '}
+              <Link href="/terms-and-conditions" className="text-rosegold-400 hover:underline font-semibold">
+                Terms & Conditions
+              </Link>
+              {' '}and{' '}
+              <Link href="/privacy-policy" className="text-rosegold-400 hover:underline font-semibold">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </div>
 
         </motion.div>

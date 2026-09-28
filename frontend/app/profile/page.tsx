@@ -139,7 +139,8 @@ function UserProfileContent() {
 
   // Account Delete Confirmation Modal State
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   // Active Sessions State
@@ -425,18 +426,25 @@ function UserProfileContent() {
 
   // Account Delete Handler
   const handleDeleteAccount = async () => {
-    if (deleteConfirmInput !== 'DELETE') return;
+    if (!deletePassword) return;
     setIsDeletingAccount(true);
+    setDeleteError(null);
     try {
-      await fetch(`${API_BASE_URL}/user/profile/account`, {
+      const res = await apiFetch('/auth/account', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user?.email, confirmCode: 'DELETE' })
+        body: JSON.stringify({ password: deletePassword })
       });
-      await logout();
-      router.push('/');
-    } catch (e) {
-      console.error(e);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShowDeleteModal(false);
+        setDeletePassword('');
+        await logout();
+        router.push('/');
+      } else {
+        setDeleteError(data.message || 'Security verification failed. Incorrect password.');
+      }
+    } catch (e: any) {
+      setDeleteError('We couldn\'t delete your account right now. Please try again later.');
     } finally {
       setIsDeletingAccount(false);
     }
@@ -1193,19 +1201,21 @@ function UserProfileContent() {
             </div>
           </div>
 
-          {/* Delete Account Warning Box */}
-          <div className="p-6 rounded-3xl border border-red-500/30 bg-red-500/10 space-y-4">
-            <h4 className="font-serif font-bold text-red-400 text-base">Delete SPY Salon Account</h4>
-            <p className="text-xs text-gray-300">
-              Permanently remove your account, membership records, and booking history. This action cannot be undone.
-            </p>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="px-6 py-2.5 rounded-full bg-red-600 text-white font-bold text-xs hover:bg-red-500 cursor-pointer"
-            >
-              Delete Account Permanently
-            </button>
-          </div>
+          {/* Delete Account Warning Box (CUSTOMER ONLY) */}
+          {user?.role === 'customer' && (
+            <div className="p-6 rounded-3xl border border-red-500/30 bg-red-500/10 space-y-4">
+              <h4 className="font-serif font-bold text-red-400 text-base">Delete SPY Salon Account</h4>
+              <p className="text-xs text-gray-300">
+                Permanently remove your account and associated personal information. You will be logged out after the account is deleted.
+              </p>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="px-6 py-2.5 rounded-full bg-red-600 text-white font-bold text-xs hover:bg-red-500 cursor-pointer"
+              >
+                Delete Account
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1221,28 +1231,43 @@ function UserProfileContent() {
       {/* DELETE ACCOUNT CONFIRMATION MODAL */}
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md glass-card border border-red-500/40 rounded-3xl p-6 space-y-4">
-            <h3 className="text-xl font-serif font-bold text-red-400">Confirm Account Deletion</h3>
-            <p className="text-xs text-gray-300">
-              Type <strong className="text-white font-mono">DELETE</strong> below to confirm account removal.
+          <div className="w-full max-w-md rosegold-glass-card border border-red-500/40 rounded-3xl p-6 space-y-4 shadow-2xl">
+            <h3 className="text-xl font-serif font-bold text-red-400">Delete your account?</h3>
+            <p className="text-xs text-gray-300 leading-relaxed">
+              Are you sure you want to delete your SPY Salon account? This action will permanently delete your account and associated personal information. You will be logged out after the account is deleted.
             </p>
-            <input
-              type="text"
-              value={deleteConfirmInput}
-              onChange={e => setDeleteConfirmInput(e.target.value)}
-              placeholder="Type DELETE"
-              className="w-full p-3 rounded-xl bg-dark-900 border border-white/15 text-white text-xs focus:outline-none"
-            />
-            <div className="flex justify-end space-x-2 pt-2">
-              <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded-xl bg-dark-800 text-gray-300 text-xs">
+            <div className="space-y-1 text-left pt-1">
+              <label className="text-xs font-bold text-gray-300 uppercase block">Confirm Account Password *</label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={e => setDeletePassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full p-3 rounded-xl bg-dark-900 border border-white/20 text-white text-xs focus:outline-none focus:border-red-500"
+              />
+            </div>
+            {deleteError && (
+              <p className="text-red-400 text-xs font-semibold">{deleteError}</p>
+            )}
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword('');
+                  setDeleteError(null);
+                }}
+                className="px-5 py-2.5 rounded-full bg-dark-800 hover:bg-dark-750 text-gray-300 font-bold text-xs border border-white/10 cursor-pointer"
+              >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDeleteAccount}
-                disabled={deleteConfirmInput !== 'DELETE' || isDeletingAccount}
-                className="px-6 py-2 rounded-xl bg-red-600 text-white font-bold text-xs disabled:opacity-50 cursor-pointer"
+                disabled={!deletePassword || isDeletingAccount}
+                className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs shadow-lg disabled:opacity-50 cursor-pointer flex items-center space-x-2"
               >
-                {isDeletingAccount ? 'Deleting...' : 'Confirm Delete'}
+                {isDeletingAccount ? 'Deleting account...' : 'Delete Account'}
               </button>
             </div>
           </div>

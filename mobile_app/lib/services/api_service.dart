@@ -413,6 +413,10 @@ class ApiService {
     required String email,
     required String phone,
     required String password,
+    bool termsAccepted = true,
+    bool privacyPolicyAccepted = true,
+    String termsVersion = '1.0',
+    String privacyPolicyVersion = '1.0',
   }) async {
     try {
       final response = await _requestWithRetry(
@@ -424,6 +428,10 @@ class ApiService {
           'email': email,
           'phone': phone,
           'password': password,
+          'termsAccepted': termsAccepted,
+          'privacyPolicyAccepted': privacyPolicyAccepted,
+          'termsVersion': termsVersion,
+          'privacyPolicyVersion': privacyPolicyVersion,
         }),
       );
 
@@ -603,6 +611,38 @@ class ApiService {
     await prefs.remove('token');
     await prefs.remove('refresh_token');
     await prefs.remove('user_data');
+  }
+
+  /// Delete Customer Account (DELETE /api/v1/auth/account)
+  static Future<Map<String, dynamic>> deleteAccount(String password) async {
+    try {
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/auth/account',
+        body: json.encode({'password': password}),
+      );
+
+      if (response == null) {
+        return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+      }
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        await clearSession();
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Your account has been deleted successfully.'
+        };
+      } else {
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Security verification failed. Unable to delete account.'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
+    }
   }
 
   static Future<void> logout() async {

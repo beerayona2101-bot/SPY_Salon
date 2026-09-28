@@ -13,7 +13,8 @@ const {
   getMe,
   getSessions,
   revokeSession,
-  logoutAllSessions
+  logoutAllSessions,
+  deleteAccount
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/authMiddleware');
 const { validateRequest } = require('../middlewares/validateRequest');
@@ -32,6 +33,7 @@ router.post('/reset-password', otpVerifyLimiter, validateRequest({ required: ['p
 
 // Protected routes
 router.post('/change-password', protect, validateRequest({ required: ['newPassword'], password: ['newPassword'] }), changePassword);
+router.delete('/account', protect, deleteAccount);
 router.post('/refresh', refreshToken);
 router.post('/logout', logoutUser);
 router.get('/me', protect, getMe);

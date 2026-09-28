@@ -8,6 +8,8 @@ import 'customer_dashboard_screen.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'update_password_screen.dart';
+import 'terms_and_conditions_screen.dart';
+import 'privacy_policy_screen.dart';
 
 /// Clean Luxury Custom Painter for Top-Right & Bottom-Left Gold Background Curves
 class GoldAmbientBackgroundPainter extends CustomPainter {
@@ -85,13 +87,38 @@ class GoldAmbientBackgroundPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final bool isFromDashboard;
 
   const SettingsScreen({
     super.key,
     this.isFromDashboard = true,
   });
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isCustomer = false;
+  bool _isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    final user = await ApiService.fetchCurrentUserProfile();
+    if (mounted) {
+      setState(() {
+        final role = user?['role']?.toString().toLowerCase();
+        _isCustomer = (role == 'customer' || (user != null && role == null));
+        _isLoadingUser = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -217,8 +244,8 @@ class SettingsScreen extends StatelessWidget {
 
                         const SizedBox(height: 24),
 
-                        // --- SECTION 3: UPDATE PASSWORD ---
-                        _buildSectionHeader(context, 'UPDATE PASSWORD'),
+                        // --- SECTION 3: UPDATE PASSWORD & SECURITY ---
+                        _buildSectionHeader(context, 'SECURITY & ACCOUNT MANAGEMENT'),
                         const SizedBox(height: 12),
                         _buildSettingCard(
                           context,
@@ -233,7 +260,13 @@ class SettingsScreen extends StatelessWidget {
                           },
                         ),
 
-                        if (!isFromDashboard) ...[
+                        // Delete Account (Only for Customer accounts)
+                        if (!_isLoadingUser && _isCustomer) ...[
+                          const SizedBox(height: 12),
+                          _buildDeleteAccountCard(context),
+                        ],
+
+                        if (!widget.isFromDashboard) ...[
                           const SizedBox(height: 24),
 
                           // --- SECTION 4: SYSTEM & SERVER CONFIGURATION ---
@@ -267,7 +300,38 @@ class SettingsScreen extends StatelessWidget {
 
                           const SizedBox(height: 24),
 
-                          // --- SECTION 6: ABOUT SPY SALON ---
+                          // --- SECTION 6: LEGAL & POLICIES ---
+                          _buildSectionHeader(context, 'LEGAL & POLICIES'),
+                          const SizedBox(height: 12),
+                          _buildSettingCard(
+                            context,
+                            icon: Icons.gavel_outlined,
+                            title: 'Terms & Conditions',
+                            subtitle: 'Service agreement, booking & refund rules',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (ctx) => const TermsAndConditionsScreen()),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSettingCard(
+                            context,
+                            icon: Icons.shield_outlined,
+                            title: 'Privacy Policy',
+                            subtitle: 'Data collection, usage & user rights',
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (ctx) => const PrivacyPolicyScreen()),
+                              );
+                            },
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // --- SECTION 7: ABOUT SPY SALON ---
                           _buildSectionHeader(context, 'ABOUT & INFORMATION'),
                           const SizedBox(height: 12),
                           _buildAboutCard(context),
@@ -413,6 +477,303 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Destructive Delete Account Card for Customer Settings
+  Widget _buildDeleteAccountCard(BuildContext context) {
+    final colors = AppColors.of(context);
+    final themeController = Provider.of<ThemeController>(context, listen: false);
+    final isDark = themeController.isDarkMode;
+
+    final cardBg = isDark ? const Color(0xFF1A1012) : colors.cardSurface;
+    final cardBorderColor = isDark ? const Color(0xFF6E2833) : colors.error.withAlpha(100);
+    final iconBgColor = isDark ? const Color(0xFF331418) : colors.error.withAlpha(25);
+    final iconBorderColor = isDark ? const Color(0xFF8B2B38) : colors.error.withAlpha(100);
+    final redTextColor = isDark ? const Color(0xFFF87171) : colors.error;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFE57373).withAlpha(isDark ? 25 : 10),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _showDeleteAccountDialog(context),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: iconBorderColor, width: 1),
+                  ),
+                  child: Icon(Icons.delete_forever_rounded, color: redTextColor, size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          color: redTextColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Permanently remove your SPY Salon account',
+                        style: TextStyle(
+                          color: colors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: redTextColor,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show Delete Account Dialog with Password Confirmation and Security Verification
+  void _showDeleteAccountDialog(BuildContext parentContext) {
+    final colors = AppColors.of(parentContext);
+    final themeController = Provider.of<ThemeController>(parentContext, listen: false);
+    final isDark = themeController.isDarkMode;
+    final passwordController = TextEditingController();
+    bool isObscure = true;
+    bool isDeleting = false;
+    String? errorMessage;
+
+    showDialog(
+      context: parentContext,
+      barrierDismissible: !isDeleting,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1A1412) : colors.cardSurface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: colors.error.withAlpha(120),
+                  width: 1,
+                ),
+              ),
+              title: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: colors.error, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Delete your account?',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you sure you want to delete your SPY Salon account?\n\n'
+                      'This action will permanently delete your account and associated personal information. '
+                      'You will be logged out after the account is deleted.',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Security Verification',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: isObscure,
+                      enabled: !isDeleting,
+                      style: TextStyle(color: colors.textPrimary, fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Enter password to confirm',
+                        hintStyle: TextStyle(color: colors.textMuted, fontSize: 13),
+                        filled: true,
+                        fillColor: isDark ? const Color(0xFF261D17) : colors.inputBackground,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: colors.cardBorder),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: colors.error),
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isObscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: colors.textMuted,
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            setModalState(() {
+                              isObscure = !isObscure;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: colors.error.withAlpha(25),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.error.withAlpha(80)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline_rounded, color: colors.error, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage!,
+                                style: TextStyle(color: colors.error, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(dialogCtx),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: colors.textMuted),
+                  ),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.error,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          final pass = passwordController.text.trim();
+                          if (pass.isEmpty) {
+                            setModalState(() {
+                              errorMessage = 'Please enter your password to confirm account deletion.';
+                            });
+                            return;
+                          }
+
+                          setModalState(() {
+                            isDeleting = true;
+                            errorMessage = null;
+                          });
+
+                          final result = await ApiService.deleteAccount(pass);
+
+                          if (!dialogCtx.mounted) return;
+
+                          if (result['success'] == true) {
+                            Navigator.pop(dialogCtx);
+                            if (parentContext.mounted) {
+                              ScaffoldMessenger.of(parentContext).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    result['message'] ?? 'Your account has been deleted successfully.',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  backgroundColor: Colors.green[700],
+                                ),
+                              );
+                              Navigator.pushAndRemoveUntil(
+                                parentContext,
+                                MaterialPageRoute(
+                                  builder: (ctx) => const CustomerDashboardScreen(),
+                                ),
+                                (route) => false,
+                              );
+                            }
+                          } else {
+                            setModalState(() {
+                              isDeleting = false;
+                              errorMessage = result['message'] ?? 'Failed to delete account. Please check your password.';
+                            });
+                          }
+                        },
+                  child: isDeleting
+                      ? const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text('Deleting account...', style: TextStyle(color: Colors.white, fontSize: 13)),
+                          ],
+                        )
+                      : const Text(
+                          'Delete Account',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -751,3 +1112,4 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 }
+

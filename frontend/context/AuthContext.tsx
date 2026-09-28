@@ -54,7 +54,16 @@ interface AuthContextType {
   sessions: UserSession[];
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string; user?: UserProfile }>;
-  register: (data: { name: string; email: string; phone: string; password: string }) => Promise<{ success: boolean; message: string }>;
+  register: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    termsAccepted?: boolean;
+    privacyPolicyAccepted?: boolean;
+    termsVersion?: string;
+    privacyPolicyVersion?: string;
+  }) => Promise<{ success: boolean; message: string }>;
   sendOtp: (identifier: { phone?: string; email?: string }) => Promise<{ success: boolean; message: string }>;
   verifyOtp: (identifier: { phone?: string; email?: string; otp: string }) => Promise<{ success: boolean; message: string; user?: UserProfile }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;

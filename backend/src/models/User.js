@@ -143,6 +143,13 @@ const userSchema = new mongoose.Schema({
     ifscCode: String,
     bankName: String,
     upiId: String
+  },
+  consent: {
+    termsAccepted: { type: Boolean, default: false },
+    privacyPolicyAccepted: { type: Boolean, default: false },
+    termsVersion: { type: String, default: '1.0' },
+    privacyPolicyVersion: { type: String, default: '1.0' },
+    acceptedAt: { type: Date, default: null }
   }
 });
 
