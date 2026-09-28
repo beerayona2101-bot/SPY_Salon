@@ -333,7 +333,7 @@ export default function Home() {
                 className="hidden sm:inline-flex items-center space-x-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-white/10 border border-rosegold-500/40 text-[11px] sm:text-xs font-semibold tracking-wider uppercase shadow-sm hero-tagline-badge"
               >
                 <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse hero-tagline-star" />
-                <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-tagline-text font-bold text-white !text-white">Luxury Beauty Studio & Botanical Spa • Est. 2026</span>
+                <span style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-tagline-text font-bold text-white !text-white">CRAFTING CONFIDENCE • ONE LOOK AT A TIME</span>
               </motion.div>
 
               {/* Main Responsive Headline */}
