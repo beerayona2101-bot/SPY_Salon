@@ -113,13 +113,10 @@ export default function Home() {
 
   useEffect(() => {
     const parseSettings = (p: any) => {
-      let rawTitle = p.heroTitle || 'Hairs make perfectly';
-      if (rawTitle === 'Hairs make perfect' || rawTitle === 'Unveil Your Radiant Beauty') {
-        rawTitle = 'Hairs make perfectly';
-      }
+      let rawTitle = p.heroTitle || 'Hair makes you beautiful.';
       return {
         heroTitle: rawTitle,
-        heroSubtitle: p.heroSubtitle || 'Style come from the hair style',
+        heroSubtitle: p.heroSubtitle || 'Beauty is not created—it is unveiled from within.',
         announcementActive: p.announcementActive !== undefined ? p.announcementActive : true,
         announcement: p.announcement || '✨ Festival Special: Enjoy 25% Off on All Luxury Bridal & Skin Care Packages!',
         hotlinePhone: p.hotlinePhone || '+91 94906 44434',
@@ -338,7 +335,7 @@ export default function Home() {
 
               {/* Main Responsive Headline */}
               <h1 style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-title-text text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight !text-white leading-tight font-serif">
-                <TextAnimate animation="blurInUp" by="character" once className="!text-white font-serif" segmentClassName="!text-white" style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}>
+                <TextAnimate key={homeSettings.heroTitle} animation="blurInUp" by="character" once className="!text-white font-serif" segmentClassName="!text-white" style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }}>
                   {homeSettings.heroTitle}
                 </TextAnimate>
               </h1>
@@ -346,6 +343,7 @@ export default function Home() {
               {/* Sub-description / Quote */}
               <p style={{ color: '#FFFFFF', WebkitTextFillColor: '#FFFFFF' }} className="hero-subtitle-text text-sm sm:text-base max-w-xl mx-auto lg:mx-0 leading-relaxed font-serif italic text-white !text-white">
                 <TextAnimate
+                  key={homeSettings.heroSubtitle}
                   animation="blurInUp"
                   by="character"
                   delay={0.5}

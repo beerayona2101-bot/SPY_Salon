@@ -538,6 +538,10 @@ class ApiService {
   /// Fetch current user profile live from backend (GET /api/v1/auth/me) and synchronize local cache
   static Future<Map<String, dynamic>?> fetchCurrentUserProfile() async {
     try {
+      final token = await getStoredToken();
+      if (token == null || token.isEmpty) {
+        return await getStoredUser();
+      }
       final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/auth/me');
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -812,12 +816,25 @@ class ApiService {
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data is Map && data['success'] == true && data['data'] != null) {
-          return Map<String, dynamic>.from(data['data']);
+          final settings = Map<String, dynamic>.from(data['data']);
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('spy_cached_landing_settings', json.encode(settings));
+          } catch (_) {}
+          return settings;
         }
       }
     } catch (e) {
       debugPrint('[ApiService] Landing settings fetch error: $e');
     }
+    // Return cached settings if network request fails or returns null
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('spy_cached_landing_settings');
+      if (cached != null && cached.isNotEmpty) {
+        return Map<String, dynamic>.from(json.decode(cached));
+      }
+    } catch (_) {}
     return null;
   }
 

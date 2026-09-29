@@ -4,13 +4,18 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../firebase_options.dart';
 import 'api_service.dart';
 import '../theme/app_colors.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
-    await Firebase.initializeApp();
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     debugPrint('[FCM Service] Handling background message: ${message.messageId}');
   } catch (e) {
     debugPrint('[FCM Service] Background handler notice: $e');
@@ -32,9 +37,15 @@ class FcmService {
     if (_initialized) return;
 
     try {
-      // 1. Initialize Firebase Core
-      await Firebase.initializeApp();
-      debugPrint('[FCM Service] Firebase Core initialized successfully.');
+      // 1. Initialize Firebase Core if not already initialized
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+        debugPrint('[FCM Service] Firebase Core initialized successfully.');
+      } else {
+        debugPrint('[FCM Service] Firebase Core already initialized.');
+      }
 
       // 2. Set Background Message Handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -60,6 +71,10 @@ class FcmService {
   /// Request Notification Permissions safely
   static Future<void> requestPermission() async {
     try {
+      if (Firebase.apps.isEmpty) {
+        debugPrint('[FCM Service] Cannot request permission: Firebase is not initialized.');
+        return;
+      }
       final messaging = FirebaseMessaging.instance;
       final settings = await messaging.requestPermission(
         alert: true,
@@ -120,6 +135,10 @@ class FcmService {
 
   /// Register listeners for Foreground, Background Tap, and Token Refresh events
   static void _setupListeners() {
+    if (Firebase.apps.isEmpty) {
+      debugPrint('[FCM Service] Cannot setup listeners: Firebase is not initialized.');
+      return;
+    }
     // A. Foreground Message Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('[FCM Service] Foreground FCM message received: ${message.notification?.title}');
@@ -193,6 +212,10 @@ class FcmService {
   /// Get current FCM Token safely
   static Future<String?> getToken() async {
     try {
+      if (Firebase.apps.isEmpty) {
+        debugPrint('[FCM Service] Cannot get token: Firebase is not initialized.');
+        return null;
+      }
       if (_currentToken != null) return _currentToken;
       _currentToken = await FirebaseMessaging.instance.getToken();
       return _currentToken;

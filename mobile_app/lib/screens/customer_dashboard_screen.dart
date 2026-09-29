@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
@@ -50,12 +52,23 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadCachedLandingSettings();
     _loadCustomerData();
 
     _realtimeSubscription = RealtimeService().eventStream.listen((event) {
       if (!mounted) return;
       debugPrint('[CustomerDashboardScreen] Realtime event received: ${event.name}');
-      if (event.name.startsWith('appointment:') ||
+      if (event.name == 'landing_settings_updated') {
+        if (event.data is Map) {
+          final updatedSettings = Map<String, dynamic>.from(event.data as Map);
+          setState(() {
+            _landingSettings = updatedSettings;
+          });
+          _saveCachedLandingSettings(updatedSettings);
+        } else {
+          _loadCustomerData(quiet: true);
+        }
+      } else if (event.name.startsWith('appointment:') ||
           event.name.startsWith('service:') ||
           event.name.startsWith('membership:') ||
           event.name == 'offers_updated' ||
@@ -63,6 +76,32 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         _loadCustomerData(quiet: true);
       }
     });
+  }
+
+  Future<void> _loadCachedLandingSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedStr = prefs.getString('spy_cached_landing_settings');
+      if (cachedStr != null && cachedStr.isNotEmpty && mounted) {
+        final decoded = json.decode(cachedStr);
+        if (decoded is Map) {
+          setState(() {
+            _landingSettings = Map<String, dynamic>.from(decoded);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[CustomerDashboard] Error reading cached landing settings: $e');
+    }
+  }
+
+  Future<void> _saveCachedLandingSettings(Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('spy_cached_landing_settings', json.encode(data));
+    } catch (e) {
+      debugPrint('[CustomerDashboard] Error writing cached landing settings: $e');
+    }
   }
 
   @override
@@ -94,7 +133,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         _user = storedUser;
         _services = servicesList;
         _specialists = specialistsList;
-        if (landingData != null) _landingSettings = landingData;
+        if (landingData != null) {
+          _landingSettings = landingData;
+          _saveCachedLandingSettings(landingData);
+        }
         _isLoading = false;
       });
     }
@@ -498,11 +540,24 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     final cardBg = themeColors.cardSurface;
     final buttonTextColor = themeColors.buttonTextPrimary;
 
+    final String stat1Val = (_landingSettings?['stat1Value'] ?? '25,000+').toString().trim();
+    final String stat1Lbl = (_landingSettings?['stat1Label'] ?? 'Satisfied Clients').toString().trim();
+    final String stat2Val = (_landingSettings?['stat2Value'] ?? '45+').toString().trim();
+    final String stat2Lbl = (_landingSettings?['stat2Label'] ?? 'Master Stylists').toString().trim();
+    final String stat3Val = (_landingSettings?['stat3Value'] ?? 'Jubilee Hills').toString().trim();
+    final String stat3Lbl = (_landingSettings?['stat3Label'] ?? 'Luxury Studio').toString().trim();
+    String stat4Val = (_landingSettings?['stat4Value'] ?? '4.9 ⭐').toString().trim();
+    final String stat4Lbl = (_landingSettings?['stat4Label'] ?? 'Google Rating').toString().trim();
+
+    if (stat4Lbl.toLowerCase().contains('rating') && !stat4Val.contains('⭐') && !stat4Val.contains('★')) {
+      stat4Val = '$stat4Val ⭐';
+    }
+
     final stats = [
-      {'val': '25,000+', 'label': 'Satisfied Clients'},
-      {'val': '45+', 'label': 'Master Stylists'},
-      {'val': 'Jubilee Hills', 'label': 'Flagship Studio'},
-      {'val': '4.9 ⭐', 'label': 'Google Rating'},
+      {'val': stat1Val.isNotEmpty ? stat1Val : '25,000+', 'label': stat1Lbl.isNotEmpty ? stat1Lbl : 'Satisfied Clients'},
+      {'val': stat2Val.isNotEmpty ? stat2Val : '45+', 'label': stat2Lbl.isNotEmpty ? stat2Lbl : 'Master Stylists'},
+      {'val': stat3Val.isNotEmpty ? stat3Val : 'Jubilee Hills', 'label': stat3Lbl.isNotEmpty ? stat3Lbl : 'Luxury Studio'},
+      {'val': stat4Val.isNotEmpty ? stat4Val : '4.9 ⭐', 'label': stat4Lbl.isNotEmpty ? stat4Lbl : 'Google Rating'},
     ];
 
     final List<Map<String, String>> faqs = (_landingSettings != null &&
@@ -529,8 +584,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
             },
           ];
 
-    final String heroTitle = (_landingSettings?['heroTitle'] ?? 'Hairs make perfectly').toString();
-    final String heroSubtitle = (_landingSettings?['heroSubtitle'] ?? 'Style come from the hair style').toString();
+    final String heroTitle = (_landingSettings?['heroTitle'] ?? 'Hair makes you beautiful.').toString();
+    final String heroSubtitle = (_landingSettings?['heroSubtitle'] ?? '“Beauty is not created—it is unveiled from within.”').toString();
 
     // Dynamically extract categories from backend services list
     final Set<String> dynamicCategories = {'All', 'Hair Care', 'Skin & Spa', 'Nail Care', 'Grooming', 'Bridal'};
@@ -560,6 +615,51 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 0. Live Top Announcement Banner (Synced from Web Settings)
+            if (_landingSettings?['announcementActive'] == true &&
+                (_landingSettings?['announcement'] ?? '').toString().trim().isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.campaign_rounded, color: primaryColor, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _landingSettings!['announcement'].toString(),
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // 1. Hero Banner Card
             Container(
               padding: const EdgeInsets.all(20),
