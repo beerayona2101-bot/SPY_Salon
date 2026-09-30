@@ -538,10 +538,6 @@ class ApiService {
   /// Fetch current user profile live from backend (GET /api/v1/auth/me) and synchronize local cache
   static Future<Map<String, dynamic>?> fetchCurrentUserProfile() async {
     try {
-      final token = await getStoredToken();
-      if (token == null || token.isEmpty) {
-        return await getStoredUser();
-      }
       final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/auth/me');
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);

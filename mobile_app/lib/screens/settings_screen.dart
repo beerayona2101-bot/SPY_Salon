@@ -89,10 +89,12 @@ class GoldAmbientBackgroundPainter extends CustomPainter {
 
 class SettingsScreen extends StatefulWidget {
   final bool isFromDashboard;
+  final bool isEmbedded;
 
   const SettingsScreen({
     super.key,
     this.isFromDashboard = true,
+    this.isEmbedded = false,
   });
 
   @override
@@ -143,8 +145,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               children: [
                 // Top Custom App Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                if (!widget.isEmbedded)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
                       IconButton(

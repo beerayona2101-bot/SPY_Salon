@@ -11,12 +11,17 @@ class BookAppointmentScreen extends StatefulWidget {
   final List<dynamic>? specialists;
   final String? initialService;
 
+  final bool isEmbedded;
+  final VoidCallback? onBookingSuccess;
+
   const BookAppointmentScreen({
     super.key,
     this.user,
     this.services,
     this.specialists,
     this.initialService,
+    this.isEmbedded = false,
+    this.onBookingSuccess,
   });
 
   @override
@@ -79,6 +84,24 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     _notesCtrl.dispose();
     _dateCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant BookAppointmentScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialService != null && widget.initialService != oldWidget.initialService) {
+      setState(() {
+        _selectedService = widget.initialService!;
+      });
+    }
+    if (widget.user != oldWidget.user && widget.user != null) {
+      if (_nameCtrl.text.isEmpty && widget.user?['name'] != null) {
+        _nameCtrl.text = widget.user!['name'];
+      }
+      if (_phoneCtrl.text.isEmpty && widget.user?['phone'] != null) {
+        _phoneCtrl.text = widget.user!['phone'];
+      }
+    }
   }
 
   Future<void> _initData() async {
@@ -229,7 +252,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
 
     if (res['success'] == true) {
-      nav.pop(true);
+      if (widget.isEmbedded) {
+        widget.onBookingSuccess?.call();
+      } else {
+        nav.pop(true);
+      }
     }
   }
 
@@ -257,8 +284,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             child: Column(
               children: [
                 // Clean Custom Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                if (!widget.isEmbedded)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
                       IconButton(

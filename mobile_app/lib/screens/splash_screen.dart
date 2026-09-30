@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
-  String _statusMessage = 'Initializing SPY Salon...';
+  String _statusMessage = 'Loading...';
 
   @override
   void initState() {
@@ -48,13 +48,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _initializeApp() async {
     final startTime = DateTime.now();
 
-    setState(() => _statusMessage = 'Loading Backend Config...');
+    setState(() => _statusMessage = 'Loading...');
     await ApiConfig.loadSavedBaseUrl();
 
-    setState(() => _statusMessage = 'Verifying Session...');
+    setState(() => _statusMessage = 'Loading...');
     final user = await ApiService.getStoredUser();
 
-    setState(() => _statusMessage = 'Connecting to Server...');
+    setState(() => _statusMessage = 'Loading...');
     await ApiService.checkHealth();
     await RealtimeService().init();
     await FcmService.syncTokenWithBackend();

@@ -3,7 +3,8 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final bool isEmbedded;
+  const ProfileScreen({super.key, this.isEmbedded = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -160,13 +161,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: colors.mainBackground,
-      appBar: AppBar(
-        backgroundColor: colors.cardSurface,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.primary, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: widget.isEmbedded
+          ? null
+          : AppBar(
+              backgroundColor: colors.cardSurface,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: colors.primary, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Row(
           children: [
             ClipRRect(
@@ -222,6 +225,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (widget.isEmbedded) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'VIP MEMBERSHIP & DETAILS',
+                            style: TextStyle(
+                              color: colors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              foregroundColor: colors.primary,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isEditMode = !_isEditMode;
+                              });
+                            },
+                            icon: Icon(_isEditMode ? Icons.visibility_outlined : Icons.edit_outlined, size: 16),
+                            label: Text(
+                              _isEditMode ? 'View Profile' : 'Edit Profile',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+
                     // --- HEADER PROFILE CARD ---
                     _buildHeaderCard(colors),
                     const SizedBox(height: 20),

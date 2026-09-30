@@ -1,7 +1,5 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'firebase_options.dart';
 import 'services/fcm_service.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
@@ -11,22 +9,9 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 1. Initialize Firebase Core safely before any Firebase/FCM operations
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('[Firebase] Initialized successfully with platform options.');
-  } catch (e) {
-    debugPrint('[Firebase] Initialization notice: $e');
-  }
-
-  // 2. Setup FCM & notifications
   FcmService.setNavigatorKey(appNavigatorKey);
   await FcmService.initialize();
 
-  // 3. Load theme configuration
   final themeController = await ThemeController.loadInitial();
 
   runApp(

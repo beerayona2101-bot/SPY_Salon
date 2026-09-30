@@ -3,7 +3,14 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final bool isEmbedded;
+  final VoidCallback? onBookNew;
+
+  const HistoryScreen({
+    super.key,
+    this.isEmbedded = false,
+    this.onBookNew,
+  });
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
@@ -154,13 +161,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return Scaffold(
       backgroundColor: colors.mainBackground,
-      appBar: AppBar(
-        backgroundColor: colors.cardSurface,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: primary, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: widget.isEmbedded
+          ? null
+          : AppBar(
+              backgroundColor: colors.cardSurface,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: primary, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: Row(
           children: [
             Container(
@@ -296,6 +305,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: colors.textMuted, fontSize: 13, height: 1.4),
             ),
+            if (widget.onBookNew != null) ...[
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primary,
+                  foregroundColor: colors.buttonTextPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                ),
+                onPressed: widget.onBookNew,
+                icon: const Icon(Icons.calendar_month_rounded, size: 18),
+                label: const Text('Book an Appointment', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ],
         ),
       ),
@@ -557,6 +580,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         label: Text(
                           'Cancel Booking',
                           style: TextStyle(color: colors.error, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (status.toLowerCase() == 'completed' && widget.onBookNew != null) ...[
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primary,
+                          foregroundColor: colors.buttonTextPrimary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                        onPressed: widget.onBookNew,
+                        icon: const Icon(Icons.refresh_rounded, size: 14),
+                        label: const Text(
+                          'Book Again',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
