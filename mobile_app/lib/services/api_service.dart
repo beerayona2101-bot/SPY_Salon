@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -6,47 +7,59 @@ import '../config/api_config.dart';
 import 'fcm_service.dart';
 
 class ApiService {
-  /// Probes current base URL and candidate URLs in parallel to find a reachable backend instantly
+  /// Probes current base URL directly first; falls back to candidate URLs in parallel if primary fails
   static Future<Map<String, dynamic>> checkHealth() async {
     await ApiConfig.loadSavedBaseUrl();
 
-    final candidates = ApiConfig.candidateUrls;
-    if (candidates.isEmpty) {
-      return {'connected': false, 'error': 'No candidate URLs configured', 'url': ApiConfig.baseUrl};
+    // Fast path: probe active baseUrl directly first
+    final primaryRes = await _probeUrl(ApiConfig.baseUrl);
+    if (primaryRes['connected'] == true) {
+      return primaryRes;
     }
 
-    final results = await Future.wait(
-      candidates.map((url) => _probeUrl(url)),
-    );
+    // Fallback: probe remaining candidates and return immediately on first success
+    final candidates = ApiConfig.candidateUrls.where((u) => u != ApiConfig.baseUrl).toList();
+    if (candidates.isEmpty) return primaryRes;
 
-    for (final res in results) {
-      if (res['connected'] == true) {
-        final connectedUrl = res['url'] as String;
-        await ApiConfig.setActiveBaseUrl(connectedUrl);
-        return res;
-      }
+    final completer = Completer<Map<String, dynamic>>();
+    int pending = candidates.length;
+
+    for (final url in candidates) {
+      _probeUrl(url).then((res) {
+        if (!completer.isCompleted && res['connected'] == true) {
+          ApiConfig.setActiveBaseUrl(res['url'] as String);
+          completer.complete(res);
+        } else {
+          pending--;
+          if (pending == 0 && !completer.isCompleted) {
+            completer.complete(primaryRes);
+          }
+        }
+      }).catchError((_) {
+        pending--;
+        if (pending == 0 && !completer.isCompleted) {
+          completer.complete(primaryRes);
+        }
+      });
     }
 
-    final primary = results.firstWhere(
-      (r) => r['url'] == ApiConfig.baseUrl,
-      orElse: () => results.first,
+    return completer.future.timeout(
+      const Duration(milliseconds: 2000),
+      onTimeout: () => primaryRes,
     );
-    return primary;
   }
 
   static Future<Map<String, dynamic>> _probeUrl(String url) async {
     final probeEndpoints = [
       '$url/api/v1/health',
       '$url/health',
-      '$url/api/health',
-      '$url/api/v1/services',
     ];
 
     for (final endpoint in probeEndpoints) {
       try {
         final response = await http
             .get(Uri.parse(endpoint))
-            .timeout(const Duration(milliseconds: 2500));
+            .timeout(const Duration(milliseconds: 1500));
 
         if (response.statusCode == 200 || response.statusCode == 201) {
           Map<String, dynamic> data = {};
@@ -64,7 +77,7 @@ class ApiService {
             (data['data'] != null && data['data'] is List)
           );
 
-          if (isSpySalon) {
+          if (isSpySalon || response.statusCode == 200) {
             return {
               'connected': true,
               'status': data['status'] ?? 'UP',
@@ -86,7 +99,7 @@ class ApiService {
 
     return {
       'connected': false,
-      'error': 'Unreachable',
+      'status': 'DOWN',
       'url': url,
     };
   }
@@ -753,6 +766,9 @@ class ApiService {
       'discountPercent': 100,
     },
   ];
+
+  static List<dynamic> get fallbackServices => _fallbackServices;
+  static List<dynamic> get fallbackSpecialists => _fallbackSpecialists;
 
   /// Fetch all active services from `/api/v1/services`
   static Future<List<dynamic>> getServices() async {

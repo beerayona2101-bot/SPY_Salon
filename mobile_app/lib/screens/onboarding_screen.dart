@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../utils/luxury_page_route.dart';
 import 'customer_dashboard_screen.dart';
@@ -44,6 +45,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     if (widget.targetDashboard != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _completeAutoPlay();
+      });
+    } else {
       _startAutoPlay();
     }
   }
@@ -69,6 +74,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _isNavigating = true;
     _autoPlayTimer?.cancel();
 
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('has_seen_onboarding', true);
+    });
+
     if (widget.targetDashboard != null) {
       Navigator.pushReplacement(
         context,
@@ -87,6 +96,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _navigateToLoginOrDashboard() {
     if (_isNavigating || !mounted) return;
     _autoPlayTimer?.cancel();
+
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.setBool('has_seen_onboarding', true);
+    });
 
     if (widget.targetDashboard != null) {
       _completeAutoPlay();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
 import '../services/fcm_service.dart';
@@ -20,14 +21,14 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
-  String _statusMessage = 'Loading...';
+  final String _statusMessage = 'Loading...';
 
   @override
   void initState() {
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 650),
     );
 
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
@@ -48,27 +49,41 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   Future<void> _initializeApp() async {
     final startTime = DateTime.now();
 
-    setState(() => _statusMessage = 'Loading...');
-    await ApiConfig.loadSavedBaseUrl();
+    // 1. Fast parallel read of local configs & credentials (instant, <15ms)
+    final results = await Future.wait([
+      ApiConfig.loadSavedBaseUrl(),
+      ApiService.getStoredUser(),
+      SharedPreferences.getInstance(),
+    ]);
 
-    setState(() => _statusMessage = 'Loading...');
-    final user = await ApiService.getStoredUser();
+    final user = results[1] as Map<String, dynamic>?;
+    final prefs = results[2] as SharedPreferences;
+    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
 
-    setState(() => _statusMessage = 'Loading...');
-    await ApiService.checkHealth();
-    await RealtimeService().init();
-    await FcmService.syncTokenWithBackend();
+    // 2. Fire and forget background network tasks (non-blocking for UI)
+    ApiService.checkHealth().catchError((e) {
+      debugPrint('[SplashScreen] Background health probe notice: $e');
+      return <String, dynamic>{'status': 'offline'};
+    });
+    RealtimeService().init().catchError((e) {
+      debugPrint('[SplashScreen] Realtime background init notice: $e');
+    });
+    FcmService.syncTokenWithBackend().catchError((e) {
+      debugPrint('[SplashScreen] FCM token sync background notice: $e');
+    });
 
-    // Ensure splash displays for ~2.3 seconds for smooth luxury launch experience
+    // 3. Crisp luxury splash timing (600ms total - fast and responsive)
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    final remainingDelay = 2300 - elapsed;
+    const targetSplashDuration = 600;
+    final remainingDelay = targetSplashDuration - elapsed;
     if (remainingDelay > 0) {
       await Future.delayed(Duration(milliseconds: remainingDelay));
     }
 
     if (!mounted) return;
 
-    Widget? targetDashboard;
+    // 4. Resolve destination screen
+    Widget destination;
 
     if (user != null) {
       final role = (user['role'] ?? 'customer').toString().toLowerCase();
@@ -77,23 +92,27 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
       if (isAdmin) {
         await ApiService.clearSession();
-        targetDashboard = null;
+        destination = const CustomerDashboardScreen();
       } else if (isStaff) {
-        targetDashboard = const EmployeeDashboardScreen();
+        destination = const EmployeeDashboardScreen();
       } else {
-        targetDashboard = const CustomerDashboardScreen();
+        destination = const CustomerDashboardScreen();
       }
     } else {
-      targetDashboard = null;
+      if (hasSeenOnboarding) {
+        // Returning guest: skip onboarding tutorial and launch directly to Customer Dashboard!
+        destination = const CustomerDashboardScreen();
+      } else {
+        // First-ever launch on brand new install: show onboarding once
+        destination = const OnboardingScreen();
+      }
     }
 
     if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
-      LuxuryPageRoute(
-        page: OnboardingScreen(targetDashboard: targetDashboard),
-      ),
+      LuxuryPageRoute(page: destination),
     );
   }
 

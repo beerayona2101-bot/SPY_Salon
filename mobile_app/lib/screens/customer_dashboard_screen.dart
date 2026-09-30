@@ -94,8 +94,14 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
       if (mounted) setState(() {});
     });
 
+    // Pre-populate with fallback and local cache for 0ms instant render
+    _services = ApiService.fallbackServices;
+    _specialists = ApiService.fallbackSpecialists;
+    _isLoading = false;
+
+    _loadCachedUserData();
     _loadCachedLandingSettings();
-    _loadCustomerData();
+    _loadCustomerData(quiet: true);
 
     RealtimeService().joinRoom('room:customer');
 
@@ -120,6 +126,17 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         _loadCustomerData(quiet: true);
       }
     });
+  }
+
+  Future<void> _loadCachedUserData() async {
+    try {
+      final cachedUser = await ApiService.getStoredUser();
+      if (cachedUser != null && mounted) {
+        setState(() {
+          _user = cachedUser;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadCachedLandingSettings() async {
@@ -165,26 +182,47 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
   }
 
   Future<void> _loadCustomerData({bool quiet = false}) async {
-    if (!quiet) setState(() => _isLoading = true);
-    final storedUser = await ApiService.fetchCurrentUserProfile();
-    final servicesList = await ApiService.getServices();
-    final specialistsList = await ApiService.getSpecialists();
-    final appointmentsList = await ApiService.getCustomerAppointments(userParam: storedUser);
-    final landingData = await ApiService.getLandingSettings();
+    if (!quiet && _services.isEmpty) {
+      setState(() => _isLoading = true);
+    }
 
-    if (!mounted) return;
+    try {
+      // Execute all core endpoint requests concurrently in parallel
+      final futures = await Future.wait([
+        ApiService.fetchCurrentUserProfile(),
+        ApiService.getServices(),
+        ApiService.getSpecialists(),
+        ApiService.getLandingSettings(),
+      ]);
 
-    setState(() {
-      _user = storedUser;
-      _services = servicesList;
-      _specialists = specialistsList;
-      _appointments = appointmentsList ?? [];
-      if (landingData != null) {
-        _landingSettings = landingData;
-        _saveCachedLandingSettings(landingData);
+      final storedUser = futures[0] as Map<String, dynamic>?;
+      final servicesList = futures[1] as List<dynamic>? ?? _services;
+      final specialistsList = futures[2] as List<dynamic>? ?? _specialists;
+      final landingData = futures[3] as Map<String, dynamic>?;
+
+      final appointmentsList = await ApiService.getCustomerAppointments(
+        userParam: storedUser ?? _user,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        if (storedUser != null) _user = storedUser;
+        if (servicesList.isNotEmpty) _services = servicesList;
+        if (specialistsList.isNotEmpty) _specialists = specialistsList;
+        _appointments = appointmentsList ?? [];
+        if (landingData != null) {
+          _landingSettings = landingData;
+          _saveCachedLandingSettings(landingData);
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('[CustomerDashboard] Error loading customer data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
-      _isLoading = false;
-    });
+    }
   }
 
   /// Navigate directly to the booking tab (Index 2) with optional preselected service
@@ -435,25 +473,30 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
           backgroundColor: cardBg,
           elevation: 0,
           automaticallyImplyLeading: false,
-          leading: Padding(
-            padding: const EdgeInsets.only(left: 14),
-            child: Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 24,
-                  height: 24,
-                  fit: BoxFit.cover,
+          leading: _tabController.index != 0
+              ? IconButton(
+                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: primaryColor, size: 20),
+                  onPressed: () => setState(() => _tabController.index = 0),
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(left: 14),
+                  child: Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                (_user != null ? sectionTitles[_tabController.index] : 'SPY SALON STUDIO').toUpperCase(),
+                sectionTitles[_tabController.index].toUpperCase(),
                 style: TextStyle(
                   color: themeColors.textPrimary,
                   fontSize: 13,
@@ -552,9 +595,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
 
   // --- TAB CONTENT DISPATCHER ---
   Widget _buildCustomerTabContent(int index, AppColors themeColors) {
-    if (_user == null) {
-      return _buildHomeTab(themeColors);
-    }
     switch (index) {
       case 0:
         return _buildHomeTab(themeColors);
@@ -582,8 +622,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     final String heroTitle = (_landingSettings?['heroTitle'] ?? 'Hair makes you beautiful.').toString();
     final String heroSubtitle = (_landingSettings?['heroSubtitle'] ?? '“Beauty is not created—it is unveiled from within.”').toString();
 
-    // Featured preview services (top 3 for signed-in users, full list for guests)
-    final featuredServices = _user == null ? _services : _services.take(3).toList();
+    // Featured preview services (top 3)
+    final featuredServices = _services.take(3).toList();
 
     // Find next upcoming appointment if any
     dynamic nextAppointment;
@@ -854,8 +894,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
               const SizedBox(height: 20),
             ],
 
+            // 3. Quick Action Navigation Pills (only for signed-in clients)
             if (_user != null) ...[
-              // 3. Quick Action Navigation Pills
               Row(
                 children: [
                   _buildQuickActionTile(
@@ -891,76 +931,19 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
               const SizedBox(height: 24),
             ],
 
-            // 4. Luxury Experience Pillars
-            Text(
-              'The SPY Salon Standard',
-              style: TextStyle(color: themeColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPillarCard(
-                    icon: Icons.verified_user_rounded,
-                    title: 'Certified Stylists',
-                    subtitle: 'Top-tier master stylists & estheticians.',
-                    themeColors: themeColors,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildPillarCard(
-                    icon: Icons.eco_rounded,
-                    title: 'Organic Spa',
-                    subtitle: 'Botanical, certified cruelty-free care.',
-                    themeColors: themeColors,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildPillarCard(
-                    icon: Icons.chair_rounded,
-                    title: 'VIP Suites',
-                    subtitle: 'Sanitized private luxury stations.',
-                    themeColors: themeColors,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildPillarCard(
-                    icon: Icons.flash_on_rounded,
-                    title: 'Real-Time Slots',
-                    subtitle: 'Instant confirmations & zero wait time.',
-                    themeColors: themeColors,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
             // 5. Featured Treatments Showcase
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  _user == null ? 'Available Treatments Menu' : 'Popular Treatments',
+                  'Popular Treatments',
                   style: TextStyle(color: themeColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                if (_user != null)
-                  TextButton.icon(
-                    onPressed: () => setState(() => _tabController.index = 1),
-                    icon: Icon(Icons.arrow_forward_rounded, size: 14, color: primaryColor),
-                    label: Text('View Full Menu', style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold)),
-                  )
-                else
-                  Text(
-                    '${_services.length} Treatments',
-                    style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
+                TextButton.icon(
+                  onPressed: () => setState(() => _tabController.index = 1),
+                  icon: Icon(Icons.arrow_forward_rounded, size: 14, color: primaryColor),
+                  label: Text('View Full Menu', style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -968,55 +951,54 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
             if (featuredServices.isNotEmpty)
               ...featuredServices.map((srv) => _buildServiceCardItem(srv, themeColors)),
 
-            if (_user != null) ...[
-              const SizedBox(height: 12),
-              // 6. View All Services Callout Banner
-              InkWell(
-                onTap: () => setState(() => _tabController.index = 1),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.auto_awesome, color: primaryColor, size: 20),
+            const SizedBox(height: 12),
+
+            // 6. View All Services Callout Banner
+            InkWell(
+              onTap: () => setState(() => _tabController.index = 1),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Explore All ${_services.length} Treatments',
-                              style: TextStyle(
-                                color: themeColors.textPrimary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
+                      child: Icon(Icons.auto_awesome, color: primaryColor, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Explore All ${_services.length} Treatments',
+                            style: TextStyle(
+                              color: themeColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
-                            Text(
-                              'Hair, Skin, Spa, Nail Care, Grooming & Bridal',
-                              style: TextStyle(color: themeColors.textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
+                          ),
+                          Text(
+                            'Hair, Skin, Spa, Nail Care, Grooming & Bridal',
+                            style: TextStyle(color: themeColors.textMuted, fontSize: 11),
+                          ),
+                        ],
                       ),
-                      Icon(Icons.arrow_forward_ios_rounded, color: primaryColor, size: 14),
-                    ],
-                  ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: primaryColor, size: 14),
+                  ],
                 ),
               ),
-            ],
+            ),
             const SizedBox(height: 24),
 
             // 7. Salon Studios & Operating Hours
@@ -1136,38 +1118,6 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     );
   }
 
-  Widget _buildPillarCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required AppColors themeColors,
-  }) {
-    final primaryColor = themeColors.primary;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: themeColors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: themeColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: primaryColor, size: 20),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(color: themeColors.textMuted, fontSize: 11, height: 1.3),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBranchRow(AppColors themeColors, String name, String details) {
     return Row(
