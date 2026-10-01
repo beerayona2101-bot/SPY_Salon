@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SPY Salon VIP Membership Controller
  * Endpoint handlers for membership plans, purchases, status checks, and admin management.
  */
@@ -169,25 +169,64 @@ exports.getAdminAnalytics = async (req, res) => {
 // PATCH /api/v1/membership/admin/status
 exports.updateStatus = async (req, res) => {
   try {
-    const { membershipId, status } = req.body;
+    const { membershipId, status, renew } = req.body;
     if (!membershipId || !status) {
       return res.status(400).json({ success: false, message: 'Membership ID and new status required.' });
     }
 
-    await CustomerMembership.findOneAndUpdate({ membershipId }, { status });
-
-    // Also update user profile
     const membershipRecord = await CustomerMembership.findOne({ membershipId });
-    if (membershipRecord) {
-      await User.findOneAndUpdate(
-        { email: membershipRecord.customerEmail },
-        { 'membership.status': status }
-      );
+    if (!membershipRecord) {
+      return res.status(404).json({ success: false, message: `Membership with ID ${membershipId} not found.` });
     }
+
+    const updateFields = { status };
+
+    // When renewing or setting to Active, recalculate validity starting from present date
+    const shouldRenew = renew === true || status === 'Active';
+    if (shouldRenew) {
+      const now = new Date();
+      const isYearly = String(membershipRecord.billingCycle).toLowerCase() === 'yearly';
+      const newExpiry = new Date(now);
+      if (isYearly) {
+        newExpiry.setDate(newExpiry.getDate() + 365);
+      } else {
+        newExpiry.setDate(newExpiry.getDate() + 30);
+      }
+
+      updateFields.startDate = now;
+      updateFields.expiryDate = newExpiry;
+      updateFields.autoRenewal = true;
+    }
+
+    const updatedMembership = await CustomerMembership.findOneAndUpdate(
+      { membershipId },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    // Also update User profile
+    const userUpdate = {
+      'membership.status': status
+    };
+    if (updateFields.startDate) {
+      userUpdate['membership.startDate'] = updateFields.startDate;
+      userUpdate['membership.expiryDate'] = updateFields.expiryDate;
+      userUpdate['membership.tier'] = membershipRecord.planName || membershipRecord.planCode;
+      userUpdate['membership.code'] = membershipRecord.planCode;
+      userUpdate['membership.badge'] = membershipRecord.badge;
+      userUpdate['membership.membershipId'] = membershipRecord.membershipId;
+      userUpdate['membership.discountPercent'] = membershipRecord.discountPercentage;
+    }
+
+    await User.findOneAndUpdate(
+      { email: membershipRecord.customerEmail },
+      { $set: userUpdate }
+    );
 
     return res.status(200).json({
       success: true,
-      message: `Membership ${membershipId} status updated to ${status}.`
+      message: `Membership ${membershipId} renewed from present date until ${updateFields.expiryDate ? updateFields.expiryDate.toLocaleDateString() : 'next cycle'}.`,
+      data: updatedMembership
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

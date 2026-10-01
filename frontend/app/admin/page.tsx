@@ -2095,9 +2095,9 @@ function AdminDashboardContent() {
         <div className="p-3.5 pb-8 lg:pb-3.5 border-t border-white/10 bg-dark-900/90 text-xs space-y-2.5 shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5 min-w-0">
-              <ProfileAvatar user={user} name={user?.name || "System Administrator"} size="md" onClick={() => setIsSettingsModalOpen(true)} />
+              <ProfileAvatar user={user} name={user?.name || "Admin"} size="md" onClick={() => setIsSettingsModalOpen(true)} />
               <div className="space-y-0.5 overflow-hidden text-left">
-                <h4 className="text-white font-serif font-bold text-xs truncate">System Administrator</h4>
+                <h4 className="text-white font-serif font-bold text-xs truncate">{user?.name || "Admin"}</h4>
                 <p className="text-[10px] text-gray-400 truncate">admin@spysalon.com</p>
               </div>
             </div>
@@ -2318,9 +2318,9 @@ function AdminDashboardContent() {
             <div className="space-y-6 animate-fadeIn text-left">
               <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold font-serif text-white">Business Intelligence & Revenue Reports</h2>
-                <button onClick={() => handleExportReport('appointments')} className="csv-export-btn px-3.5 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-gray-900 dark:text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
-                  <Download className="w-3.5 h-3.5 text-gray-900 dark:text-rosegold-400" />
-                  <span className="text-gray-900 dark:text-rosegold-300 font-bold">Export CSV Report</span>
+                <button onClick={() => handleExportReport('appointments')} className="csv-export-btn px-3.5 py-2 rounded-xl bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
+                  <Download className="w-3.5 h-3.5 text-rosegold-400" />
+                  <span className="text-rosegold-300 font-bold">Export CSV Report</span>
                 </button>
               </div>
 
@@ -2754,7 +2754,7 @@ function AdminDashboardContent() {
                           newM.setMonth(newM.getMonth() - 1);
                           setCalMonthView(newM);
                         }}
-                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/20 text-gray-200 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer shadow-sm"
                         title="Previous Month"
                       >
                         <ChevronLeft className="w-5 h-5" />
@@ -2766,7 +2766,7 @@ function AdminDashboardContent() {
                           setCalMonthView(today);
                           setSelectedCalDate(today.toISOString().split('T')[0]);
                         }}
-                        className="px-4 py-2 rounded-2xl bg-dark-800 border border-rosegold-500/30 text-rosegold-400 font-bold text-xs hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
+                        className="px-4 py-2 rounded-2xl bg-dark-800 border border-rosegold-500/40 text-rosegold-300 font-bold text-xs hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer shadow-sm"
                       >
                         Today
                       </button>
@@ -2777,7 +2777,7 @@ function AdminDashboardContent() {
                           newM.setMonth(newM.getMonth() + 1);
                           setCalMonthView(newM);
                         }}
-                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/10 text-gray-300 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer"
+                        className="p-2.5 rounded-2xl bg-dark-800 border border-white/20 text-gray-200 hover:text-white hover:border-rosegold-400 transition-colors cursor-pointer shadow-sm"
                         title="Next Month"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -2786,7 +2786,7 @@ function AdminDashboardContent() {
                   </div>
 
                   {/* DAY OF WEEK HEADERS */}
-                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold text-rosegold-400 uppercase tracking-widest py-2 border-b border-white/5 bg-dark-900/60 rounded-2xl p-2">
+                  <div className="grid grid-cols-7 gap-2 text-center text-xs font-extrabold text-rosegold-300 uppercase tracking-widest py-2.5 border-b border-white/10 bg-dark-900/80 rounded-2xl p-2">
                     <span>Monday</span>
                     <span>Tuesday</span>
                     <span>Wednesday</span>
@@ -2812,6 +2812,16 @@ function AdminDashboardContent() {
                         return day.dateStr >= sDate && day.dateStr <= eDate;
                       }) : [];
 
+                      const cellBorderClass = isSelected
+                        ? 'border-2 border-rosegold-400 bg-dark-800 shadow-glow-rosegold ring-2 ring-rosegold-400/30 z-10'
+                        : isToday
+                          ? 'border-2 border-green-500/70 bg-dark-800 shadow-md'
+                          : approvedLeavesOnDay.length > 0
+                            ? 'bg-purple-900/30 border border-purple-500/40 text-purple-200'
+                            : day.isCurrentMonth
+                              ? 'bg-dark-800/90 border border-white/10 text-gray-200 hover:bg-dark-800 hover:border-rosegold-400/60'
+                              : 'bg-dark-900/40 border border-white/5 text-gray-500';
+
                       return (
                         <button
                           key={idx}
@@ -2819,24 +2829,27 @@ function AdminDashboardContent() {
                             setSelectedCalDate(day.dateStr);
                             setIsScheduleModalOpen(true);
                           }}
-                          className={`min-h-[90px] sm:min-h-[110px] p-3 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer border group hover:border-rosegold-400/80 hover:scale-[1.02] ${isSelected
-                              ? 'rosegold-gradient-bg border-rosegold-400 text-dark-900 font-extrabold shadow-lg z-10'
-                              : approvedLeavesOnDay.length > 0
-                                ? 'bg-purple-900/30 border-purple-500/40 text-purple-200'
-                                : isToday
-                                  ? 'bg-dark-800 light:bg-amber-500/10 border-green-500/70 text-white font-bold shadow-md'
-                                  : day.isCurrentMonth
-                                    ? 'bg-dark-800/80 border-white/5 text-gray-200 hover:bg-dark-800'
-                                    : 'bg-dark-900/40 border-transparent text-gray-600'
-                            } ${isPast && !isSelected ? 'opacity-75' : ''}`}
+                          className={`min-h-[95px] sm:min-h-[115px] p-2.5 sm:p-3 rounded-2xl flex flex-col justify-between text-left transition-all duration-200 cursor-pointer group hover:scale-[1.02] overflow-hidden ${cellBorderClass} ${isPast && !isSelected && !isToday ? 'opacity-75' : ''}`}
                         >
-                          <div className="flex items-center justify-between w-full">
-                            <span className={`text-sm sm:text-base font-extrabold ${isSelected ? 'text-dark-900' : isToday ? 'text-green-400 font-bold' : 'text-gray-200'
-                              }`}>
-                              {day.dayNumber}
-                            </span>
+                          <div className="flex items-center justify-between w-full min-w-0">
+                            {/* Day Number / Today Highlight Indicator */}
+                            <div className="flex items-center shrink-0">
+                              {isToday ? (
+                                <span 
+                                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-green-500 text-dark-950 font-black text-xs sm:text-sm flex items-center justify-center shadow-md ring-2 ring-green-400/50" 
+                                  title="Today"
+                                >
+                                  {day.dayNumber}
+                                </span>
+                              ) : (
+                                <span className={`text-sm sm:text-base font-extrabold ${isSelected ? 'text-rosegold-300' : day.isCurrentMonth ? 'text-white' : 'text-gray-400'}`}>
+                                  {day.dayNumber}
+                                </span>
+                              )}
+                            </div>
 
-                            <div className="flex items-center space-x-1">
+                            {/* Staff Leave & Bookings Count on Right */}
+                            <div className="flex items-center space-x-1.5 shrink-0">
                               {approvedLeavesOnDay.length > 0 && (
                                 <span className="text-xs" title={`Staff Leave: ${approvedLeavesOnDay.map(l => l.employeeName).join(', ')}`}>
                                   🟣
@@ -2844,10 +2857,7 @@ function AdminDashboardContent() {
                               )}
 
                               {dayApps.length > 0 && (
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-extrabold shadow-sm ${isSelected
-                                    ? 'bg-white !text-black font-extrabold shadow-md'
-                                    : 'bg-rosegold-500/20 text-rosegold-400 border border-rosegold-500/40 font-extrabold'
-                                  }`}>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold shadow-sm bg-rosegold-500/20 text-rosegold-300 border border-rosegold-500/40 whitespace-nowrap">
                                   {dayApps.length} {dayApps.length === 1 ? 'booking' : 'bookings'}
                                 </span>
                               )}
@@ -2856,31 +2866,31 @@ function AdminDashboardContent() {
 
                           {/* APPOINTMENT PREVIEWS */}
                           {dayApps.length > 0 ? (
-                            <div className="space-y-1 mt-2">
+                            <div className="space-y-1.5 mt-2">
                               {dayApps.slice(0, 2).map((app, aIdx) => (
                                 <div
                                   key={aIdx}
-                                  className="text-xs font-medium leading-tight truncate flex items-center space-x-1.5 p-1 rounded-lg bg-dark-900/40 group-hover:bg-dark-900/60"
+                                  className="text-xs font-medium leading-tight truncate flex items-center space-x-1.5 p-1.5 rounded-lg bg-dark-900/90 border border-white/10 group-hover:border-rosegold-500/30 transition-colors"
                                   title={`${app.appointmentTime || '10:30 AM'} - ${app.service} (${app.customerName || 'Client'})`}
                                 >
-                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-dark-900' : 'bg-rosegold-400'}`} />
-                                  <span className={`font-mono font-bold shrink-0 ${isSelected ? 'text-dark-900' : 'text-rosegold-300'}`}>
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-rosegold-400" />
+                                  <span className="font-mono font-bold shrink-0 text-rosegold-300">
                                     {app.appointmentTime || '10:30 AM'}
                                   </span>
-                                  <span className={`truncate ${isSelected ? 'text-dark-900/90 font-medium' : 'text-gray-300'}`}>
+                                  <span className="truncate text-gray-100 font-medium">
                                     {app.service}
                                   </span>
                                 </div>
                               ))}
                               {dayApps.length > 2 && (
-                                <span className={`text-[11px] font-bold block pt-0.5 px-1 ${isSelected ? 'text-dark-900 font-extrabold' : 'text-rosegold-400'}`}>
+                                <span className="text-[11px] font-bold block pt-0.5 px-1 text-rosegold-300 hover:underline">
                                   +{dayApps.length - 2} more appointments →
                                 </span>
                               )}
                             </div>
                           ) : (
                             <div className="mt-auto pt-2">
-                              <span className="text-[10px] text-gray-500 group-hover:text-rosegold-400/70 transition-colors block">
+                              <span className={`text-[11px] transition-colors block font-medium ${day.isCurrentMonth ? 'text-gray-300 group-hover:text-rosegold-300' : 'text-gray-500'}`}>
                                 No bookings
                               </span>
                             </div>
@@ -3187,26 +3197,45 @@ function AdminDashboardContent() {
                             <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
                               <button
                                 onClick={async () => {
-                                  await apiFetch(`${API_BASE_URL}/membership/admin/status`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ membershipId: m.membershipId, status: 'Active' })
-                                  });
-                                  fetchAdminData();
+                                  try {
+                                    const res = await apiFetch(`${API_BASE_URL}/membership/admin/status`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ membershipId: m.membershipId, status: 'Active', renew: true })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      showToast(data.message || `Membership ${m.membershipId} renewed from present date!`, 'success');
+                                    } else {
+                                      showToast(data.message || 'Failed to renew membership', 'error');
+                                    }
+                                    fetchAdminData();
+                                  } catch (err: any) {
+                                    showToast(err.message || 'Error renewing membership', 'error');
+                                  }
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500 hover:text-dark-900 font-bold text-[10px] transition-colors cursor-pointer"
-                                title="Renew / Reactivate Pass"
+                                title="Renew / Reactivate Pass from Present Date"
                               >
                                 Renew
                               </button>
                               <button
                                 onClick={async () => {
-                                  await apiFetch(`${API_BASE_URL}/membership/admin/status`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ membershipId: m.membershipId, status: 'Cancelled' })
-                                  });
-                                  fetchAdminData();
+                                  if (!confirm(`Are you sure you want to cancel membership ${m.membershipId}?`)) return;
+                                  try {
+                                    const res = await apiFetch(`${API_BASE_URL}/membership/admin/status`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ membershipId: m.membershipId, status: 'Cancelled' })
+                                    });
+                                    const data = await res.json();
+                                    if (data.success) {
+                                      showToast(`Membership ${m.membershipId} cancelled`, 'info');
+                                    }
+                                    fetchAdminData();
+                                  } catch (err: any) {
+                                    showToast(err.message || 'Error cancelling membership', 'error');
+                                  }
                                 }}
                                 className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white font-bold text-[10px] transition-colors cursor-pointer"
                                 title="Cancel Membership Pass"
@@ -3490,9 +3519,9 @@ function AdminDashboardContent() {
                   <p className="text-xs text-gray-400 mt-0.5">Full access control for VIP Membership Packages, Main Services, and Full Salon Menu Catalogue Pricings.</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button onClick={() => handleExportReport('services')} className="csv-export-btn px-3.5 py-2 rounded-full bg-dark-800 border border-rosegold-500/30 text-gray-900 dark:text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
-                    <Download className="w-3.5 h-3.5 text-gray-900 dark:text-rosegold-400" />
-                    <span className="text-gray-900 dark:text-rosegold-300 font-bold">CSV</span>
+                  <button onClick={() => handleExportReport('services')} className="csv-export-btn px-3.5 py-2 rounded-full bg-dark-800 border border-rosegold-500/30 text-rosegold-300 font-bold text-xs flex items-center space-x-1.5 hover:bg-dark-700">
+                    <Download className="w-3.5 h-3.5 text-rosegold-400" />
+                    <span className="text-rosegold-300 font-bold">CSV</span>
                   </button>
 
                   {servicesSubTab === 'memberships' ? (
@@ -6830,14 +6859,14 @@ function AdminDashboardContent() {
                 </p>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Reschedule Reason & Note *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Reschedule Reason & Note *</label>
                   <textarea
                     rows={3}
                     required
                     value={rescheduleNoteText}
                     onChange={(e) => setRescheduleNoteText(e.target.value)}
                     placeholder="e.g. 11:00 AM slot is fully booked for this date. Please pick 02:00 PM or 03:30 PM..."
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
@@ -6853,7 +6882,7 @@ function AdminDashboardContent() {
                 <h4 className="text-sm font-serif font-bold text-white">Generate Specialist Salary Slip</h4>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Select Employee Specialist *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Select Employee Specialist *</label>
                   <select
                     value={payForm.employeeName}
                     onChange={e => {
@@ -6879,16 +6908,16 @@ function AdminDashboardContent() {
                         commissionAmount: commAmt
                       });
                     }}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   >
                     {employees.map(e => (
-                      <option key={e._id} value={e.name}>{e.name} ({e.empCode || 'EMP-1001'})</option>
+                      <option key={e._id} value={e.name} className="bg-dark-900 text-white">{e.name} ({e.empCode || 'EMP-1001'})</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Pay Period / Month *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Pay Period / Month *</label>
                   <input
                     type="month"
                     required
@@ -6900,24 +6929,24 @@ function AdminDashboardContent() {
                         setPayForm({ ...payForm, month: formatMonthYear(selectedYm) });
                       }
                     }}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold cursor-pointer"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-bold cursor-pointer focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Base Fixed Salary (₹) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Base Fixed Salary (₹) *</label>
                     <input
                       type="number"
                       required
                       value={payForm.baseSalary}
                       onChange={e => setPayForm({ ...payForm, baseSalary: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono font-bold"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-mono font-bold focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Service Revenue Handled (₹)</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Service Revenue Handled (₹)</label>
                     <input
                       type="number"
                       value={payForm.eligibleAmount}
@@ -6926,14 +6955,14 @@ function AdminDashboardContent() {
                         const newComm = Math.round(newEligible * (payForm.commissionPercentage / 100));
                         setPayForm({ ...payForm, eligibleAmount: newEligible, commissionAmount: newComm });
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Commission Rate (%)</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Commission Rate (%)</label>
                     <input
                       type="number"
                       value={payForm.commissionPercentage}
@@ -6942,33 +6971,33 @@ function AdminDashboardContent() {
                         const newComm = Math.round(payForm.eligibleAmount * (newPct / 100));
                         setPayForm({ ...payForm, commissionPercentage: newPct, commissionAmount: newComm });
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-mono"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Commission Amount (₹)</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Commission Amount (₹)</label>
                     <input
                       type="number"
                       value={payForm.commissionAmount}
                       onChange={e => setPayForm({ ...payForm, commissionAmount: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-green-400"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-green-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Deductions / Taxes (₹)</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Deductions / Taxes (₹)</label>
                   <input
                     type="number"
                     value={payForm.deductions}
                     onChange={e => setPayForm({ ...payForm, deductions: Number(e.target.value) })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono text-red-400"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-red-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
-                <div className="p-3 rounded-xl bg-dark-800 border border-white/10 flex justify-between items-center text-xs">
-                  <span className="text-gray-800 dark:text-gray-400 font-bold">Calculated Net Payable Amount:</span>
+                <div className="p-3 rounded-xl bg-dark-800 border border-white/20 flex justify-between items-center text-xs">
+                  <span className="text-gray-300 font-bold">Calculated Net Payable Amount:</span>
                   <span className="text-rosegold-400 font-serif font-bold text-base">
                     ₹{(payForm.baseSalary + payForm.commissionAmount + payForm.incentives - payForm.deductions).toLocaleString('en-IN')}
                   </span>
@@ -7189,93 +7218,93 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Employee Full Name *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Employee Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Ananya Sharma"
                     value={empForm.name}
                     onChange={e => setEmpForm({ ...empForm, name: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Email Address *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Email Address *</label>
                     <input
                       type="email"
                       required
                       placeholder="ananya@spysalon.com"
                       value={empForm.email}
                       onChange={e => setEmpForm({ ...empForm, email: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Phone Number *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Phone Number *</label>
                     <input
                       type="text"
                       required
                       placeholder="+91 98765 43210"
                       value={empForm.phone}
                       onChange={e => setEmpForm({ ...empForm, phone: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Login Password *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Login Password *</label>
                   <input
                     type="text"
                     required
                     placeholder="Set login password (e.g. Ananya@123)"
                     value={empForm.password}
                     onChange={e => setEmpForm({ ...empForm, password: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-300 font-semibold block mb-1 text-xs">Specialist Skills (Comma Separated) *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Specialist Skills (Comma Separated) *</label>
                   <input
                     type="text"
                     required
                     placeholder="Senior Hair Stylist, Keratin Expert, Hydra Facial"
                     value={empForm.specialties}
                     onChange={e => setEmpForm({ ...empForm, specialties: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Base Fixed Salary (₹) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Base Fixed Salary (₹) *</label>
                     <input
                       type="number"
                       required
                       placeholder="25000"
                       value={empForm.baseSalary}
                       onChange={e => setEmpForm({ ...empForm, baseSalary: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Commission Rate (%) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Commission Rate (%) *</label>
                     <input
                       type="number"
                       required
                       placeholder="20"
                       value={empForm.commissionPercentage}
                       onChange={e => setEmpForm({ ...empForm, commissionPercentage: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono focus:outline-none focus:border-rosegold-500"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-transform cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold hover:scale-[1.01] transition-transform cursor-pointer">
                   {modalType === 'editEmp' ? 'Update Employee & Send Email 📧' : 'Save & Dispatch Credentials to Email 📧'}
                 </button>
               </form>
@@ -7285,98 +7314,98 @@ function AdminDashboardContent() {
             {(modalType === 'addMemb' || modalType === 'editMemb') && (
               <form onSubmit={handleSaveMembership} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Membership Package Name *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Membership Package Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Gold VIP Membership"
                     value={membForm.name}
                     onChange={e => setMembForm({ ...membForm, name: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Package Code Slug *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Package Code Slug *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. gold-vip"
                       value={membForm.code}
                       onChange={e => setMembForm({ ...membForm, code: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-mono"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs font-mono focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Badge Icon / Label *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Badge Icon / Label *</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. 👑 Gold VIP Member"
                       value={membForm.badge}
                       onChange={e => setMembForm({ ...membForm, badge: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Monthly Price (₹) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Monthly Price (₹) *</label>
                     <input
                       type="number"
                       required
                       value={membForm.monthlyPrice}
                       onChange={e => setMembForm({ ...membForm, monthlyPrice: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-rosegold-400"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-rosegold-400 border border-white/20 text-xs font-bold focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Yearly Price (₹) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Yearly Price (₹) *</label>
                     <input
                       type="number"
                       required
                       value={membForm.yearlyPrice}
                       onChange={e => setMembForm({ ...membForm, yearlyPrice: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-rosegold-400"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-rosegold-400 border border-white/20 text-xs font-bold focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Discount Off (%) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Discount Off (%) *</label>
                     <input
                       type="number"
                       required
                       value={membForm.discountPercentage}
                       onChange={e => setMembForm({ ...membForm, discountPercentage: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs font-bold text-green-400"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-green-400 border border-white/20 text-xs font-bold focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Tagline / Subtitle Description</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Tagline / Subtitle Description</label>
                   <input
                     type="text"
                     placeholder="e.g. Essential VIP Privileges & Special Perks"
                     value={membForm.tagline}
                     onChange={e => setMembForm({ ...membForm, tagline: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Included Package Benefits (Comma Separated)</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Included Package Benefits (Comma Separated)</label>
                   <textarea
                     rows={3}
                     placeholder="20% Flat Discount, Free Monthly Hair Spa, Priority Queue"
                     value={membForm.benefits}
                     onChange={e => setMembForm({ ...membForm, benefits: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/10 text-xs"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
                   {modalType === 'editMemb' ? 'Update Membership Package' : 'Publish New Membership Package'}
                 </button>
               </form>
@@ -7386,46 +7415,46 @@ function AdminDashboardContent() {
             {(modalType === 'addSrv' || modalType === 'editSrv') && (
               <form onSubmit={handleSaveService} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Service Title *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Service Title *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Precision Hair Cut & Layering"
                     value={srvForm.name}
                     onChange={e => setSrvForm({ ...srvForm, name: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 focus:outline-none focus:border-rosegold-500 font-medium text-xs"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Target Gender / Section *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Target Gender / Section *</label>
                     <select
                       value={srvForm.gender}
                       onChange={e => setSrvForm({ ...srvForm, gender: e.target.value as 'all' | 'men' | 'women' | 'kids' })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
                     >
-                      <option value="all"> All / General Salon</option>
-                      <option value="men"> Men's Salon & Grooming</option>
-                      <option value="women"> Women's Luxury Salon</option>
-                      <option value="kids"> Kids & Teens Studio</option>
+                      <option value="all" className="bg-dark-900 text-white"> All / General Salon</option>
+                      <option value="men" className="bg-dark-900 text-white"> Men's Salon & Grooming</option>
+                      <option value="women" className="bg-dark-900 text-white"> Women's Luxury Salon</option>
+                      <option value="kids" className="bg-dark-900 text-white"> Kids & Teens Studio</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Subcategory / Service Group *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Subcategory / Service Group *</label>
                     <input
                       type="text"
                       placeholder="e.g. Hair Care, Facials, Keratin, Beard"
                       value={srvForm.subCategory}
                       onChange={e => setSrvForm({ ...srvForm, subCategory: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Category *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Category *</label>
                     <select
                       value={isCustomCategory ? 'OTHER_CUSTOM' : srvForm.category}
                       onChange={e => {
@@ -7436,58 +7465,58 @@ function AdminDashboardContent() {
                           setSrvForm({ ...srvForm, category: e.target.value });
                         }
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 focus:outline-none focus:border-rosegold-500 font-bold text-xs"
                     >
                       {categoriesList.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                        <option key={cat} value={cat} className="bg-dark-900 text-white">{cat}</option>
                       ))}
-                      <option value="OTHER_CUSTOM">➕ Other / Add New Category...</option>
+                      <option value="OTHER_CUSTOM" className="bg-dark-900 text-white">➕ Other / Add New Category...</option>
                     </select>
 
                     {isCustomCategory && (
                       <div className="mt-2 animate-fadeIn">
-                        <label className="text-rosegold-400 font-semibold block mb-1 text-xs">Specify New Custom Category Name *</label>
+                        <label className="text-rosegold-300 font-semibold block mb-1.5 text-xs">Specify New Custom Category Name *</label>
                         <input
                           type="text"
                           required
                           placeholder="e.g. Laser Hair Removal, Medi-Facial Spa..."
                           value={customCategoryInput}
                           onChange={(e) => setCustomCategoryInput(e.target.value)}
-                          className="w-full p-3 rounded-xl bg-dark-900 text-gray-900 dark:text-white border border-rosegold-500/50 focus:outline-none text-xs font-bold"
+                          className="w-full p-3 rounded-xl bg-dark-900 text-white placeholder-gray-400 border border-rosegold-500/50 focus:outline-none text-xs font-bold"
                         />
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1 text-xs">Duration (Minutes) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Duration (Minutes) *</label>
                     <input
                       type="number"
                       required
                       value={srvForm.durationMinutes}
                       onChange={e => setSrvForm({ ...srvForm, durationMinutes: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-medium"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs font-medium focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Original Price (₹) *</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Original Price (₹) *</label>
                     <input
                       type="number"
                       required
                       value={srvForm.price}
                       onChange={e => setSrvForm({ ...srvForm, price: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Discount Price (₹)</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Discount Price (₹)</label>
                     <input
                       type="number"
                       value={srvForm.discountPrice}
                       onChange={e => setSrvForm({ ...srvForm, discountPrice: Number(e.target.value) })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
                 </div>
@@ -7502,77 +7531,77 @@ function AdminDashboardContent() {
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Treatment Description & Botanical Science</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Treatment Description & Botanical Science</label>
                   <textarea
                     rows={2}
                     value={srvForm.description}
                     onChange={e => setSrvForm({ ...srvForm, description: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Key Benefits (Comma Separated)</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Key Benefits (Comma Separated)</label>
                   <input
                     type="text"
                     value={srvForm.benefits}
                     onChange={e => setSrvForm({ ...srvForm, benefits: e.target.value })}
                     placeholder="e.g. Deep Hydration, 100% Organic Serums, Zero Heat Damage"
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500"
                   />
                 </div>
 
                 {/* STEP-BY-STEP PROCEDURE CUSTOMIZER & AUTO GENERATOR */}
-                <div className="p-4 rounded-2xl bg-gray-100 dark:bg-dark-800/90 border border-rosegold-500/30 space-y-3 procedure-steps-container">
-                  <div className="flex items-center justify-between border-b border-gray-300 dark:border-white/10 pb-2">
-                    <span className="text-gray-900 dark:text-rosegold-400 font-bold text-xs uppercase flex items-center space-x-1.5 procedure-steps-title">
-                      <Scissors className="w-4 h-4 text-rosegold-600 dark:text-rosegold-400" />
-                      <span className="text-gray-900 dark:text-rosegold-400">Custom Step-by-Step Procedure Steps</span>
+                <div className="p-4 rounded-2xl bg-dark-800/90 border border-rosegold-500/30 space-y-3 procedure-steps-container">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="text-rosegold-400 font-bold text-xs uppercase flex items-center space-x-1.5 procedure-steps-title">
+                      <Scissors className="w-4 h-4 text-rosegold-400" />
+                      <span className="text-rosegold-400">Custom Step-by-Step Procedure Steps</span>
                     </span>
 
                     <button
                       type="button"
                       onClick={autoGenerateProcedureSteps}
-                      className="px-3 py-1 rounded-xl bg-purple-100 dark:bg-purple-600/30 hover:bg-purple-200 dark:hover:bg-purple-600/50 text-purple-900 dark:text-purple-200 border border-purple-300 dark:border-purple-500/40 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
+                      className="px-3 py-1 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 text-[10px] font-bold flex items-center space-x-1 cursor-pointer"
                     >
-                      <Wand2 className="w-3.5 h-3.5 text-rosegold-700 dark:text-rosegold-400" />
-                      <span className="text-purple-900 dark:text-purple-200">⚡ Auto-Fill Category Steps</span>
+                      <Wand2 className="w-3.5 h-3.5 text-rosegold-400" />
+                      <span className="text-purple-200">⚡ Auto-Fill Category Steps</span>
                     </button>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <div>
-                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 1 Title & Description</span>
-                      <input type="text" placeholder="Step 1 Title" value={srvForm.step1Title} onChange={e => setSrvForm({ ...srvForm, step1Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
-                      <input type="text" placeholder="Step 1 Description" value={srvForm.step1Desc} onChange={e => setSrvForm({ ...srvForm, step1Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
+                      <span className="text-rosegold-300 font-semibold block text-[11px] mb-1 procedure-step-label">Step 1 Title & Description</span>
+                      <input type="text" placeholder="Step 1 Title" value={srvForm.step1Title} onChange={e => setSrvForm({ ...srvForm, step1Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white placeholder-gray-400 border border-white/20 text-xs mb-1 font-medium focus:outline-none focus:border-rosegold-500" />
+                      <input type="text" placeholder="Step 1 Description" value={srvForm.step1Desc} onChange={e => setSrvForm({ ...srvForm, step1Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-200 placeholder-gray-400 border border-white/20 text-xs font-medium focus:outline-none focus:border-rosegold-500" />
                     </div>
 
                     <div>
-                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 2 Title & Description</span>
-                      <input type="text" placeholder="Step 2 Title" value={srvForm.step2Title} onChange={e => setSrvForm({ ...srvForm, step2Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
-                      <input type="text" placeholder="Step 2 Description" value={srvForm.step2Desc} onChange={e => setSrvForm({ ...srvForm, step2Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
+                      <span className="text-rosegold-300 font-semibold block text-[11px] mb-1 procedure-step-label">Step 2 Title & Description</span>
+                      <input type="text" placeholder="Step 2 Title" value={srvForm.step2Title} onChange={e => setSrvForm({ ...srvForm, step2Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white placeholder-gray-400 border border-white/20 text-xs mb-1 font-medium focus:outline-none focus:border-rosegold-500" />
+                      <input type="text" placeholder="Step 2 Description" value={srvForm.step2Desc} onChange={e => setSrvForm({ ...srvForm, step2Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-200 placeholder-gray-400 border border-white/20 text-xs font-medium focus:outline-none focus:border-rosegold-500" />
                     </div>
 
                     <div>
-                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 3 Title & Description</span>
-                      <input type="text" placeholder="Step 3 Title" value={srvForm.step3Title} onChange={e => setSrvForm({ ...srvForm, step3Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
-                      <input type="text" placeholder="Step 3 Description" value={srvForm.step3Desc} onChange={e => setSrvForm({ ...srvForm, step3Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
+                      <span className="text-rosegold-300 font-semibold block text-[11px] mb-1 procedure-step-label">Step 3 Title & Description</span>
+                      <input type="text" placeholder="Step 3 Title" value={srvForm.step3Title} onChange={e => setSrvForm({ ...srvForm, step3Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white placeholder-gray-400 border border-white/20 text-xs mb-1 font-medium focus:outline-none focus:border-rosegold-500" />
+                      <input type="text" placeholder="Step 3 Description" value={srvForm.step3Desc} onChange={e => setSrvForm({ ...srvForm, step3Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-200 placeholder-gray-400 border border-white/20 text-xs font-medium focus:outline-none focus:border-rosegold-500" />
                     </div>
 
                     <div>
-                      <span className="text-gray-900 dark:text-gray-300 font-bold block text-[10px] mb-0.5 procedure-step-label">Step 4 Title & Description</span>
-                      <input type="text" placeholder="Step 4 Title" value={srvForm.step4Title} onChange={e => setSrvForm({ ...srvForm, step4Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs mb-1 font-medium" />
-                      <input type="text" placeholder="Step 4 Description" value={srvForm.step4Desc} onChange={e => setSrvForm({ ...srvForm, step4Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-white/10 text-xs font-medium" />
+                      <span className="text-rosegold-300 font-semibold block text-[11px] mb-1 procedure-step-label">Step 4 Title & Description</span>
+                      <input type="text" placeholder="Step 4 Title" value={srvForm.step4Title} onChange={e => setSrvForm({ ...srvForm, step4Title: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-white placeholder-gray-400 border border-white/20 text-xs mb-1 font-medium focus:outline-none focus:border-rosegold-500" />
+                      <input type="text" placeholder="Step 4 Description" value={srvForm.step4Desc} onChange={e => setSrvForm({ ...srvForm, step4Desc: e.target.value })} className="w-full p-2.5 rounded-lg bg-dark-900 text-gray-200 placeholder-gray-400 border border-white/20 text-xs font-medium focus:outline-none focus:border-rosegold-500" />
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-2 pt-1">
                   <input type="checkbox" id="popularBadge" checked={srvForm.isPopular} onChange={e => setSrvForm({ ...srvForm, isPopular: e.target.checked })} className="w-4 h-4 accent-rosegold-500" />
-                  <label htmlFor="popularBadge" className="text-gray-900 dark:text-white font-semibold cursor-pointer">Mark as Popular Service (Displays 'Popular' badge on /services menu)</label>
+                  <label htmlFor="popularBadge" className="text-white font-semibold cursor-pointer text-xs">Mark as Popular Service (Displays 'Popular' badge on /services menu)</label>
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
                   {modalType === 'editSrv' ? 'Update Service & Procedure Steps' : 'Publish Service & Procedure Steps to Menu'}
                 </button>
               </form>
@@ -7582,29 +7611,29 @@ function AdminDashboardContent() {
             {modalType === 'addCust' && (
               <form onSubmit={handleSaveCustomer} className="space-y-3">
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
-                  <input type="text" required placeholder="e.g. Riya Verma" value={custForm.name} onChange={e => setCustForm({ ...custForm, name: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Customer Full Name *</label>
+                  <input type="text" required placeholder="e.g. Riya Verma" value={custForm.name} onChange={e => setCustForm({ ...custForm, name: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Email Address</label>
-                    <input type="email" placeholder="riya@gmail.com" value={custForm.email} onChange={e => setCustForm({ ...custForm, email: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Email Address</label>
+                    <input type="email" placeholder="riya@gmail.com" value={custForm.email} onChange={e => setCustForm({ ...custForm, email: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500" />
                   </div>
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Mobile Phone *</label>
-                    <input type="text" required placeholder="+91 98765 43210" value={custForm.phone} onChange={e => setCustForm({ ...custForm, phone: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-medium" />
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Mobile Phone *</label>
+                    <input type="text" required placeholder="+91 98765 43210" value={custForm.phone} onChange={e => setCustForm({ ...custForm, phone: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 font-medium text-xs focus:outline-none focus:border-rosegold-500" />
                   </div>
                 </div>
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Membership Tier</label>
-                  <select value={custForm.membership} onChange={e => setCustForm({ ...custForm, membership: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 font-bold text-xs">
-                    <option value="Standard">Standard Client</option>
-                    <option value="VIP Silver">VIP Silver Tier</option>
-                    <option value="VIP Gold">VIP Gold Tier</option>
-                    <option value="VIP Platinum">VIP Platinum Suite</option>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Membership Tier</label>
+                  <select value={custForm.membership} onChange={e => setCustForm({ ...custForm, membership: e.target.value })} className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 font-bold text-xs focus:outline-none focus:border-rosegold-500">
+                    <option value="Standard" className="bg-dark-900 text-white">Standard Client</option>
+                    <option value="VIP Silver" className="bg-dark-900 text-white">VIP Silver Tier</option>
+                    <option value="VIP Gold" className="bg-dark-900 text-white">VIP Gold Tier</option>
+                    <option value="VIP Platinum" className="bg-dark-900 text-white">VIP Platinum Suite</option>
                   </select>
                 </div>
-                <button type="submit" className="w-full py-3 rounded-xl rosegold-gradient-bg !text-white font-bold text-xs cursor-pointer">Save Customer Account</button>
+                <button type="submit" className="w-full py-3 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs cursor-pointer">Save Customer Account</button>
               </form>
             )}
 
@@ -7612,52 +7641,52 @@ function AdminDashboardContent() {
             {modalType === 'addApp' && (
               <form onSubmit={handleSaveAppointment} className="space-y-3.5">
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Customer Full Name *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Customer Full Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="Enter customer's name"
                     value={appForm.customerName}
                     onChange={e => setAppForm({ ...appForm, customerName: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Mobile Phone Number *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Mobile Phone Number *</label>
                   <input
                     type="text"
                     required
                     placeholder="+91 98765 43210"
                     value={appForm.customerPhone}
                     onChange={e => setAppForm({ ...appForm, customerPhone: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white placeholder-gray-400 border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Select Service Requested *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Select Service Requested *</label>
                   <select
                     value={appForm.service}
                     onChange={e => setAppForm({ ...appForm, service: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   >
                     {services.map(s => (
-                      <option key={s._id} value={s.name}>{s.name} (₹{s.price})</option>
+                      <option key={s._id} value={s.name} className="bg-dark-900 text-white">{s.name} (₹{s.price})</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Assign Staff Specialist *</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Assign Staff Specialist *</label>
                   <select
                     value={appForm.specialistName}
                     onChange={e => setAppForm({ ...appForm, specialistName: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs focus:outline-none focus:border-rosegold-500 font-bold"
                   >
-                    <option value="Any Available Specialist">Any Available Specialist</option>
+                    <option value="Any Available Specialist" className="bg-dark-900 text-white">Any Available Specialist</option>
                     {employees.map((emp: any) => (
-                      <option key={emp._id || emp.empCode || emp.employeeId} value={emp.name}>
+                      <option key={emp._id || emp.empCode || emp.employeeId} value={emp.name} className="bg-dark-900 text-white">
                         {emp.name} ({Array.isArray(emp.specialties) ? (emp.specialties[0] || 'Specialist') : (emp.specialties || 'Specialist')})
                       </option>
                     ))}
@@ -7666,7 +7695,7 @@ function AdminDashboardContent() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Appointment Date</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Appointment Date</label>
                     <input
                       type="date"
                       required
@@ -7682,42 +7711,42 @@ function AdminDashboardContent() {
                           setAppForm({ ...appForm, appointmentDate: val });
                         }
                       }}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-semibold"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-semibold focus:outline-none focus:border-rosegold-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Time Slot</label>
+                    <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Time Slot</label>
                     <select
                       value={appForm.appointmentTime}
                       onChange={e => setAppForm({ ...appForm, appointmentTime: e.target.value })}
-                      className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold"
+                      className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-bold focus:outline-none focus:border-rosegold-500"
                     >
-                      <option value="Immediate Walk-In">Immediate Walk-In</option>
-                      <option value="11:00 AM">11:00 AM</option>
-                      <option value="12:30 PM">12:30 PM</option>
-                      <option value="02:00 PM">02:00 PM</option>
-                      <option value="03:30 PM">03:30 PM</option>
-                      <option value="05:00 PM">05:00 PM</option>
-                      <option value="06:30 PM">06:30 PM</option>
+                      <option value="Immediate Walk-In" className="bg-dark-900 text-white">Immediate Walk-In</option>
+                      <option value="11:00 AM" className="bg-dark-900 text-white">11:00 AM</option>
+                      <option value="12:30 PM" className="bg-dark-900 text-white">12:30 PM</option>
+                      <option value="02:00 PM" className="bg-dark-900 text-white">02:00 PM</option>
+                      <option value="03:30 PM" className="bg-dark-900 text-white">03:30 PM</option>
+                      <option value="05:00 PM" className="bg-dark-900 text-white">05:00 PM</option>
+                      <option value="06:30 PM" className="bg-dark-900 text-white">06:30 PM</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-gray-800 dark:text-gray-300 font-semibold block mb-1">Payment Method</label>
+                  <label className="text-gray-100 font-semibold block mb-1.5 text-xs">Payment Method</label>
                   <select
                     value={appForm.paymentMethod}
                     onChange={e => setAppForm({ ...appForm, paymentMethod: e.target.value })}
-                    className="w-full p-3 rounded-xl bg-dark-800 text-gray-900 dark:text-white border border-gray-300 dark:border-white/10 text-xs font-bold"
+                    className="w-full p-3 rounded-xl bg-dark-800 text-white border border-white/20 text-xs font-bold focus:outline-none focus:border-rosegold-500"
                   >
-                    <option value="Razorpay">Razorpay Gateway (Card/UPI)</option>
-                    <option value="UPI">UPI Direct (GPay/PhonePe)</option>
-                    <option value="Cash">Cash at Counter</option>
+                    <option value="Razorpay" className="bg-dark-900 text-white">Razorpay Gateway (Card/UPI)</option>
+                    <option value="UPI" className="bg-dark-900 text-white">UPI Direct (GPay/PhonePe)</option>
+                    <option value="Cash" className="bg-dark-900 text-white">Cash at Counter</option>
                   </select>
                 </div>
 
-                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg text-dark-900 font-bold text-xs shadow-glow-rosegold cursor-pointer">
+                <button type="submit" className="w-full py-3.5 rounded-xl rosegold-gradient-bg !text-white font-extrabold text-xs shadow-glow-rosegold cursor-pointer">
                   Confirm Walk-In Booking Slot
                 </button>
               </form>
@@ -8179,7 +8208,7 @@ function AdminDashboardContent() {
                       key={st}
                       onClick={() => setCalStatusFilter(st)}
                       className={`px-3 py-1 rounded-full font-bold transition-all whitespace-nowrap cursor-pointer text-xs ${calStatusFilter === st
-                          ? 'rosegold-gradient-bg !text-dark-900 light:!text-white shadow-sm font-extrabold'
+                          ? 'rosegold-gradient-bg !text-white shadow-sm font-extrabold'
                           : 'bg-dark-900 light:bg-gray-100 text-gray-300 light:text-dark-900 hover:text-white border border-white/5 light:border-gray-300 font-bold'
                         }`}
                     >
@@ -8400,7 +8429,7 @@ function AdminDashboardContent() {
       <ChangePasswordModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
-        userName="System Administrator"
+        userName={user?.name || "Admin"}
         userRole="Admin Account"
       />
 

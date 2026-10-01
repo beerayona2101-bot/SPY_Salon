@@ -4,7 +4,7 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, Sparkles, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { validateForm, validateName, validateEmail, validatePhone, validatePassword, validateConfirmPassword } from '@/lib/validation';
 import { AnimatedButton } from '@/components/ui/animated-button';
@@ -83,82 +83,101 @@ function RegisterFormInner() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="flex items-center justify-center py-2 sm:py-4 px-4 sm:px-6 relative overflow-hidden">
       
       {/* Rose Gold Glow Background Accents */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[550px] h-[350px] bg-rosegold-500/15 blur-[150px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-[350px] h-[250px] bg-purple-600/10 blur-[130px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-rosegold-500/10 blur-[130px] rounded-full pointer-events-none" />
 
-      <div className="max-w-md w-full space-y-6 relative z-10">
+      <div className="max-w-xl w-full space-y-3 sm:space-y-4 relative z-10">
         
-        {/* Header & Logo */}
+        {/* Compact Header */}
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="text-center space-y-3"
+          transition={{ duration: 0.4 }}
+          className="text-center space-y-1"
         >
-          <div className="w-16 h-16 rounded-full bg-white p-1 border border-rosegold-500/40 flex items-center justify-center shadow-glow-rosegold mx-auto overflow-hidden animate-float">
-            <img src="/logo-icon.png" alt="SPY Salon Logo" className="w-full h-full object-contain" />
+          <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-dark-800/90 border border-rosegold-500/30 text-rosegold-400 text-[10px] font-semibold tracking-wider uppercase">
+            <Sparkles className="w-3 h-3 text-rosegold-400 animate-pulse" />
+            <span>VIP Account Registration</span>
           </div>
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full glass-panel border border-rosegold-500/30 text-rosegold-400 text-xs font-medium uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-            <span>SPY Salon Account Registration</span>
-          </div>
-          <h1 className="text-3xl font-bold font-serif text-white">Create Account</h1>
-          <p className="text-gray-400 text-xs sm:text-sm">Enjoy instant online booking, member discounts, and priority concierge access.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold font-serif text-white">Create Account</h1>
+          <p className="text-gray-400 text-xs">Enjoy instant online booking, member discounts, and priority concierge access.</p>
         </motion.div>
 
         {/* Register Form Card */}
         <motion.div 
-          initial={{ opacity: 0, y: 25, scale: 0.96 }}
+          initial={{ opacity: 0, y: 15, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.6, delay: 0.15 }}
-          className="rosegold-glass-card p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl border border-rosegold-500/30"
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="rosegold-glass-card p-5 sm:p-6 rounded-3xl space-y-3.5 shadow-2xl border border-rosegold-500/30 bg-dark-900/90 backdrop-blur-xl"
         >
           
           {/* Notifications */}
           {errorMessage && (
-            <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2.5 animate-shake">
+            <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs flex items-center space-x-2 animate-shake">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMessage}</span>
             </div>
           )}
 
           {successMessage && (
-            <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/40 text-green-300 text-xs flex items-center space-x-2.5 animate-fadeIn">
+            <div className="p-3 rounded-xl bg-green-500/20 border border-green-500/40 text-green-300 text-xs flex items-center space-x-2 animate-fadeIn">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-green-400" />
               <span>{successMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             
-            {/* Full Name */}
-            <div className="space-y-1">
-              <label className="text-xs text-gray-300 uppercase font-semibold block">Full Name *</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Ananya Sharma"
-                  value={formData.name}
-                  onChange={(e) => {
-                    setFormData({ ...formData, name: e.target.value });
-                    if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: '' });
-                  }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
-                />
+            {/* ROW 1: Full Name & Mobile Phone */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+              {/* Full Name */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-300 font-semibold block">Full Name *</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-rosegold-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ananya Sharma"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({ ...formData, name: e.target.value });
+                      if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: '' });
+                    }}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:border-rosegold-400 transition-colors shadow-inner"
+                  />
+                </div>
+                {fieldErrors.name && <p className="text-red-400 text-[11px] font-semibold">{fieldErrors.name}</p>}
               </div>
-              {fieldErrors.name && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.name}</p>}
+
+              {/* Mobile Phone */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-300 font-semibold block">Mobile Phone *</label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-rosegold-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="+91 98765 43210"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      setFormData({ ...formData, phone: e.target.value });
+                      if (fieldErrors.phone) setFieldErrors({ ...fieldErrors, phone: '' });
+                    }}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:border-rosegold-400 transition-colors shadow-inner"
+                  />
+                </div>
+                {fieldErrors.phone && <p className="text-red-400 text-[11px] font-semibold">{fieldErrors.phone}</p>}
+              </div>
             </div>
 
-            {/* Email Address */}
-            <div className="space-y-1">
-              <label className="text-xs text-gray-300 uppercase font-semibold block">Email Address *</label>
+            {/* ROW 2: Email Address */}
+            <div className="space-y-1 text-left">
+              <label className="text-xs text-gray-300 font-semibold block">Email Address *</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-rosegold-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   required
@@ -168,83 +187,67 @@ function RegisterFormInner() {
                     setFormData({ ...formData, email: e.target.value });
                     if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' });
                   }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:border-rosegold-400 transition-colors shadow-inner"
                 />
               </div>
-              {fieldErrors.email && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.email}</p>}
+              {fieldErrors.email && <p className="text-red-400 text-[11px] font-semibold">{fieldErrors.email}</p>}
             </div>
 
-            {/* Mobile Phone */}
-            <div className="space-y-1">
-              <label className="text-xs text-gray-300 uppercase font-semibold block">Mobile Phone *</label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="tel"
-                  required
-                  placeholder="+91 98765 43210"
-                  value={formData.phone}
-                  onChange={(e) => {
-                    setFormData({ ...formData, phone: e.target.value });
-                    if (fieldErrors.phone) setFieldErrors({ ...fieldErrors, phone: '' });
-                  }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
-                />
+            {/* ROW 3: Password & Confirm Password */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+              {/* Password */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-300 font-semibold block">Password *</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-rosegold-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    placeholder="At least 6 chars"
+                    value={formData.password}
+                    onChange={(e) => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' });
+                    }}
+                    className="w-full pl-9 pr-8 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:border-rosegold-400 transition-colors shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                {fieldErrors.password && <p className="text-red-400 text-[11px] font-semibold">{fieldErrors.password}</p>}
               </div>
-              {fieldErrors.phone && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.phone}</p>}
-            </div>
 
-            {/* Password */}
-            <div className="space-y-1">
-              <label className="text-xs text-gray-300 uppercase font-semibold block">Password *</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  placeholder="At least 6 characters"
-                  value={formData.password}
-                  onChange={(e) => {
-                    setFormData({ ...formData, password: e.target.value });
-                    if (fieldErrors.password) setFieldErrors({ ...fieldErrors, password: '' });
-                  }}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+              {/* Confirm Password */}
+              <div className="space-y-1">
+                <label className="text-xs text-gray-300 font-semibold block">Confirm Password *</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-rosegold-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="Re-enter password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => {
+                      setFormData({ ...formData, confirmPassword: e.target.value });
+                      if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: '' });
+                    }}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-dark-800 border border-white/10 text-white text-xs sm:text-sm focus:outline-none focus:border-rosegold-400 transition-colors shadow-inner"
+                  />
+                </div>
+                {fieldErrors.confirmPassword && <p className="text-red-400 text-[11px] font-semibold">{fieldErrors.confirmPassword}</p>}
               </div>
-              {fieldErrors.password && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.password}</p>}
-            </div>
-
-            {/* Confirm Password */}
-            <div className="space-y-1">
-              <label className="text-xs text-gray-300 uppercase font-semibold block">Confirm Password *</label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-rosegold-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="Re-enter password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => {
-                    setFormData({ ...formData, confirmPassword: e.target.value });
-                    if (fieldErrors.confirmPassword) setFieldErrors({ ...fieldErrors, confirmPassword: '' });
-                  }}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-800/90 border border-white/10 text-white text-sm focus:outline-none focus:border-rosegold-500 transition-colors"
-                />
-              </div>
-              {fieldErrors.confirmPassword && <p className="text-red-400 text-xs font-semibold pt-0.5">{fieldErrors.confirmPassword}</p>}
             </div>
 
             {/* Mandatory Terms & Privacy Consent Checkbox */}
-            <div className="pt-2 pb-1">
-              <label className="flex items-start space-x-3 cursor-pointer select-none group">
+            <div className="pt-0.5">
+              <label className="flex items-center space-x-2.5 cursor-pointer select-none group text-left">
                 <input
                   type="checkbox"
                   checked={acceptedTerms}
@@ -254,9 +257,9 @@ function RegisterFormInner() {
                       setErrorMessage(null);
                     }
                   }}
-                  className="mt-0.5 w-4 h-4 rounded border-white/20 text-rosegold-500 focus:ring-rosegold-500 bg-dark-800 accent-rosegold-500 shrink-0 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded border-white/20 text-rosegold-500 focus:ring-rosegold-500 bg-dark-800 accent-rosegold-500 shrink-0 cursor-pointer"
                 />
-                <span className="text-xs text-gray-300 leading-normal">
+                <span className="text-[11px] text-gray-300 leading-tight">
                   I agree to the{' '}
                   <Link
                     href="/terms-and-conditions"
@@ -281,18 +284,20 @@ function RegisterFormInner() {
             </div>
 
             {/* Submit Button */}
-            <AnimatedButton
-              type="submit"
-              disabled={isSubmitting || !acceptedTerms}
-              className="w-full py-3.5 rounded-full rosegold-gradient-bg !text-white font-extrabold text-sm shadow-glow-rosegold hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 mt-2 cursor-pointer"
-            >
-              <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
-              <ArrowRight className="w-4 h-4 ml-1.5" />
-            </AnimatedButton>
+            <div className="pt-1">
+              <AnimatedButton
+                type="submit"
+                disabled={isSubmitting || !acceptedTerms}
+                className="w-full py-2.5 sm:py-3 rounded-full rosegold-gradient-bg !text-white font-extrabold text-xs sm:text-sm shadow-glow-rosegold hover:scale-[1.01] transition-all disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+              >
+                <span>{isSubmitting ? 'Creating Account...' : 'Register Account'}</span>
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </AnimatedButton>
+            </div>
           </form>
 
           {/* Login Redirect Link */}
-          <div className="pt-4 border-t border-white/10 text-center text-xs text-gray-400">
+          <div className="pt-2.5 border-t border-white/10 text-center text-xs text-gray-400">
             <span>Already registered? </span>
             <Link href="/login" className="text-rosegold-400 font-bold hover:underline ml-1">
               Sign In Here →
@@ -300,12 +305,6 @@ function RegisterFormInner() {
           </div>
 
         </motion.div>
-
-        {/* Security Badge */}
-        <div className="flex items-center justify-center space-x-2 text-xs text-gray-400">
-          <ShieldCheck className="w-4 h-4 text-rosegold-400" />
-          <span>Your information is protected with SSL encryption</span>
-        </div>
 
       </div>
     </div>
@@ -323,4 +322,3 @@ export default function RegisterPage() {
     </Suspense>
   );
 }
-
