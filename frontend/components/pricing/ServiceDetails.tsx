@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, Clock, Tag, Calendar, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sparkles, Clock, Tag, Calendar, ArrowRight, ShieldCheck, CheckCircle2, Award } from 'lucide-react';
 import { ServiceItem } from '@/lib/servicesData';
 import PackageCard, { PackageTier } from './PackageCard';
 import PriceTable from './PriceTable';
@@ -73,6 +73,106 @@ export default function ServiceDetails({
   ];
 
   const [selectedPackageId, setSelectedPackageId] = React.useState<string>(packages[1]?.id || packages[0]?.id);
+
+  function getBenefitsForService(srvTitle: string, category: string, customBenefits?: string[]) {
+    if (customBenefits && Array.isArray(customBenefits) && customBenefits.length > 0) {
+      return customBenefits;
+    }
+
+    const titleLower = (srvTitle || '').toLowerCase();
+    const catLower = (category || '').toLowerCase();
+
+    // 1. Hair Coloring & Highlights
+    if (titleLower.includes('color') || titleLower.includes('balayage') || titleLower.includes('highlight') || titleLower.includes('dye')) {
+      return [
+        '100% Ammonia-Free & Cuticle-Safe Organic Pigments',
+        'Rich, Multi-Dimensional Tone & Radiant Mirror Shine',
+        'pH-Balancing Acidic Seal to Lock Color & Prevent Fading',
+        'Nourishing Keratin Shield Protects Strands Against Dryness'
+      ];
+    }
+
+    // 2. Hair Spa, Keratin & Smoothening
+    if ((titleLower.includes('spa') && (titleLower.includes('hair') || catLower.includes('hair'))) ||
+        titleLower.includes('keratin') || titleLower.includes('botox') || titleLower.includes('smoothen')) {
+      return [
+        'Deep Root-to-Tip Cuticle Reconstruction & Damage Repair',
+        'Eliminates Frizz & Locks in Long-Lasting Silky Softness',
+        'Infuses Intense Botanical Moisture & Essential Amino Acids',
+        'Thermal Protective Sheen Seal for Humidity Resistance'
+      ];
+    }
+
+    // 3. Hair Cuts & Styling
+    if (titleLower.includes('cut') || titleLower.includes('trim') || titleLower.includes('style') || catLower.includes('hair')) {
+      return [
+        'Tailored Sculpting Matched to Facial Structure & Head Shape',
+        'Removes Split Ends & Encourages Healthy, Strong Hair Growth',
+        'Adds Natural Volume, Weightless Bounce & Flowing Texture',
+        'Includes Purifying Scalp Wash & Signature Blowout Finish'
+      ];
+    }
+
+    // 4. Skin Care, Facials & Glow
+    if (titleLower.includes('facial') || titleLower.includes('glow') || titleLower.includes('bleach') || catLower.includes('skin')) {
+      return [
+        'Deep Ultrasonic Pore Cleansing & Gentle Micro-Exfoliation',
+        'Promotes Cellular Collagen Renewal, Firmness & Elasticity',
+        'Instant Radiant Glass-Skin Brightness & Intense Hydration',
+        'Broad-Spectrum Antioxidant Barrier Against Pollution & UV'
+      ];
+    }
+
+    // 5. Body Spa, Massage & Aromatherapy
+    if (titleLower.includes('massage') || titleLower.includes('spa') || titleLower.includes('aroma') || catLower.includes('spa')) {
+      return [
+        'Deep Tissue Stress Relief & Relaxes Tight Muscle Knots',
+        'Stimulates Lymphatic Drainage & Boosts Blood Circulation',
+        'Infused with Pure Organic Essential Aromatherapy Oils',
+        'Restores Mental Serenity & Complete Physical Rejuvenation'
+      ];
+    }
+
+    // 6. Beard Sculpting & Men's Grooming
+    if (titleLower.includes('beard') || titleLower.includes('shav') || titleLower.includes('groom') || catLower.includes('groom')) {
+      return [
+        'Straight-Razor Contour Sculpting for Clean, Sharp Lines',
+        'Hot Charcoal Towel Steam Softens Bristles & Prevents Bumps',
+        'Nourishing Organic Beard Oil Enhances Texture & Sheen',
+        'Cooling Botanical Aftershave Soothes & Hydrates Skin'
+      ];
+    }
+
+    // 7. Nail Care, Manicure & Pedicure
+    if (titleLower.includes('nail') || titleLower.includes('manicure') || titleLower.includes('pedicure') || catLower.includes('nail')) {
+      return [
+        'Precision Cuticle Grooming, Buffing & Surface Smoothing',
+        'Exfoliating Sea Salt Scrub with Relaxing Moisture Massage',
+        'High-Gloss Chip-Resistant Finish with Long-Lasting Wear',
+        'Vitamin E & Keratin Infusion Strengthens Fragile Nail Beds'
+      ];
+    }
+
+    // 8. Bridal & Makeup
+    if (titleLower.includes('bridal') || titleLower.includes('makeup') || catLower.includes('bridal')) {
+      return [
+        'Sweat-Resistant, High-Definition Flawless Camera Finish',
+        'Custom Tone Matching with Premium Hypoallergenic Cosmetics',
+        'Long-Lasting 16+ Hour Wear Without Creasing or Caking',
+        'Complete Skin Primer Hydration & Setting Veil Lock'
+      ];
+    }
+
+    // Default Universal Luxury Salon Benefits
+    return [
+      '100% Dermatologically Tested Organic Botanical Formulations',
+      'Personalized Assessment & Application by Certified Specialists',
+      'Deep Cellular Moisture Infusion & Tissue Revitalization',
+      'Guaranteed Luxury Salon Quality & Post-Care Maintenance Tips'
+    ];
+  }
+
+  const keyBenefits = getBenefitsForService(service.name, service.category, (service as any).benefits);
 
   return (
     <motion.div
@@ -144,7 +244,46 @@ export default function ServiceDetails({
         </div>
       </div>
 
-      {/* 2. AVAILABLE SERVICE PACKAGES TIERS */}
+      {/* 2. KEY TREATMENT BENEFITS */}
+      <div className="glass-card p-6 sm:p-7 rounded-3xl border border-rosegold-500/30 bg-dark-850/90 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 rounded-xl bg-rosegold-500/20 text-rosegold-400">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rosegold-400">
+                PROVEN RESULTS & RITUAL SCIENCE
+              </span>
+              <h3 className="text-xl font-serif font-bold text-white">
+                Key Treatment Benefits
+              </h3>
+            </div>
+          </div>
+          <span className="text-xs text-rosegold-300 font-semibold hidden sm:inline-flex items-center space-x-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Certified Salon Formulation</span>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+          {keyBenefits.map((benefit, idx) => (
+            <div 
+              key={idx}
+              className="flex items-start space-x-3 p-3.5 rounded-2xl bg-dark-900/60 border border-white/5 hover:border-rosegold-500/30 transition-all"
+            >
+              <div className="p-1 rounded-full bg-green-500/15 border border-green-500/30 text-green-400 shrink-0 mt-0.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-xs sm:text-sm text-gray-200 font-medium leading-snug">
+                {benefit}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. AVAILABLE SERVICE PACKAGES TIERS */}
       <div className="space-y-4">
         <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <div>

@@ -12,9 +12,18 @@ class ApiConfig {
   
   static String? _activeBaseUrl;
 
-  /// Default fallback URL using production HTTPS endpoint
+  /// Default base URL resolving local server on desktop/web/emulators and LAN on devices
   static String get defaultBaseUrl {
-    return productionUrl;
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux) {
+      return 'http://localhost:$port';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:$port';
+    }
+    return 'http://$lanIp:$port';
   }
 
   /// Normalizes user-provided or env URL (strips trailing slashes & redundant /api/v1 suffixes)
@@ -106,18 +115,17 @@ class ApiConfig {
       list.add(_activeBaseUrl!.trim());
     }
 
-    // Deployed Production HTTPS Backend URL first
-    list.add(productionUrl);
-
-    // Development LAN IP fallback
+    // Local host and LAN IP endpoints for instant local development
+    list.add('http://localhost:$port');
+    list.add('http://127.0.0.1:$port');
     list.add('http://$lanIp:$port');
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       list.add('http://10.0.2.2:$port');
     }
-    
-    list.add('http://localhost:$port');
-    list.add('http://127.0.0.1:$port');
+
+    // Deployed Production HTTPS Backend URL
+    list.add(productionUrl);
     
     // Deduplicate maintaining insertion order
     final unique = <String>[];

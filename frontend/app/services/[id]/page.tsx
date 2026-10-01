@@ -110,38 +110,93 @@ function getBenefitsForService(srvTitle: string, category: string, customBenefit
   const titleLower = (srvTitle || '').toLowerCase();
   const catLower = (category || '').toLowerCase();
 
-  if (titleLower.includes('cut') || titleLower.includes('trim')) {
+  // 1. Hair Coloring & Highlights
+  if (titleLower.includes('color') || titleLower.includes('balayage') || titleLower.includes('highlight') || titleLower.includes('dye')) {
     return [
-      'Tailored to Facial Structure & Head Shape',
-      'Removes Split Ends & Encourages Healthy Growth',
-      'Adds Natural Volume & Movement to Hair Layers',
-      'Includes Professional Executive Blow-Dry & Style'
+      '100% Ammonia-Free & Cuticle-Safe Organic Pigments',
+      'Rich, Multi-Dimensional Tone & Radiant Mirror Shine',
+      'pH-Balancing Acidic Seal to Lock Color & Prevent Fading',
+      'Nourishing Keratin Shield Protects Strands Against Dryness'
     ];
   }
 
-  if (titleLower.includes('color') || titleLower.includes('balayage')) {
+  // 2. Hair Spa, Keratin & Smoothening
+  if ((titleLower.includes('spa') && (titleLower.includes('hair') || catLower.includes('hair'))) ||
+      titleLower.includes('keratin') || titleLower.includes('botox') || titleLower.includes('smoothen')) {
     return [
-      '100% Ammonia-Free & Cuticle-Safe Pigments',
-      'Rich, Multi-Dimensional Tone & Radiant Shine',
-      'pH-Balanced Gloss Seal Prevents Fading',
-      'Nourishing Keratin Infusion Protects Hair Strands'
+      'Deep Root-to-Tip Cuticle Reconstruction & Damage Repair',
+      'Eliminates Frizz & Locks in Long-Lasting Silky Softness',
+      'Infuses Intense Botanical Moisture & Essential Amino Acids',
+      'Thermal Protective Sheen Seal for Humidity Resistance'
     ];
   }
 
-  if (titleLower.includes('facial') || titleLower.includes('glow') || catLower === 'skin') {
+  // 3. Hair Cuts & Styling
+  if (titleLower.includes('cut') || titleLower.includes('trim') || titleLower.includes('style') || catLower.includes('hair')) {
     return [
-      'Deep Pore Cleansing & Blackhead Extraction',
-      'Promotes Cellular Collagen Renewal & Firmness',
-      'Instant Glass-Skin Radiance & Hydration',
-      'SPF 50 Protection Against Environmental Damage'
+      'Tailored Sculpting Matched to Facial Structure & Head Shape',
+      'Removes Split Ends & Encourages Healthy, Strong Hair Growth',
+      'Adds Natural Volume, Weightless Bounce & Flowing Texture',
+      'Includes Purifying Scalp Wash & Signature Blowout Finish'
     ];
   }
 
+  // 4. Skin Care, Facials & Glow
+  if (titleLower.includes('facial') || titleLower.includes('glow') || titleLower.includes('bleach') || catLower.includes('skin')) {
+    return [
+      'Deep Ultrasonic Pore Cleansing & Gentle Micro-Exfoliation',
+      'Promotes Cellular Collagen Renewal, Firmness & Elasticity',
+      'Instant Radiant Glass-Skin Brightness & Intense Hydration',
+      'Broad-Spectrum Antioxidant Barrier Against Pollution & UV'
+    ];
+  }
+
+  // 5. Body Spa, Massage & Aromatherapy
+  if (titleLower.includes('massage') || titleLower.includes('spa') || titleLower.includes('aroma') || catLower.includes('spa')) {
+    return [
+      'Deep Tissue Stress Relief & Relaxes Tight Muscle Knots',
+      'Stimulates Lymphatic Drainage & Boosts Blood Circulation',
+      'Infused with Pure Organic Essential Aromatherapy Oils',
+      'Restores Mental Serenity & Complete Physical Rejuvenation'
+    ];
+  }
+
+  // 6. Beard Sculpting & Men's Grooming
+  if (titleLower.includes('beard') || titleLower.includes('shav') || titleLower.includes('groom') || catLower.includes('groom')) {
+    return [
+      'Straight-Razor Contour Sculpting for Clean, Sharp Lines',
+      'Hot Charcoal Towel Steam Softens Bristles & Prevents Bumps',
+      'Nourishing Organic Beard Oil Enhances Texture & Sheen',
+      'Cooling Botanical Aftershave Soothes & Hydrates Skin'
+    ];
+  }
+
+  // 7. Nail Care, Manicure & Pedicure
+  if (titleLower.includes('nail') || titleLower.includes('manicure') || titleLower.includes('pedicure') || catLower.includes('nail')) {
+    return [
+      'Precision Cuticle Grooming, Buffing & Surface Smoothing',
+      'Exfoliating Sea Salt Scrub with Relaxing Moisture Massage',
+      'High-Gloss Chip-Resistant Finish with Long-Lasting Wear',
+      'Vitamin E & Keratin Infusion Strengthens Fragile Nail Beds'
+    ];
+  }
+
+  // 8. Bridal & Makeup
+  if (titleLower.includes('bridal') || titleLower.includes('makeup') || catLower.includes('bridal')) {
+    return [
+      'Sweat-Resistant, High-Definition Flawless Camera Finish',
+      'Custom Tone Matching with Premium Hypoallergenic Cosmetics',
+      'Long-Lasting 16+ Hour Wear Without Creasing or Caking',
+      'Complete Skin Primer Hydration & Setting Veil Lock'
+    ];
+  }
+
+  // Default Universal Luxury Salon Benefits
   return [
-    'Deep Cellular Hydration & Nutrient Renewal',
-    '100% Organic, Dermatologically Tested Serums',
-    'Stress Relief via Pressure-Point Aromatherapy',
-    'Long-Lasting Radiance & Luxury Studio Finish'
+    '100% Dermatologically Tested Organic Botanical Formulations',
+    'Personalized Assessment & Application by Certified Specialists',
+    'Deep Cellular Moisture Infusion & Tissue Revitalization',
+    'Guaranteed Luxury Salon Quality & Post-Care Maintenance Tips'
   ];
 }
 

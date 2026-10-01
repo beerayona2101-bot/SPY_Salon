@@ -333,7 +333,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         border: Border.all(color: colors.primary.withValues(alpha: 0.5)),
                       ),
                       child: Text(
-                        '👑 VIP Member',
+                        _user?['membership'] is Map && _user!['membership']['badge'] != null
+                            ? _user!['membership']['badge'].toString()
+                            : (_user?['membership'] is Map && _user!['membership']['tier'] != null
+                                ? '👑 ${_user!['membership']['tier']}'
+                                : '👑 VIP Member'),
                         style: TextStyle(
                           color: colors.primary,
                           fontSize: 10,

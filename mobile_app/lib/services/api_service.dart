@@ -271,8 +271,18 @@ class ApiService {
         return response;
       } catch (e) {
         debugPrint('[ApiService] $method $url failed on attempt $attempts (${e.runtimeType})');
+        if (attempts == 1) {
+          try {
+            final probe = await checkHealth();
+            if (probe['connected'] == true && probe['url'] != null) {
+              final newBase = probe['url'] as String;
+              final oldUri = Uri.parse(url);
+              url = '$newBase${oldUri.path}${oldUri.hasQuery ? '?${oldUri.query}' : ''}';
+            }
+          } catch (_) {}
+        }
         if (attempts <= maxRetries) {
-          await Future.delayed(Duration(milliseconds: 500 * attempts));
+          await Future.delayed(Duration(milliseconds: 300 * attempts));
         }
       }
     }
@@ -666,54 +676,93 @@ class ApiService {
 
   static final List<Map<String, dynamic>> _fallbackServices = [
     {
-      '_id': 'srv_1',
-      'name': 'Hair Cut & Styling',
-      'title': 'Hair Cut & Styling',
-      'category': 'Hair Care',
-      'price': 899,
-      'duration': '45 min',
-      'description': 'Precision haircut with luxury hair wash, scalp massage, and custom styling.',
-      'rating': 4.9,
-    },
-    {
-      '_id': 'srv_2',
-      'name': 'Botanical Facial Spa',
-      'title': 'Botanical Facial Spa',
-      'category': 'Skin & Spa',
-      'price': 1499,
+      '_id': '6a952d5211dce64422655eaf',
+      'name': 'hair spa',
+      'title': 'Hair Spa',
+      'category': 'Hair',
+      'price': 2999,
+      'discountPrice': 2699,
+      'durationMinutes': 60,
       'duration': '60 min',
-      'description': 'Organic herbal facial ritual with deep cleansing, botanical mask, and gold glow serum.',
-      'rating': 4.8,
-    },
-    {
-      '_id': 'srv_3',
-      'name': 'Luxury Manicure & Pedicure',
-      'title': 'Luxury Manicure & Pedicure',
-      'category': 'Nail Care',
-      'price': 1299,
-      'duration': '50 min',
-      'description': 'Spa manicure with cuticle care, exfoliating scrub, and gel polish finish.',
+      'description': 'Luxury botanical hair spa ritual provided by SPY Salon certified master specialists.',
       'rating': 4.9,
+      'image': 'https://res.cloudinary.com/cf1z70hh/image/upload/v1788262882/spy_salon/services/gp62ycbwh8vk4za2olal.webp',
+      'isPopular': true,
+      'isActive': true,
     },
     {
-      '_id': 'srv_4',
-      'name': 'Beard Sculpting & Trim',
-      'title': 'Beard Sculpting & Trim',
-      'category': 'Grooming',
-      'price': 599,
-      'duration': '30 min',
-      'description': 'Precision razor beard shaping with hot towel treatment and essential oils.',
-      'rating': 4.7,
+      '_id': '6a978f898394e3e3b333a364',
+      'name': 'body spa',
+      'title': 'Body Spa',
+      'category': 'Body Spa',
+      'price': 1999,
+      'discountPrice': 2699,
+      'durationMinutes': 60,
+      'duration': '60 min',
+      'description': 'Deep cellular relaxation and organic botanical aromatherapeutic hydro-massage.',
+      'rating': 4.9,
+      'image': 'https://res.cloudinary.com/cf1z70hh/image/upload/v1788328327/spy_salon/services/q5dbw0w8d6fihhxp90i7.webp',
+      'isPopular': true,
+      'isActive': true,
     },
     {
-      '_id': 'srv_5',
-      'name': 'Scalp Therapy & Spa Wash',
-      'title': 'Scalp Therapy & Spa Wash',
+      '_id': '6a97e47c278ab4b18ef84d90',
+      'name': 'hair cut',
+      'title': 'Hair Cut',
       'category': 'Hair Care',
-      'price': 999,
-      'duration': '40 min',
-      'description': 'Deep clarifying scalp detox treatment with aromatic steam conditioning.',
-      'rating': 4.8,
+      'price': 250,
+      'discountPrice': 300,
+      'durationMinutes': 30,
+      'duration': '30 min',
+      'description': 'Precision haircut, cleansing prep, and executive master styling finish.',
+      'rating': 4.9,
+      'image': '',
+      'isPopular': true,
+      'isActive': true,
+    },
+    {
+      '_id': '6a9528bc74678598a8353f47',
+      'name': 'Beard Shaving',
+      'title': 'Beard Shaving',
+      'category': 'Barbering & Grooming',
+      'price': 150,
+      'discountPrice': 150,
+      'durationMinutes': 30,
+      'duration': '30 min',
+      'description': 'Precision razor beard shaping with hot towel treatment and botanical oils.',
+      'rating': 4.9,
+      'image': '',
+      'isPopular': true,
+      'isActive': true,
+    },
+    {
+      '_id': '6a97efbbf0faab9428d99c7b',
+      'name': 'Hair Cut',
+      'title': 'Hair Cut',
+      'category': 'Hair Care',
+      'price': 250,
+      'durationMinutes': 30,
+      'duration': '30 min',
+      'description': 'Individual standalone salon service treatment.',
+      'rating': 4.9,
+      'image': '',
+      'isPopular': false,
+      'isActive': true,
+    },
+    {
+      '_id': '6a9a572bf88df7c213178baa',
+      'name': 'body shaving',
+      'title': 'Body Shaving',
+      'category': 'Hair',
+      'price': 1234,
+      'discountPrice': 1111,
+      'durationMinutes': 60,
+      'duration': '60 min',
+      'description': 'Luxury full-body grooming and exfoliating treatment.',
+      'rating': 4.9,
+      'image': '',
+      'isPopular': false,
+      'isActive': true,
     },
   ];
 
@@ -767,8 +816,59 @@ class ApiService {
     },
   ];
 
+  static const List<dynamic> _fallbackMembershipPlans = [
+    {
+      'code': 'silver',
+      'name': 'silver',
+      'badge': 'Semi VIP Member',
+      'tagline': 'Exclusive VIP Privileges & Monthly Perks',
+      'monthlyPrice': 1499,
+      'yearlyPrice': 14999,
+      'discountPercentage': 15,
+      'color': 0xFFC0C0C0,
+      'benefits': [
+        '10% Flat Discount on All Services',
+        'Priority Booking',
+        'Free Monthly Treatment',
+      ],
+    },
+    {
+      'code': 'gold-123',
+      'name': 'gold',
+      'badge': 'VIP Member',
+      'tagline': 'Exclusive VIP Privileges & Monthly Perks',
+      'monthlyPrice': 1499,
+      'yearlyPrice': 14999,
+      'discountPercentage': 15,
+      'popular': true,
+      'color': 0xFFD4AF37,
+      'benefits': [
+        '25% Flat Discount on All Services',
+        'Priority Booking',
+        'Free Monthly Treatment',
+        'complete body spa',
+      ],
+    },
+    {
+      'code': '123098',
+      'name': 'platinum',
+      'badge': 'platinum Member',
+      'tagline': 'Exclusive VIP Privileges & Monthly Perks',
+      'monthlyPrice': 8499,
+      'yearlyPrice': 100999,
+      'discountPercentage': 15,
+      'color': 0xFFE5B287,
+      'benefits': [
+        '15% Flat Discount on All Services',
+        'Priority Booking',
+        'Free Monthly Treatment.Head Wash',
+      ],
+    },
+  ];
+
   static List<dynamic> get fallbackServices => _fallbackServices;
   static List<dynamic> get fallbackSpecialists => _fallbackSpecialists;
+  static List<dynamic> get fallbackMembershipPlans => _fallbackMembershipPlans;
 
   /// Fetch all active services from `/api/v1/services`
   static Future<List<dynamic>> getServices() async {
@@ -848,6 +948,23 @@ class ApiService {
       }
     } catch (_) {}
     return null;
+  }
+
+  /// Fetch VIP Membership Plans from `/api/v1/membership/plans`
+  static Future<List<dynamic>> getMembershipPlans() async {
+    try {
+      final response = await _requestWithRetry('GET', '${ApiConfig.baseUrl}/api/v1/membership/plans');
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is List && data.isNotEmpty) return data;
+        if (data is Map && data['data'] != null && (data['data'] as List).isNotEmpty) {
+          return List<dynamic>.from(data['data']);
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] Membership plans fetch notice: $e');
+    }
+    return _fallbackMembershipPlans;
   }
 
   /// Book Salon Appointment (Public & Customer API)
@@ -1389,21 +1506,85 @@ class ApiService {
     return {'success': false, 'message': 'Network error: Connection failed after retries.'};
   }
 
-  /// Upgrade VIP Membership Tier
-  static Future<Map<String, dynamic>> upgradeCustomerMembership(String tier) async {
+  /// Upgrade VIP Membership Tier / Purchase Plan
+  static Future<Map<String, dynamic>> upgradeCustomerMembership(
+    String tier, {
+    String? billingCycle,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+  }) async {
     try {
+      final user = await getStoredUser();
+      final planCode = tier.toLowerCase()
+          .replaceAll(' membership', '')
+          .replaceAll(' vip', '')
+          .replaceAll(' elite', '')
+          .replaceAll('🥉', '')
+          .replaceAll('🥈', '')
+          .replaceAll('👑', '')
+          .replaceAll('💎', '')
+          .trim();
+      final body = {
+        'tier': tier,
+        'planCode': planCode.isEmpty ? 'standard' : planCode,
+        'billingCycle': billingCycle ?? 'monthly',
+        'customerName': customerName ?? user?['name'] ?? 'Valued VIP Guest',
+        'customerEmail': customerEmail ?? user?['email'] ?? 'guest@spysalon.com',
+        'customerPhone': customerPhone ?? user?['phone'] ?? '+91 94906 44434',
+      };
       final response = await _requestWithRetry(
         'POST',
         '${ApiConfig.baseUrl}/api/v1/membership/purchase',
-        body: json.encode({'tier': tier}),
+        body: json.encode(body),
       );
       if (response != null) {
         final result = json.decode(response.body);
-        return {'success': response.statusCode == 200 || response.statusCode == 201, 'message': result['message'] ?? 'Membership upgraded!'};
+        final bool isSuccess = response.statusCode == 200 || response.statusCode == 201;
+        if (isSuccess) {
+          // Immediately refresh user profile in local cache
+          await fetchCurrentUserProfile();
+        }
+        return {
+          'success': isSuccess,
+          'message': result['message'] ?? 'Membership upgraded successfully!',
+          'data': result['data'] ?? result,
+        };
       }
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
     return {'success': false, 'message': 'Network error: Connection failed after retries.'};
+  }
+
+  /// Fetch user membership details from backend
+  static Future<Map<String, dynamic>?> getMyMembership() async {
+    try {
+      final user = await getStoredUser();
+      final email = user?['email']?.toString().trim();
+      final url = email != null && email.isNotEmpty
+          ? '${ApiConfig.baseUrl}/api/v1/membership/my-membership?email=${Uri.encodeComponent(email)}'
+          : '${ApiConfig.baseUrl}/api/v1/user/membership';
+
+      final response = await _requestWithRetry('GET', url);
+      if (response != null && (response.statusCode == 200 || response.statusCode == 201)) {
+        final data = json.decode(response.body);
+        final payload = data['data'] ?? data;
+        if (payload != null && payload is Map<String, dynamic>) {
+          return payload;
+        }
+      }
+    } catch (e) {
+      debugPrint('[ApiService] getMyMembership error: $e');
+    }
+    // Fallback to local stored user membership
+    final user = await getStoredUser();
+    if (user != null && user['membership'] is Map) {
+      return {
+        'hasActiveMembership': (user['membership']['status'] ?? '').toString().toLowerCase() == 'active',
+        'membership': user['membership'],
+      };
+    }
+    return null;
   }
 }

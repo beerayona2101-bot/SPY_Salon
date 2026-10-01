@@ -90,11 +90,15 @@ class GoldAmbientBackgroundPainter extends CustomPainter {
 class SettingsScreen extends StatefulWidget {
   final bool isFromDashboard;
   final bool isEmbedded;
+  final Map<String, dynamic>? initialUser;
+  final VoidCallback? onExploreVip;
 
   const SettingsScreen({
     super.key,
     this.isFromDashboard = true,
     this.isEmbedded = false,
+    this.initialUser,
+    this.onExploreVip,
   });
 
   @override
@@ -104,22 +108,70 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _isCustomer = false;
   bool _isLoadingUser = true;
+  Map<String, dynamic>? _user;
+  Map<String, dynamic>? _membershipData;
 
   @override
   void initState() {
     super.initState();
+    _user = widget.initialUser;
     _checkUserRole();
   }
 
+  @override
+  void didUpdateWidget(covariant SettingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialUser != oldWidget.initialUser) {
+      setState(() {
+        _user = widget.initialUser;
+      });
+      _checkUserRole();
+    }
+  }
+
   Future<void> _checkUserRole() async {
-    final user = await ApiService.fetchCurrentUserProfile();
+    final user = widget.initialUser ?? await ApiService.fetchCurrentUserProfile();
+    Map<String, dynamic>? membership;
+    try {
+      final membRes = await ApiService.getMyMembership();
+      if (membRes != null && membRes['membership'] != null) {
+        membership = membRes['membership'] is Map<String, dynamic>
+            ? membRes['membership'] as Map<String, dynamic>
+            : Map<String, dynamic>.from(membRes['membership']);
+      }
+    } catch (_) {}
+
+    if (membership == null && user?['membership'] is Map) {
+      membership = Map<String, dynamic>.from(user!['membership']);
+    }
+
     if (mounted) {
       setState(() {
+        _user = user;
+        _membershipData = membership;
         final role = user?['role']?.toString().toLowerCase();
         _isCustomer = (role == 'customer' || (user != null && role == null));
         _isLoadingUser = false;
       });
     }
+  }
+
+  bool get _hasActiveVip {
+    if (_membershipData != null) {
+      final status = (_membershipData!['status'] ?? '').toString().toLowerCase();
+      if (status == 'active' || status == 'paid') return true;
+    }
+    if (_user != null) {
+      if (_user!['membership'] is Map) {
+        final st = (_user!['membership']['status'] ?? '').toString().toLowerCase();
+        if (st == 'active' || st == 'paid') return true;
+      }
+      final tier = (_user!['membershipTier'] ?? _user!['tier'] ?? '').toString().toLowerCase();
+      if (tier.contains('vip') || tier.contains('gold') || tier.contains('premium') || tier.contains('standard')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @override
@@ -212,6 +264,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // --- SECTION 1: ACCOUNT & PROFILE ---
                         _buildSectionHeader(context, 'ACCOUNT & PROFILE'),
                         const SizedBox(height: 12),
+
+                        // VIP Membership Card
+                        _buildVipMembershipCard(context, colors),
+                        const SizedBox(height: 12),
+
                         _buildSettingCard(
                           context,
                           icon: Icons.person_outline_rounded,
@@ -383,6 +440,418 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Container(
             height: 1,
             color: isDark ? const Color(0xFF33271F) : colors.cardBorder,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Clean Luxury VIP Membership Card
+  Widget _buildVipMembershipCard(BuildContext context, AppColors colors) {
+    final themeController = Provider.of<ThemeController>(context, listen: false);
+    final isDark = themeController.isDarkMode;
+    final primaryGold = isDark ? const Color(0xFFE0A96D) : colors.primary;
+
+    final hasVip = _hasActiveVip;
+
+    if (hasVip) {
+      final tierName = _membershipData?['planName'] ??
+          _membershipData?['tier'] ??
+          _user?['membership']?['tier'] ??
+          _user?['membershipTier'] ??
+          'VIP Member';
+      final billingCycle = (_membershipData?['billingCycle'] ?? 'monthly').toString();
+      final discount = _membershipData?['discountPercentage'] ??
+          _membershipData?['discountPercent'] ??
+          _user?['membership']?['discountPercent'] ??
+          15;
+      final membershipId = _membershipData?['membershipId'] ??
+          _user?['membership']?['membershipId'] ??
+          'MEMB-${_user?['id']?.toString().substring(0, 5) ?? '84920'}';
+
+      String expiryFormatted = '30 Days from Activation';
+      try {
+        final expRaw = _membershipData?['expiryDate'] ?? _user?['membership']?['expiryDate'];
+        if (expRaw != null) {
+          final dt = DateTime.parse(expRaw.toString());
+          final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          expiryFormatted = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+        }
+      } catch (_) {}
+
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: isDark
+                ? [
+                    const Color(0xFF2B2017),
+                    const Color(0xFF16120F),
+                    const Color(0xFF0F0E0E),
+                  ]
+                : [
+                    primaryGold.withValues(alpha: 0.18),
+                    colors.cardSurface,
+                  ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: primaryGold.withValues(alpha: 0.6),
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: primaryGold.withValues(alpha: 0.15),
+              blurRadius: 16,
+              spreadRadius: 1,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row: Badge & Status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryGold.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.workspace_premium_rounded, color: primaryGold, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tierName.toString().toUpperCase(),
+                            style: TextStyle(
+                              color: colors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${billingCycle.toUpperCase()} PLAN • $membershipId',
+                            style: TextStyle(
+                              color: primaryGold,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.6)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 12),
+                        SizedBox(width: 4),
+                        Text(
+                          'ACTIVE',
+                          style: TextStyle(
+                            color: Colors.greenAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Divider(color: primaryGold.withValues(alpha: 0.25), height: 1),
+              const SizedBox(height: 14),
+
+              // Benefits list
+              Row(
+                children: [
+                  Icon(Icons.percent_rounded, color: primaryGold, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Flat $discount% OFF on all salon treatments',
+                    style: TextStyle(
+                      color: colors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.bolt_rounded, color: primaryGold, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Priority booking queue & VIP specialist assignment',
+                    style: TextStyle(
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.event_available_rounded, color: primaryGold, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Valid until: $expiryFormatted',
+                    style: TextStyle(
+                      color: colors.textMuted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Upgrade or view more perks button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryGold,
+                    side: BorderSide(color: primaryGold.withValues(alpha: 0.5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () {
+                    if (widget.onExploreVip != null) {
+                      widget.onExploreVip!();
+                    } else {
+                      _showVipDetailsModal(context, colors, tierName.toString(), discount.toString(), expiryFormatted);
+                    }
+                  },
+                  icon: const Icon(Icons.star_rounded, size: 16),
+                  label: const Text(
+                    'View All VIP Perks & Upgrades',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // Classic / Non-VIP user: show invitation card to get VIP
+      return Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: isDark ? const Color(0xFF16120F) : colors.cardSurface,
+          border: Border.all(color: primaryGold.withValues(alpha: 0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryGold.withValues(alpha: 0.15),
+                ),
+                child: Icon(Icons.workspace_premium_outlined, color: primaryGold, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Executive VIP Membership',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Get up to 15% discount & monthly complimentary spa rituals.',
+                      style: TextStyle(
+                        color: colors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryGold,
+                  foregroundColor: colors.buttonTextPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                ),
+                onPressed: () {
+                  if (widget.onExploreVip != null) {
+                    widget.onExploreVip!();
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text(
+                  'Explore',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  void _showVipDetailsModal(
+    BuildContext context,
+    AppColors colors,
+    String tierName,
+    String discount,
+    String expiryFormatted,
+  ) {
+    final themeController = Provider.of<ThemeController>(context, listen: false);
+    final isDark = themeController.isDarkMode;
+    final primaryGold = isDark ? const Color(0xFFE0A96D) : colors.primary;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: colors.cardSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: primaryGold.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: primaryGold.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.workspace_premium_rounded, color: primaryGold, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tierName.toUpperCase(),
+                        style: TextStyle(
+                          color: colors.textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Active VIP Member Privileges',
+                        style: TextStyle(color: primaryGold, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _buildPerkRow(Icons.check_circle_rounded, 'Flat $discount% discount on all Hair, Skin, & Nails services', primaryGold, colors),
+              const SizedBox(height: 10),
+              _buildPerkRow(Icons.check_circle_rounded, 'Priority queue & fast-track salon chair access', primaryGold, colors),
+              const SizedBox(height: 10),
+              _buildPerkRow(Icons.check_circle_rounded, 'Special Birthday reward voucher & gifts', primaryGold, colors),
+              const SizedBox(height: 10),
+              _buildPerkRow(Icons.check_circle_rounded, 'Dedicated VIP specialist consultation', primaryGold, colors),
+              const SizedBox(height: 10),
+              _buildPerkRow(Icons.calendar_today_rounded, 'Renewal date: $expiryFormatted', primaryGold, colors),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryGold,
+                    foregroundColor: colors.buttonTextPrimary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    if (widget.onExploreVip != null) {
+                      widget.onExploreVip!();
+                    }
+                  },
+                  child: const Text('Explore Other VIP Plans / Upgrade', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPerkRow(IconData icon, String text, Color goldColor, AppColors colors) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: goldColor, size: 16),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: colors.textPrimary, fontSize: 13, height: 1.3),
           ),
         ),
       ],
