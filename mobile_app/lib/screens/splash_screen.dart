@@ -152,9 +152,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       }
 
       // --- STAGE 4: LUXURY TIMING CONFIRMATION ---
-      // Ensure splash & loading page remains comfortably visible for ~2.5 seconds total
+      // Ensure splash & loading page remains comfortably visible for ~2.8 seconds total
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      const targetSplashDuration = 2500;
+      const targetSplashDuration = 2800;
       final remainingDelay = targetSplashDuration - elapsed;
       if (remainingDelay > 0) {
         await Future.delayed(Duration(milliseconds: remainingDelay));
@@ -162,7 +162,12 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     } catch (e) {
       debugPrint('[SplashScreen] Notice during splash initialization: $e');
       destination = const CustomerDashboardScreen();
-      await Future.delayed(const Duration(milliseconds: 800));
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      const targetSplashDuration = 2800;
+      final remainingDelay = targetSplashDuration - elapsed;
+      if (remainingDelay > 0) {
+        await Future.delayed(Duration(milliseconds: remainingDelay));
+      }
     } finally {
       if (mounted) {
         Navigator.pushReplacement(
