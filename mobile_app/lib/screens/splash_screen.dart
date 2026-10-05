@@ -48,72 +48,80 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   Future<void> _initializeApp() async {
     final startTime = DateTime.now();
+    Widget destination = const CustomerDashboardScreen();
 
-    // 1. Fast parallel read of local configs & credentials (instant, <15ms)
-    final results = await Future.wait([
-      ApiConfig.loadSavedBaseUrl(),
-      ApiService.getStoredUser(),
-      SharedPreferences.getInstance(),
-    ]);
+    try {
+      // 1. Fast parallel read of local configs & credentials with safe timeout
+      Map<String, dynamic>? user;
+      bool hasSeenOnboarding = false;
 
-    final user = results[1] as Map<String, dynamic>?;
-    final prefs = results[2] as SharedPreferences;
-    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+      try {
+        await ApiConfig.loadSavedBaseUrl().timeout(const Duration(milliseconds: 1200));
+      } catch (_) {}
 
-    // 2. Fire and forget background network tasks (non-blocking for UI)
-    ApiService.checkHealth().catchError((e) {
-      debugPrint('[SplashScreen] Background health probe notice: $e');
-      return <String, dynamic>{'status': 'offline'};
-    });
-    RealtimeService().init().catchError((e) {
-      debugPrint('[SplashScreen] Realtime background init notice: $e');
-    });
-    FcmService.syncTokenWithBackend().catchError((e) {
-      debugPrint('[SplashScreen] FCM token sync background notice: $e');
-    });
+      try {
+        user = await ApiService.getStoredUser().timeout(const Duration(milliseconds: 1200));
+      } catch (_) {}
 
-    // 3. Crisp luxury splash timing (600ms total - fast and responsive)
-    final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    const targetSplashDuration = 600;
-    final remainingDelay = targetSplashDuration - elapsed;
-    if (remainingDelay > 0) {
-      await Future.delayed(Duration(milliseconds: remainingDelay));
-    }
+      try {
+        final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 1200));
+        hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
+      } catch (_) {}
 
-    if (!mounted) return;
+      // 2. Fire and forget background network tasks (non-blocking for UI)
+      ApiService.checkHealth().catchError((e) {
+        debugPrint('[SplashScreen] Background health probe notice: $e');
+        return <String, dynamic>{'status': 'offline'};
+      });
+      RealtimeService().init().catchError((e) {
+        debugPrint('[SplashScreen] Realtime background init notice: $e');
+      });
+      FcmService.syncTokenWithBackend().catchError((e) {
+        debugPrint('[SplashScreen] FCM token sync background notice: $e');
+      });
 
-    // 4. Resolve destination screen
-    Widget destination;
-
-    if (user != null) {
-      final role = (user['role'] ?? 'customer').toString().toLowerCase();
-      final isAdmin = role == 'admin' || role == 'manager';
-      final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
-
-      if (isAdmin) {
-        await ApiService.clearSession();
-        destination = const CustomerDashboardScreen();
-      } else if (isStaff) {
-        destination = const EmployeeDashboardScreen();
-      } else {
-        destination = const CustomerDashboardScreen();
+      // 3. Crisp luxury splash timing (800ms total - fast and responsive)
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      const targetSplashDuration = 800;
+      final remainingDelay = targetSplashDuration - elapsed;
+      if (remainingDelay > 0) {
+        await Future.delayed(Duration(milliseconds: remainingDelay));
       }
-    } else {
-      if (hasSeenOnboarding) {
-        // Returning guest: skip onboarding tutorial and launch directly to Customer Dashboard!
-        destination = const CustomerDashboardScreen();
+
+      // 4. Resolve destination screen
+      if (user != null) {
+        final role = (user['role'] ?? 'customer').toString().toLowerCase();
+        final isAdmin = role == 'admin' || role == 'manager';
+        final isStaff = role == 'employee' || role == 'stylist' || role == 'receptionist' || role == 'barber';
+
+        if (isAdmin) {
+          await ApiService.clearSession().catchError((_) {});
+          destination = const CustomerDashboardScreen();
+        } else if (isStaff) {
+          destination = const EmployeeDashboardScreen();
+        } else {
+          destination = const CustomerDashboardScreen();
+        }
       } else {
-        // First-ever launch on brand new install: show onboarding once
-        destination = const OnboardingScreen();
+        if (hasSeenOnboarding) {
+          // Returning guest: skip onboarding tutorial and launch directly to Customer Dashboard!
+          destination = const CustomerDashboardScreen();
+        } else {
+          // First-ever launch on brand new install: show onboarding once
+          destination = const OnboardingScreen();
+        }
+      }
+    } catch (e) {
+      debugPrint('[SplashScreen] Notice during splash initialization: $e');
+      destination = const CustomerDashboardScreen();
+    } finally {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          LuxuryPageRoute(page: destination),
+        );
       }
     }
-
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      LuxuryPageRoute(page: destination),
-    );
   }
 
   @override

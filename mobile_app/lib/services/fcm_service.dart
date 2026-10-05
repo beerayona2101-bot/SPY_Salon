@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
@@ -32,6 +33,12 @@ class FcmService {
     if (_initialized) return;
 
     try {
+      // Desktop platforms (Windows, Linux, macOS) do not support mobile FCM push without custom setups
+      if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
+        debugPrint('[FCM Service] Desktop platform: skipping mobile FCM background listener.');
+        return;
+      }
+
       // 1. Initialize Firebase Core
       await Firebase.initializeApp();
       debugPrint('[FCM Service] Firebase Core initialized successfully.');
@@ -208,7 +215,9 @@ class FcmService {
       final token = await getToken();
       if (token == null || token.isEmpty) return;
 
-      final platformName = Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'web');
+      final platformName = kIsWeb
+          ? 'web'
+          : (Platform.isAndroid ? 'android' : (Platform.isIOS ? 'ios' : 'desktop'));
       final user = await ApiService.getStoredUser();
 
       final res = await ApiService.registerFcmToken(

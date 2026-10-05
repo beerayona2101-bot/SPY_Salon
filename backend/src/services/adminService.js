@@ -857,7 +857,7 @@ class AdminService {
       'In Progress': ['In Progress', 'Completed', 'Cancelled'],
       'Completed': ['Completed'],
       'Cancelled': ['Cancelled'],
-      'No Show': ['No Show', 'Reschedule Requested', 'Cancelled']
+      'No Show': ['No Show', 'Reschedule Requested', 'Confirmed', 'Rescheduled', 'Cancelled']
     };
 
     const allowed = ALLOWED_TRANSITIONS[currentStatus] || [currentStatus];
@@ -942,8 +942,43 @@ class AdminService {
     if (action === 'Approve') {
       const oldDate = appointment.appointmentDate;
       const oldTime = appointment.appointmentTime;
-      const newDate = appointment.rescheduleData?.requestedDate || appointment.appointmentDate;
-      const newTime = appointment.rescheduleData?.requestedTime || appointment.appointmentTime;
+      
+      const todayKolkata = getKolkataCurrentDateStr();
+      let newDate = updaterInfo.newDate;
+      if (!newDate || newDate < todayKolkata) {
+        newDate = (appointment.rescheduleData?.requestedDate && appointment.rescheduleData.requestedDate >= todayKolkata)
+          ? appointment.rescheduleData.requestedDate
+          : todayKolkata;
+      }
+
+      let newTime = updaterInfo.newTime || appointment.rescheduleData?.requestedTime || appointment.appointmentTime || '11:30 AM';
+
+      // CRITICAL CHECK FOR PREVIOUS / PAST DATES & TIMES:
+      // If the selected newDate is today, but newTime has ALREADY passed earlier today:
+      if (newDate === todayKolkata && hasAppointmentStarted(newDate, newTime)) {
+        const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+        const currentHour = nowKolkata.getHours();
+
+        if (currentHour >= 20) {
+          // After 8 PM (salon closing): schedule for tomorrow 10:30 AM
+          const tomorrow = new Date(nowKolkata);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          newDate = tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+          newTime = '10:30 AM';
+        } else {
+          // Adjust to upcoming slot (45 minutes ahead, rounded to next 15-minute mark)
+          nowKolkata.setMinutes(nowKolkata.getMinutes() + 45);
+          let h = nowKolkata.getHours();
+          const m = nowKolkata.getMinutes();
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          h = h % 12;
+          h = h ? h : 12;
+          const roundedM = Math.ceil(m / 15) * 15;
+          const finalM = roundedM === 60 ? '00' : String(roundedM).padStart(2, '0');
+          const finalH = roundedM === 60 ? (h % 12) + 1 : h;
+          newTime = `${String(finalH).padStart(2, '0')}:${finalM} ${ampm}`;
+        }
+      }
 
       // Re-check slot availability for newDate and newTime before confirming reschedule
       if (appointment.specialistName && appointment.specialistName !== 'Any Available Specialist') {
@@ -964,13 +999,14 @@ class AdminService {
       appointment.appointmentTime = newTime;
       appointment.status = 'Confirmed';
       appointment.rescheduleRequested = false;
+      appointment.rescheduleData = null;
       appointment.statusHistory.push({
         fromStatus: 'Reschedule Requested',
         toStatus: 'Rescheduled -> Confirmed',
-        updatedBy: updaterInfo.name || 'Admin',
-        updatedRole: updaterInfo.role || 'admin',
+        updatedBy: updaterInfo.name || 'Staff',
+        updatedRole: updaterInfo.role || 'employee',
         timestamp: new Date(),
-        note: `Reschedule approved from ${oldDate} ${oldTime} to ${newDate} ${newTime}`
+        note: `Reschedule approved from previous date ${oldDate} ${oldTime} to ${newDate} ${newTime}`
       });
       await appointment.save();
 
@@ -992,6 +1028,7 @@ class AdminService {
         branchId: appointment.branchId
       });
 
+      broadcastEvent('appointment:rescheduled', appointment);
       broadcastEvent('appointment:updated', { appointment });
       broadcastEvent('appointment:status_changed', {
         appointmentId: appointment._id.toString(),
@@ -1000,13 +1037,15 @@ class AdminService {
         newStatus: 'Confirmed'
       });
     } else {
-      appointment.status = 'Confirmed';
+      const todayKolkata = getKolkataCurrentDateStr();
+      appointment.status = (appointment.appointmentDate && appointment.appointmentDate < todayKolkata) ? 'No Show' : 'Confirmed';
       appointment.rescheduleRequested = false;
+      appointment.rescheduleData = null;
       appointment.statusHistory.push({
         fromStatus: 'Reschedule Requested',
-        toStatus: 'Confirmed',
-        updatedBy: updaterInfo.name || 'Admin',
-        updatedRole: updaterInfo.role || 'admin',
+        toStatus: appointment.status,
+        updatedBy: updaterInfo.name || 'Staff',
+        updatedRole: updaterInfo.role || 'employee',
         timestamp: new Date(),
         note: `Reschedule rejected. Kept original slot: ${appointment.appointmentDate} ${appointment.appointmentTime}`
       });
@@ -1031,6 +1070,110 @@ class AdminService {
 
       broadcastEvent('appointment:updated', { appointment });
     }
+
+    return appointment;
+  }
+
+  /**
+   * Directly reschedule any appointment (especially missed / past date / No Show appointments)
+   */
+  async rescheduleAppointment(id, newDate, newTime, reason, updaterInfo = {}) {
+    const appointment = await Appointment.findById(id);
+    if (!appointment) throw ApiError.notFound('Appointment not found');
+
+    const todayKolkata = getKolkataCurrentDateStr();
+    let targetDate = newDate;
+    if (!targetDate || targetDate < todayKolkata) {
+      targetDate = todayKolkata;
+    }
+
+    let targetTime = newTime || appointment.appointmentTime || '11:30 AM';
+
+    // If targetDate is today and targetTime has already passed, adjust to a future slot
+    if (targetDate === todayKolkata && hasAppointmentStarted(targetDate, targetTime)) {
+      const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const currentHour = nowKolkata.getHours();
+
+      if (currentHour >= 20) {
+        const tomorrow = new Date(nowKolkata);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        targetDate = tomorrow.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+        targetTime = '10:30 AM';
+      } else {
+        nowKolkata.setMinutes(nowKolkata.getMinutes() + 45);
+        let h = nowKolkata.getHours();
+        const m = nowKolkata.getMinutes();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12;
+        h = h ? h : 12;
+        const roundedM = Math.ceil(m / 15) * 15;
+        const finalM = roundedM === 60 ? '00' : String(roundedM).padStart(2, '0');
+        const finalH = roundedM === 60 ? (h % 12) + 1 : h;
+        targetTime = `${String(finalH).padStart(2, '0')}:${finalM} ${ampm}`;
+      }
+    }
+
+    // Check slot availability for new slot
+    if (appointment.specialistName && appointment.specialistName !== 'Any Available Specialist') {
+      const cleanSpecFirst = appointment.specialistName.split('(')[0].trim().split(/\s+/)[0];
+      const conflictCheck = await Appointment.findOne({
+        _id: { $ne: appointment._id },
+        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
+        appointmentDate: targetDate,
+        appointmentTime: targetTime,
+        status: { $nin: ['Cancelled', 'No Show', 'Staff_Rejected'] }
+      });
+      if (conflictCheck) {
+        throw ApiError.badRequest(`Requested slot (${targetDate} at ${targetTime}) is already occupied for ${appointment.specialistName}.`);
+      }
+    }
+
+    const oldDate = appointment.appointmentDate;
+    const oldTime = appointment.appointmentTime;
+    const oldStatus = appointment.status;
+
+    appointment.appointmentDate = targetDate;
+    appointment.appointmentTime = targetTime;
+    appointment.status = 'Confirmed';
+    appointment.rescheduleRequested = false;
+    appointment.rescheduleData = null;
+    appointment.statusHistory.push({
+      fromStatus: oldStatus,
+      toStatus: 'Rescheduled -> Confirmed',
+      updatedBy: updaterInfo.name || 'Staff',
+      updatedRole: updaterInfo.role || 'employee',
+      timestamp: new Date(),
+      note: `Appointment rescheduled from previous date ${oldDate} ${oldTime} to ${targetDate} ${targetTime}. ${reason || ''}`
+    });
+
+    await appointment.save();
+
+    // Trigger Notification
+    await Notification.create({
+      title: 'Appointment Rescheduled 🗓️',
+      message: `Your appointment #${appointment.bookingId} for ${appointment.service} has been rescheduled to ${targetDate} at ${targetTime}.`,
+      role: 'user',
+      userId: appointment.customerId ? String(appointment.customerId) : null,
+      email: appointment.customerEmail ? String(appointment.customerEmail).toLowerCase().trim() : null,
+      type: 'booking',
+      bookingId: appointment.bookingId
+    });
+
+    await this.createActivityLog({
+      action: 'Appointment Rescheduled',
+      details: `Rescheduled #${appointment.bookingId} from ${oldDate} ${oldTime} ➔ ${targetDate} ${targetTime}.`,
+      user: updaterInfo.name || 'Staff',
+      branchId: appointment.branchId
+    });
+
+    broadcastEvent('appointment:rescheduled', appointment);
+    broadcastEvent('appointment:updated', { appointment });
+    broadcastEvent('appointment:status_changed', {
+      appointmentId: appointment._id.toString(),
+      bookingId: appointment.bookingId,
+      oldStatus,
+      newStatus: 'Confirmed'
+    });
 
     return appointment;
   }

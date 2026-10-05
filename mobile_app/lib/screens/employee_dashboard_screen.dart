@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../models/appointment_model.dart';
 import '../services/api_service.dart';
 import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
@@ -23,6 +22,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late TabController _tabController;
   StreamSubscription<RealtimeEvent>? _realtimeSubscription;
+  Timer? _debounceTimer;
 
   bool _isLoading = true;
   Map<String, dynamic>? _user;
@@ -33,6 +33,123 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
 
   String _shiftStatus = 'NOT_CLOCKED_IN'; // NOT_CLOCKED_IN, CLOCKED_IN, ON_BREAK, CLOCKED_OUT, ON_LEAVE
   bool _isAttendanceProcessing = false;
+  String _queueDateFilter = 'All'; // 'All', 'Today', 'Upcoming', 'Previous'
+
+  static const List<String> _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const List<String> _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  String _normalizeDateString(dynamic rawDate) {
+    if (rawDate == null) return '';
+    final s = rawDate.toString().trim();
+    if (s.isEmpty) return '';
+    if (s.contains('T')) {
+      final iso = s.split('T')[0];
+      if (iso.contains('-')) return iso;
+    }
+    if (s.contains(' ')) {
+      final p = s.split(' ')[0];
+      if (p.contains('-')) return p;
+    }
+    if (s.contains('/')) {
+      final parts = s.split('/');
+      if (parts.length == 3) {
+        if (parts[0].length == 4) {
+          return '${parts[0]}-${parts[1].padLeft(2, '0')}-${parts[2].padLeft(2, '0')}';
+        } else if (parts[2].length == 4) {
+          return '${parts[2]}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
+        }
+      }
+    }
+    if (s.contains('-')) {
+      final parts = s.split('-');
+      if (parts.length == 3 && parts[0].length == 4) {
+        return '${parts[0]}-${parts[1].padLeft(2, '0')}-${parts[2].padLeft(2, '0')}';
+      }
+    }
+    return s;
+  }
+
+  int _parseTimeToMinutes(String timeStr) {
+    if (timeStr.isEmpty) return 720;
+    try {
+      final cleaned = timeStr.trim().toUpperCase();
+      final isPM = cleaned.contains('PM');
+      final isAM = cleaned.contains('AM');
+      final numPart = cleaned.replaceAll(RegExp(r'[^0-9:]'), '');
+      final parts = numPart.split(':');
+      int h = int.parse(parts[0]);
+      int m = parts.length > 1 ? int.parse(parts[1]) : 0;
+      if (isPM && h < 12) h += 12;
+      if (isAM && h == 12) h = 0;
+      return h * 60 + m;
+    } catch (_) {
+      return 720;
+    }
+  }
+
+  String _formatDateTitle(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+    final diff = target.difference(today).inDays;
+    final weekday = _weekdays[date.weekday - 1];
+    final month = _months[date.month - 1];
+
+    if (diff == 0) {
+      return 'Today • $weekday, ${date.day} $month ${date.year}';
+    } else if (diff == 1) {
+      return 'Tomorrow • $weekday, ${date.day} $month ${date.year}';
+    } else if (diff == -1) {
+      return 'Yesterday • $weekday, ${date.day} $month ${date.year}';
+    } else {
+      return '$weekday, ${date.day} $month ${date.year}';
+    }
+  }
+
+  Map<String, dynamic> _getDateCategory(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(date.year, date.month, date.day);
+    final diff = target.difference(today).inDays;
+
+    if (diff == 0) {
+      return {'category': 'Today', 'label': 'TODAY', 'color': Colors.green};
+    } else if (diff == 1) {
+      return {'category': 'Upcoming', 'label': 'TOMORROW', 'color': Colors.teal};
+    } else if (diff > 1) {
+      return {'category': 'Upcoming', 'label': 'UPCOMING', 'color': Colors.blue};
+    } else if (diff == -1) {
+      return {'category': 'Previous', 'label': 'YESTERDAY', 'color': Colors.orange};
+    } else {
+      return {'category': 'Previous', 'label': 'PAST DATE', 'color': Colors.deepOrangeAccent};
+    }
+  }
+
+  Map<String, List<Map<String, dynamic>>> _getGroupedAppointments() {
+    final Map<String, List<Map<String, dynamic>>> groups = {};
+
+    for (final raw in _appointments) {
+      if (raw is! Map) continue;
+      final appt = Map<String, dynamic>.from(raw);
+      final rawDate = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'];
+      String dateKey = _normalizeDateString(rawDate);
+      if (dateKey.isEmpty) {
+        final now = DateTime.now();
+        dateKey = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      }
+      groups.putIfAbsent(dateKey, () => []).add(appt);
+    }
+
+    for (final key in groups.keys) {
+      groups[key]!.sort((a, b) {
+        final tA = _parseTimeToMinutes((a['appointmentTime'] ?? a['time'] ?? '').toString());
+        final tB = _parseTimeToMinutes((b['appointmentTime'] ?? b['time'] ?? '').toString());
+        return tA.compareTo(tB);
+      });
+    }
+
+    return groups;
+  }
 
   @override
   void initState() {
@@ -53,7 +170,10 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
           event.name.startsWith('attendance:') ||
           event.name.startsWith('leave:') ||
           event.name == 'app:fallback_sync') {
-        _loadStaffData(quiet: true);
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+          if (mounted) _loadStaffData(quiet: true);
+        });
       }
     });
   }
@@ -61,6 +181,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _debounceTimer?.cancel();
     _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
@@ -76,7 +197,10 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
 
   /// Load authenticated staff member data from Backend REST API
   Future<void> _loadStaffData({bool quiet = false}) async {
-    if (!quiet) setState(() => _isLoading = true);
+    // Only show full-screen spinner on cold start when there is no data yet
+    if (!quiet && _appointments.isEmpty && _attendance.isEmpty) {
+      setState(() => _isLoading = true);
+    }
 
     final storedUser = await ApiService.getStoredUser();
 
@@ -409,13 +533,32 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: TextField(
-                        controller: timeCtrl,
-                        style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
-                        decoration: InputDecoration(
-                          labelText: 'Time Slot *',
-                          labelStyle: TextStyle(color: themeColors.textMuted),
-                          prefixIcon: Icon(Icons.access_time, color: primaryColor, size: 18),
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showTimePicker(
+                            context: modalCtx,
+                            initialTime: const TimeOfDay(hour: 11, minute: 30),
+                          );
+                          if (picked != null) {
+                            final hour = picked.hourOfPeriod == 0 ? 12 : picked.hourOfPeriod;
+                            final period = picked.period == DayPeriod.am ? 'AM' : 'PM';
+                            final formatted = '${hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')} $period';
+                            setModalState(() {
+                              timeCtrl.text = formatted;
+                            });
+                          }
+                        },
+                        child: IgnorePointer(
+                          child: TextField(
+                            controller: timeCtrl,
+                            style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                            decoration: InputDecoration(
+                              labelText: 'Time Slot *',
+                              labelStyle: TextStyle(color: themeColors.textMuted),
+                              prefixIcon: Icon(Icons.access_time, color: primaryColor, size: 18),
+                              suffixIcon: const Icon(Icons.arrow_drop_down, size: 20),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -435,18 +578,70 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                     style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor),
                     onPressed: () async {
                       if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty || serviceCtrl.text.trim().isEmpty) return;
+                      final apptDate = dateCtrl.text.trim();
+                      final apptTime = timeCtrl.text.trim();
                       final res = await ApiService.createEmployeeWalkIn({
                         'customerName': nameCtrl.text.trim(),
                         'customerPhone': phoneCtrl.text.trim(),
                         'service': serviceCtrl.text.trim(),
-                        'appointmentDate': dateCtrl.text.trim(),
-                        'appointmentTime': timeCtrl.text.trim(),
+                        'appointmentDate': apptDate,
+                        'appointmentTime': apptTime,
                         'notes': notesCtrl.text.trim(),
                       });
                       if (modalCtx.mounted) {
                         Navigator.pop(modalCtx);
+                        if (!mounted) return;
                         if (res['success'] == true) {
-                          _loadStaffData();
+                          final Map<String, dynamic> newAppt = (res['data'] is Map)
+                              ? Map<String, dynamic>.from(res['data'])
+                              : <String, dynamic>{
+                                  '_id': 'walkin_${DateTime.now().millisecondsSinceEpoch}',
+                                  'customerName': nameCtrl.text.trim(),
+                                  'customerPhone': phoneCtrl.text.trim(),
+                                  'service': serviceCtrl.text.trim(),
+                                  'appointmentDate': apptDate,
+                                  'appointmentTime': apptTime,
+                                  'notes': notesCtrl.text.trim(),
+                                  'status': 'In Progress',
+                                  'isWalkIn': true,
+                                };
+                          newAppt['appointmentDate'] = apptDate;
+                          newAppt['appointmentTime'] = apptTime;
+                          newAppt['status'] = newAppt['status'] ?? 'In Progress';
+                          newAppt['isWalkIn'] = true;
+
+                          setState(() {
+                            _appointments.insert(0, newAppt);
+                            // Auto-adjust date filter so newly added line is immediately visible under its date section
+                            final targetDate = DateTime.tryParse(apptDate);
+                            if (targetDate != null) {
+                              final now = DateTime.now();
+                              final today = DateTime(now.year, now.month, now.day);
+                              final diff = DateTime(targetDate.year, targetDate.month, targetDate.day).difference(today).inDays;
+                              if (_queueDateFilter == 'Today' && diff != 0) {
+                                _queueDateFilter = 'All';
+                              } else if (_queueDateFilter == 'Upcoming' && diff <= 0) {
+                                _queueDateFilter = 'All';
+                              } else if (_queueDateFilter == 'Previous' && diff >= 0) {
+                                _queueDateFilter = 'All';
+                              }
+                            }
+                          });
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Walk-In client seated for $apptDate at $apptTime! ✂️'),
+                              backgroundColor: themeColors.success,
+                            ),
+                          );
+                          _loadStaffData(quiet: true);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? 'Failed to seat walk-in client'),
+                              backgroundColor: themeColors.error,
+                            ),
+                          );
                         }
                       }
                     },
@@ -620,12 +815,757 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     }
   }
 
-  // --- MODULE 1: TODAY'S SERVICE QUEUE ---
+  // --- FILTER CHIPS FOR SERVICE QUEUE ---
+  Widget _buildFilterChip(String filterKey, String label, AppColors themeColors) {
+    final isSelected = _queueDateFilter == filterKey;
+    final primaryColor = themeColors.primary;
+    final buttonTextColor = themeColors.buttonTextPrimary;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          setState(() {
+            _queueDateFilter = filterKey;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryColor : themeColors.cardSurface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? primaryColor : themeColors.cardBorder.withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : [],
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? buttonTextColor : themeColors.textSecondary,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- SECTION HEADER FOR EACH DATE GROUP ---
+  Widget _buildDateHeader(String dateKey, List<Map<String, dynamic>> appts, AppColors themeColors) {
+    final parsed = DateTime.tryParse(dateKey) ?? DateTime.now();
+    final dateTitle = _formatDateTitle(parsed);
+    final categoryInfo = _getDateCategory(parsed);
+    final Color badgeColor = categoryInfo['color'] as Color;
+    final String badgeText = categoryInfo['label'] as String;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14, bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: themeColors.cardSurface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: badgeColor, width: 4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                dateTitle,
+                style: TextStyle(
+                  color: themeColors.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: themeColors.deepestBackground,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '${appts.length} ${appts.length == 1 ? 'service' : 'services'}',
+              style: TextStyle(
+                color: themeColors.textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- APPOINTMENT CARD (DATE & TIME ALIGNED) ---
+  Widget _buildAppointmentCard(Map<String, dynamic> appt, AppColors themeColors) {
+    final primaryColor = themeColors.primary;
+    final cardBg = themeColors.cardSurface;
+    final buttonTextColor = themeColors.buttonTextPrimary;
+
+    final id = (appt['_id'] ?? appt['id'] ?? appt['bookingId'] ?? '').toString();
+    final clientName = (appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? 'Client').toString();
+    final phone = (appt['customerPhone'] ?? appt['phone'] ?? '').toString();
+    final service = (appt['service'] ?? appt['serviceName'] ?? 'Hair Styling').toString();
+    final rawDate = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'] ?? '';
+    final date = _normalizeDateString(rawDate);
+    final time = (appt['appointmentTime'] ?? appt['time'] ?? appt['bookingTimeFormatted'] ?? '12:00 PM').toString();
+    final status = (appt['status'] ?? 'pending').toString().toLowerCase();
+    final rescheduleData = appt['rescheduleData'] is Map ? (appt['rescheduleData'] as Map) : null;
+    final requestedDate = (rescheduleData?['requestedDate'] ?? appt['rescheduleDate'] ?? '').toString().trim();
+    final requestedTime = (rescheduleData?['requestedTime'] ?? appt['rescheduleTime'] ?? '').toString().trim();
+    final rescheduleReason = (rescheduleData?['reason'] ?? appt['rescheduleReason'] ?? '').toString().trim();
+    final isRescheduleRequested = status == 'reschedule requested' || status == 'reschedule_requested' || (appt['rescheduleRequested'] == true);
+    final isWalkIn = (appt['isWalkIn'] == true) || (appt['notes'] != null && appt['notes'].toString().toLowerCase().contains('walk-in'));
+
+    Color statusColor = themeColors.warning;
+    Color statusBg = themeColors.warningSoft;
+    if (status == 'confirmed' || status == 'staff_accepted') {
+      statusColor = themeColors.success;
+      statusBg = themeColors.successSoft;
+    } else if (status == 'in progress') {
+      statusColor = themeColors.info;
+      statusBg = themeColors.infoSoft;
+    } else if (status == 'completed') {
+      statusColor = themeColors.success;
+      statusBg = themeColors.successSoft;
+    } else if (status == 'cancelled' || status == 'staff_rejected') {
+      statusColor = themeColors.error;
+      statusBg = themeColors.errorSoft;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        service,
+                        style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isWalkIn) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: primaryColor.withValues(alpha: 0.4)),
+                        ),
+                        child: Text(
+                          'WALK-IN',
+                          style: TextStyle(color: primaryColor, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: statusColor),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.person_outline, size: 14, color: primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                clientName,
+                style: TextStyle(color: themeColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 10),
+              if (phone.isNotEmpty) ...[
+                Icon(Icons.phone_outlined, size: 14, color: themeColors.textMuted),
+                const SizedBox(width: 4),
+                Text(phone, style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(Icons.access_time, size: 14, color: primaryColor),
+              const SizedBox(width: 4),
+              Text(
+                time,
+                style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.calendar_today, size: 12, color: themeColors.textMuted),
+              const SizedBox(width: 4),
+              Text(
+                date,
+                style: TextStyle(color: themeColors.textMuted, fontSize: 11),
+              ),
+            ],
+          ),
+          if (isRescheduleRequested && (requestedDate.isNotEmpty || requestedTime.isNotEmpty)) ...[
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: themeColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: themeColors.warning.withValues(alpha: 0.4)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.edit_calendar, size: 14, color: themeColors.warning),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Requested Slot: $requestedDate at $requestedTime',
+                          style: TextStyle(
+                            color: themeColors.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (rescheduleReason.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      'Reason: $rescheduleReason',
+                      style: TextStyle(
+                        color: themeColors.textMuted,
+                        fontSize: 11,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          if (appt['notes'] != null && appt['notes'].toString().isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Notes: ${appt['notes']}',
+              style: TextStyle(color: themeColors.textMuted, fontSize: 11, fontStyle: FontStyle.italic),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (isRescheduleRequested) ...[
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColors.warning,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    elevation: 2,
+                  ),
+                  icon: const Icon(Icons.check_circle_outline, size: 14),
+                  label: const Text('Confirm Reschedule 🗓️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    DateTime initDate = DateTime.now();
+                    if (requestedDate.isNotEmpty) {
+                      try {
+                        final parsed = DateTime.parse(requestedDate);
+                        if (parsed.isAfter(DateTime.now().subtract(const Duration(days: 1)))) {
+                          initDate = parsed;
+                        }
+                      } catch (_) {}
+                    }
+                    DateTime selectedDate = initDate;
+                    TimeOfDay selectedTime = const TimeOfDay(hour: 11, minute: 30);
+                    if (requestedTime.isNotEmpty) {
+                      try {
+                        final parts = requestedTime.split(' ');
+                        final hm = parts[0].split(':');
+                        int h = int.parse(hm[0]);
+                        int m = int.parse(hm[1]);
+                        if (parts.length > 1 && parts[1].toUpperCase() == 'PM' && h < 12) h += 12;
+                        if (parts.length > 1 && parts[1].toUpperCase() == 'AM' && h == 12) h = 0;
+                        selectedTime = TimeOfDay(hour: h, minute: m);
+                      } catch (_) {}
+                    }
+
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => StatefulBuilder(
+                        builder: (ctx, setDialogState) => AlertDialog(
+                          backgroundColor: themeColors.cardSurface,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: Text('Confirm Reschedule', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold)),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Confirm slot for $clientName ($service):', style: TextStyle(color: themeColors.textSecondary, fontSize: 13)),
+                              const SizedBox(height: 14),
+                              ListTile(
+                                tileColor: themeColors.inputBackground,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                leading: Icon(Icons.calendar_today, color: themeColors.primary, size: 18),
+                                title: Text(
+                                  'Date: ${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                trailing: const Icon(Icons.arrow_drop_down, size: 20),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: ctx,
+                                    initialDate: selectedDate,
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime.now().add(const Duration(days: 90)),
+                                  );
+                                  if (picked != null) {
+                                    setDialogState(() => selectedDate = picked);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 10),
+                              ListTile(
+                                tileColor: themeColors.inputBackground,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                leading: Icon(Icons.access_time, color: themeColors.primary, size: 18),
+                                title: Text(
+                                  'Time: ${selectedTime.format(ctx)}',
+                                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                trailing: const Icon(Icons.arrow_drop_down, size: 20),
+                                onTap: () async {
+                                  final picked = await showTimePicker(
+                                    context: ctx,
+                                    initialTime: selectedTime,
+                                  );
+                                  if (picked != null) {
+                                    setDialogState(() => selectedTime = picked);
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text('Cancel', style: TextStyle(color: themeColors.textMuted)),
+                            ),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: themeColors.warning, foregroundColor: Colors.black),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Approve Slot'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      final dateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+                      final hour = selectedTime.hourOfPeriod == 0 ? 12 : selectedTime.hourOfPeriod;
+                      final period = selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+                      final timeStr = '${hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')} $period';
+
+                      // In-place local update so UI updates with 0ms reload and moves to the correct date section
+                      setState(() {
+                        final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                        if (idx != -1) {
+                          final updated = Map<String, dynamic>.from(_appointments[idx]);
+                          updated['status'] = 'Confirmed';
+                          updated['appointmentDate'] = dateStr;
+                          updated['appointmentTime'] = timeStr;
+                          updated['rescheduleRequested'] = false;
+                          updated['rescheduleData'] = null;
+                          _appointments[idx] = updated;
+
+                          // Ensure target date is visible if user had filtered
+                          final now = DateTime.now();
+                          final today = DateTime(now.year, now.month, now.day);
+                          final diff = selectedDate.difference(today).inDays;
+                          if (_queueDateFilter == 'Today' && diff != 0) {
+                            _queueDateFilter = 'All';
+                          } else if (_queueDateFilter == 'Previous' && diff >= 0) {
+                            _queueDateFilter = 'All';
+                          } else if (_queueDateFilter == 'Upcoming' && diff <= 0) {
+                            _queueDateFilter = 'All';
+                          }
+                        }
+                      });
+
+                      final res = await ApiService.respondReschedule(id, 'Approve', newDate: dateStr, newTime: timeStr);
+                      if (mounted) {
+                        if (res['success'] == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Reschedule approved for $dateStr at $timeStr! ✅'),
+                              backgroundColor: themeColors.success,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? 'Failed to approve reschedule'),
+                              backgroundColor: themeColors.error,
+                            ),
+                          );
+                        }
+                        _loadStaffData(quiet: true);
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: themeColors.error),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                  icon: Icon(Icons.close, size: 14, color: themeColors.error),
+                  label: Text('Decline', style: TextStyle(color: themeColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    final reasonController = TextEditingController();
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        backgroundColor: themeColors.cardSurface,
+                        title: Text('Decline Reschedule', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold)),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Keep appointment at original slot ($date at $time) and decline reschedule request?', style: TextStyle(color: themeColors.textSecondary, fontSize: 13)),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: reasonController,
+                              style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                              decoration: InputDecoration(
+                                hintText: 'Reason for declining (optional)',
+                                hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+                                filled: true,
+                                fillColor: themeColors.deepestBackground,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text('Cancel', style: TextStyle(color: themeColors.textMuted)),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(backgroundColor: themeColors.error, foregroundColor: Colors.white),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Decline'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      final res = await ApiService.respondReschedule(id, 'Reject', rejectionReason: reasonController.text.trim());
+                      if (mounted) {
+                        if (res['success'] == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Reschedule request declined. Original slot retained.'),
+                              backgroundColor: themeColors.warning,
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(res['message'] ?? 'Failed to decline reschedule'),
+                              backgroundColor: themeColors.error,
+                            ),
+                          );
+                        }
+                        _loadStaffData(quiet: true);
+                      }
+                    }
+                  },
+                ),
+              ],
+              if (status == 'pending') ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                  onPressed: () async {
+                    setState(() {
+                      final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                      if (idx != -1) {
+                        final updated = Map<String, dynamic>.from(_appointments[idx]);
+                        updated['status'] = 'Staff_Accepted';
+                        _appointments[idx] = updated;
+                      }
+                    });
+                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Accepted'});
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Appointment accepted! ✅'), backgroundColor: themeColors.success),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Failed to accept appointment'), backgroundColor: themeColors.error),
+                        );
+                      }
+                    }
+                    _loadStaffData(quiet: true);
+                  },
+                  child: const Text('Accept', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(width: 6),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(side: BorderSide(color: themeColors.error), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                  onPressed: () async {
+                    setState(() {
+                      final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                      if (idx != -1) {
+                        final updated = Map<String, dynamic>.from(_appointments[idx]);
+                        updated['status'] = 'Staff_Rejected';
+                        _appointments[idx] = updated;
+                      }
+                    });
+                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Rejected'});
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Appointment declined & reassigned.'), backgroundColor: themeColors.warning),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Failed to decline appointment'), backgroundColor: themeColors.error),
+                        );
+                      }
+                    }
+                    _loadStaffData(quiet: true);
+                  },
+                  child: Text('Decline', style: TextStyle(color: themeColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+              if (status == 'confirmed' || status == 'staff_accepted') ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                  onPressed: () async {
+                    setState(() {
+                      final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                      if (idx != -1) {
+                        final updated = Map<String, dynamic>.from(_appointments[idx]);
+                        updated['status'] = 'In Progress';
+                        _appointments[idx] = updated;
+                      }
+                    });
+                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'In Progress'});
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Service started! ✂️'), backgroundColor: themeColors.success),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Failed to start service'), backgroundColor: themeColors.error),
+                        );
+                      }
+                    }
+                    _loadStaffData(quiet: true);
+                  },
+                  child: Text('Start Service ✂️', style: TextStyle(color: buttonTextColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+              if (status == 'in progress') ...[
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                  onPressed: () async {
+                    setState(() {
+                      final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                      if (idx != -1) {
+                        final updated = Map<String, dynamic>.from(_appointments[idx]);
+                        updated['status'] = 'Completed';
+                        updated['paymentStatus'] = 'Paid';
+                        _appointments[idx] = updated;
+                      }
+                    });
+                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Completed', 'paymentStatus': 'Paid'});
+                    if (mounted) {
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Service marked Completed & Paid! ✅'), backgroundColor: themeColors.success),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: const Text('Failed to complete service'), backgroundColor: themeColors.error),
+                        );
+                      }
+                    }
+                    _loadStaffData(quiet: true);
+                  },
+                  child: const Text('Complete & Paid ✅', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ],
+              if (status == 'no show' || status == 'no_show' || status == 'noshow' || status == 'cancelled') ...[
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: themeColors.warning,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    elevation: 2,
+                  ),
+                  icon: const Icon(Icons.edit_calendar, size: 14),
+                  label: const Text('Reschedule 🗓️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  onPressed: () => _showEmployeeDirectRescheduleModal(appt, themeColors),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- MODULE 1: SERVICE BOARD & QUEUE (DATE-WISE ALIGNED) ---
   Widget _buildServiceQueueTab(AppColors themeColors) {
     final primaryColor = themeColors.primary;
     final cardBg = themeColors.cardSurface;
     final buttonTextColor = themeColors.buttonTextPrimary;
     final activeCount = _appointments.where((a) => a['status'] != 'Completed' && a['status'] != 'Cancelled').length;
+
+    // Date grouping & filtering
+    final grouped = _getGroupedAppointments();
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Calculate counts for chips
+    int countToday = 0;
+    int countUpcoming = 0;
+    int countPrevious = 0;
+
+    for (final raw in _appointments) {
+      if (raw is! Map) continue;
+      final rawDate = raw['appointmentDate'] ?? raw['date'] ?? raw['bookingDate'];
+      final norm = _normalizeDateString(rawDate);
+      final dt = DateTime.tryParse(norm) ?? today;
+      final diff = DateTime(dt.year, dt.month, dt.day).difference(today).inDays;
+      if (diff == 0) {
+        countToday++;
+      } else if (diff > 0) {
+        countUpcoming++;
+      } else {
+        countPrevious++;
+      }
+    }
+
+    // Sort date keys: Today (priority 0) -> Upcoming ascending (priority 1) -> Previous descending (priority 2)
+    final sortedKeys = grouped.keys.toList()
+      ..sort((keyA, keyB) {
+        final dateA = DateTime.tryParse(keyA) ?? today;
+        final dateB = DateTime.tryParse(keyB) ?? today;
+        final targetA = DateTime(dateA.year, dateA.month, dateA.day);
+        final targetB = DateTime(dateB.year, dateB.month, dateB.day);
+        final diffA = targetA.difference(today).inDays;
+        final diffB = targetB.difference(today).inDays;
+
+        int priority(int diff) {
+          if (diff == 0) return 0;
+          if (diff > 0) return 1;
+          return 2;
+        }
+
+        final pA = priority(diffA);
+        final pB = priority(diffB);
+
+        if (pA != pB) return pA.compareTo(pB);
+
+        if (pA == 0) {
+          return 0;
+        } else if (pA == 1) {
+          return targetA.compareTo(targetB); // Upcoming: earliest first
+        } else {
+          return targetB.compareTo(targetA); // Past: most recent first (yesterday before last week)
+        }
+      });
+
+    // Filter date groups based on _queueDateFilter
+    final List<MapEntry<String, List<Map<String, dynamic>>>> filteredGroups = [];
+    for (final key in sortedKeys) {
+      final date = DateTime.tryParse(key) ?? today;
+      final target = DateTime(date.year, date.month, date.day);
+      final diff = target.difference(today).inDays;
+
+      if (_queueDateFilter == 'Today' && diff != 0) continue;
+      if (_queueDateFilter == 'Upcoming' && diff <= 0) continue;
+      if (_queueDateFilter == 'Previous' && diff >= 0) continue;
+
+      filteredGroups.add(MapEntry(key, grouped[key]!));
+    }
 
     return RefreshIndicator(
       color: primaryColor,
@@ -634,27 +1574,69 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             color: cardBg,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Today's Service Queue", style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
-                      child: Text('$activeCount Active', style: TextStyle(color: primaryColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                    Row(
+                      children: [
+                        Text(
+                          'Service Queue',
+                          style: TextStyle(
+                            color: themeColors.textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$activeCount Active',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: buttonTextColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      onPressed: _showWalkInModal,
+                      icon: Icon(Icons.person_add_alt_1, color: buttonTextColor, size: 16),
+                      label: Text(
+                        'Walk-In Client',
+                        style: TextStyle(color: buttonTextColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
-                  onPressed: _showWalkInModal,
-                  icon: Icon(Icons.add, color: buttonTextColor, size: 16),
-                  label: Text('Walk-In Client', style: TextStyle(color: buttonTextColor, fontSize: 11, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All', 'All Dates (${_appointments.length})', themeColors),
+                      _buildFilterChip('Today', 'Today ($countToday)', themeColors),
+                      _buildFilterChip('Upcoming', 'Upcoming ($countUpcoming)', themeColors),
+                      _buildFilterChip('Previous', 'Previous ($countPrevious)', themeColors),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -669,153 +1651,214 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                           children: [
                             Icon(Icons.content_cut, size: 48, color: themeColors.textMuted),
                             const SizedBox(height: 12),
-                            Text('No Services Currently Assigned for Today\nPull down to refresh', textAlign: TextAlign.center, style: TextStyle(color: themeColors.textMuted, height: 1.5)),
+                            Text(
+                              'No Services Currently Assigned\nPull down to refresh or seat a walk-in client',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: themeColors.textMuted, height: 1.5),
+                            ),
                           ],
                         ),
                       ),
                     ],
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(14),
-                    itemCount: _appointments.length,
-                    itemBuilder: (ctx, index) {
-                      final appt = _appointments[index];
-                      final id = appt['_id'] ?? appt['id'] ?? '';
-                      final clientName = appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? 'Client';
-                      final phone = appt['customerPhone'] ?? appt['phone'] ?? '';
-                      final service = appt['service'] ?? appt['serviceName'] ?? 'Hair Styling';
-                      final date = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'] ?? '';
-                      final time = appt['appointmentTime'] ?? appt['time'] ?? appt['bookingTimeFormatted'] ?? '12:00 PM';
-                      final status = (appt['status'] ?? 'pending').toString().toLowerCase();
-
-                      Color statusColor = themeColors.warning;
-                      Color statusBg = themeColors.warningSoft;
-                      if (status == 'confirmed' || status == 'staff_accepted') {
-                        statusColor = themeColors.success;
-                        statusBg = themeColors.successSoft;
-                      } else if (status == 'in progress') {
-                        statusColor = themeColors.info;
-                        statusBg = themeColors.infoSoft;
-                      } else if (status == 'completed') {
-                        statusColor = themeColors.success;
-                        statusBg = themeColors.successSoft;
-                      } else if (status == 'cancelled' || status == 'staff_rejected') {
-                        statusColor = themeColors.error;
-                        statusBg = themeColors.errorSoft;
-                      }
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                : filteredGroups.isEmpty
+                    ? ListView(
+                        children: [
+                          const SizedBox(height: 80),
+                          Center(
+                            child: Column(
                               children: [
-                                Expanded(
-                                  child: Text(service, style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 15), overflow: TextOverflow.ellipsis),
+                                Icon(Icons.event_busy, size: 44, color: themeColors.textMuted),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'No appointments under "$_queueDateFilter"',
+                                  style: TextStyle(
+                                    color: themeColors.textSecondary,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(8), border: Border.all(color: statusColor)),
-                                  child: Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                                TextButton.icon(
+                                  onPressed: () => setState(() => _queueDateFilter = 'All'),
+                                  icon: Icon(Icons.calendar_today, size: 16, color: primaryColor),
+                                  label: Text(
+                                    'View All Dates (${_appointments.length})',
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Icon(Icons.person_outline, size: 14, color: primaryColor),
-                                const SizedBox(width: 4),
-                                Text(clientName, style: TextStyle(color: themeColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
-                                const SizedBox(width: 10),
-                                if (phone.isNotEmpty) ...[
-                                  Icon(Icons.phone_outlined, size: 14, color: themeColors.textMuted),
-                                  const SizedBox(width: 4),
-                                  Text(phone, style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time, size: 14, color: themeColors.textMuted),
-                                const SizedBox(width: 4),
-                                Text('$date at $time', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
-                              ],
-                            ),
-                            if (appt['notes'] != null && appt['notes'].toString().isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Text('Notes: ${appt['notes']}', style: TextStyle(color: themeColors.textMuted, fontSize: 11, fontStyle: FontStyle.italic)),
-                            ],
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                if (status == 'reschedule requested' || status == 'reschedule_requested') ...[
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: themeColors.warning, foregroundColor: Colors.black, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                                    onPressed: () async {
-                                      await ApiService.respondReschedule(id, 'Approve');
-                                      _loadStaffData();
-                                    },
-                                    child: const Text('Confirm Reschedule 🗓️', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                                if (status == 'pending') ...[
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                                    onPressed: () async {
-                                      await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Accepted'});
-                                      _loadStaffData();
-                                    },
-                                    child: const Text('Accept', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  OutlinedButton(
-                                    style: OutlinedButton.styleFrom(side: BorderSide(color: themeColors.error), padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                                    onPressed: () async {
-                                      await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Rejected'});
-                                      _loadStaffData();
-                                    },
-                                    child: Text('Decline', style: TextStyle(color: themeColors.error, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                                if ((status == 'confirmed' || status == 'staff_accepted') && AppointmentModel.hasAppointmentStarted(date, time)) ...[
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: buttonTextColor, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                                    onPressed: () async {
-                                      await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'In Progress'});
-                                      _loadStaffData();
-                                    },
-                                    child: Text('Start Service ✂️', style: TextStyle(color: buttonTextColor, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                                if (status == 'in progress') ...[
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(backgroundColor: themeColors.success, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                                    onPressed: () async {
-                                      await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Completed', 'paymentStatus': 'Paid'});
-                                      _loadStaffData();
-                                    },
-                                    child: const Text('Complete & Paid ✅', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ],
-                            ),
+                          ),
+                        ],
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        children: [
+                          for (final group in filteredGroups) ...[
+                            _buildDateHeader(group.key, group.value, themeColors),
+                            for (final appt in group.value)
+                              _buildAppointmentCard(appt, themeColors),
                           ],
-                        ),
-                      );
-                    },
-                  ),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
           ),
         ],
+      ),
+    );
+  }
+
+  // --- MODAL: DIRECT RESCHEDULE BY STAFF ---
+  void _showEmployeeDirectRescheduleModal(Map<String, dynamic> appt, AppColors themeColors) {
+    final id = (appt['_id'] ?? appt['id'] ?? '').toString();
+    final clientName = (appt['customerName'] ?? appt['name'] ?? 'Client').toString();
+    final service = (appt['service'] ?? appt['serviceName'] ?? 'Service').toString();
+
+    DateTime selectedDate = DateTime.now();
+    TimeOfDay selectedTime = const TimeOfDay(hour: 11, minute: 30);
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: themeColors.cardSurface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Icon(Icons.edit_calendar, color: themeColors.warning, size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Reschedule Appointment', style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$service for $clientName', style: TextStyle(color: themeColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 14),
+                ListTile(
+                  tileColor: themeColors.inputBackground,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  leading: Icon(Icons.calendar_today, color: themeColors.primary, size: 18),
+                  title: Text(
+                    'Date: ${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}',
+                    style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  trailing: const Icon(Icons.arrow_drop_down, size: 20),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: ctx,
+                      initialDate: selectedDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 90)),
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedDate = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                ListTile(
+                  tileColor: themeColors.inputBackground,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  leading: Icon(Icons.access_time, color: themeColors.primary, size: 18),
+                  title: Text(
+                    'Time: ${selectedTime.format(ctx)}',
+                    style: TextStyle(color: themeColors.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  trailing: const Icon(Icons.arrow_drop_down, size: 20),
+                  onTap: () async {
+                    final picked = await showTimePicker(
+                      context: ctx,
+                      initialTime: selectedTime,
+                    );
+                    if (picked != null) {
+                      setDialogState(() => selectedTime = picked);
+                    }
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: 'Reason / note (e.g. Missed slot reschedule)',
+                    hintStyle: TextStyle(color: themeColors.textMuted, fontSize: 12),
+                    filled: true,
+                    fillColor: themeColors.inputBackground,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel', style: TextStyle(color: themeColors.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: themeColors.warning, foregroundColor: Colors.black),
+              onPressed: () async {
+                final dateStr = '${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}';
+                final hour = selectedTime.hourOfPeriod == 0 ? 12 : selectedTime.hourOfPeriod;
+                final period = selectedTime.period == DayPeriod.am ? 'AM' : 'PM';
+                final timeStr = '${hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')} $period';
+                Navigator.pop(ctx);
+
+                final res = await ApiService.rescheduleEmployeeAppointment(
+                  id,
+                  dateStr,
+                  timeStr,
+                  reason: reasonController.text.trim(),
+                );
+
+                // In-place local update so UI reflects change instantly without page reload
+                setState(() {
+                  final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['id'] ?? a['bookingId']).toString() == id);
+                  if (idx != -1) {
+                    final updated = Map<String, dynamic>.from(_appointments[idx]);
+                    updated['status'] = 'Confirmed';
+                    updated['appointmentDate'] = dateStr;
+                    updated['appointmentTime'] = timeStr;
+                    updated['rescheduleRequested'] = false;
+                    updated['rescheduleData'] = null;
+                    _appointments[idx] = updated;
+                  }
+                });
+
+                if (mounted) {
+                  if (res['success'] == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Appointment rescheduled to $dateStr at $timeStr! ✅'),
+                        backgroundColor: themeColors.success,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(res['message'] ?? 'Failed to reschedule appointment'),
+                        backgroundColor: themeColors.error,
+                      ),
+                    );
+                  }
+                  _loadStaffData(quiet: true);
+                }
+              },
+              child: const Text('Confirm Reschedule'),
+            ),
+          ],
+        ),
       ),
     );
   }

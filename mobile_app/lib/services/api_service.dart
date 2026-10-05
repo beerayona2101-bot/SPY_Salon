@@ -1098,16 +1098,48 @@ class ApiService {
   }
 
   /// Staff/Admin Respond & Confirm Reschedule Request
-  static Future<Map<String, dynamic>> respondReschedule(String id, String action, {String? rejectionReason}) async {
+  static Future<Map<String, dynamic>> respondReschedule(
+    String id,
+    String action, {
+    String? rejectionReason,
+    String? newDate,
+    String? newTime,
+  }) async {
     try {
-      final response = await _requestWithRetry(
+      final user = await getStoredUser();
+      final role = (user?['role'] ?? '').toString().toLowerCase();
+      final isStaff = role == 'employee' || role == 'stylist' || role == 'barber';
+
+      final primaryEndpoint = isStaff
+          ? '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/reschedule-respond'
+          : '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule-respond';
+
+      final payload = {
+        'action': action,
+        if (rejectionReason != null && rejectionReason.isNotEmpty) 'rejectionReason': rejectionReason,
+        if (newDate != null && newDate.isNotEmpty) 'newDate': newDate,
+        if (newTime != null && newTime.isNotEmpty) 'newTime': newTime,
+      };
+
+      var response = await _requestWithRetry(
         'PUT',
-        '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule-respond',
-        body: json.encode({
-          'action': action,
-          if (rejectionReason != null) 'rejectionReason': rejectionReason,
-        }),
+        primaryEndpoint,
+        body: json.encode(payload),
       );
+
+      // Fallback to alternate endpoint if unauthorized or endpoint differs
+      if (response == null || response.statusCode == 403 || response.statusCode == 404) {
+        final fallbackEndpoint = isStaff
+            ? '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule-respond'
+            : '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/reschedule-respond';
+
+        response = await _requestWithRetry(
+          'PUT',
+          fallbackEndpoint,
+          body: json.encode(payload),
+        );
+      }
+
       if (response != null) {
         final result = json.decode(response.body);
         if (response.statusCode == 200 || response.statusCode == 201) {
@@ -1118,7 +1150,60 @@ class ApiService {
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }
-    return {'success': false, 'message': 'Network connection failed.'};
+    return {'success': false, 'message': 'No response from server'};
+  }
+
+  /// Staff/Admin Direct Reschedule for Appointment (including missed / past date / No Show)
+  static Future<Map<String, dynamic>> rescheduleEmployeeAppointment(
+    String id,
+    String newDate,
+    String newTime, {
+    String? reason,
+  }) async {
+    try {
+      final user = await getStoredUser();
+      final role = (user?['role'] ?? '').toString().toLowerCase();
+      final isStaff = role == 'employee' || role == 'stylist' || role == 'barber';
+
+      final primaryEndpoint = isStaff
+          ? '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/reschedule'
+          : '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule';
+
+      final payload = {
+        'newDate': newDate,
+        'newTime': newTime,
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      };
+
+      var response = await _requestWithRetry(
+        'PUT',
+        primaryEndpoint,
+        body: json.encode(payload),
+      );
+
+      if (response == null || response.statusCode == 403 || response.statusCode == 404) {
+        final fallbackEndpoint = isStaff
+            ? '${ApiConfig.baseUrl}/api/v1/admin/appointments/$id/reschedule'
+            : '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/reschedule';
+
+        response = await _requestWithRetry(
+          'PUT',
+          fallbackEndpoint,
+          body: json.encode(payload),
+        );
+      }
+
+      if (response != null) {
+        final result = json.decode(response.body);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': result['data'] ?? result};
+        }
+        return {'success': false, 'message': result['message'] ?? 'Failed to reschedule appointment'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+    return {'success': false, 'message': 'No response from server'};
   }
 
   /// Seat Direct Walk-In Client by Staff

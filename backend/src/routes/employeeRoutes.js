@@ -13,6 +13,8 @@ router.get('/appointments', employeeController.getAssignedAppointments);
 router.post('/appointments/walkin', validateRequest({ required: ['customerName', 'service'] }), employeeController.createEmployeeWalkIn);
 router.post('/walk-in', validateRequest({ required: ['customerName', 'service'] }), employeeController.createEmployeeWalkIn);
 router.put('/appointments/:id/status', employeeController.updateAppointmentStatus);
+router.put('/appointments/:id/reschedule-respond', employeeController.respondReschedule);
+router.put('/appointments/:id/reschedule', employeeController.rescheduleAppointment);
 
 // Staff Manual Customer Entry
 router.get('/customers', employeeController.getCustomersForStaff);

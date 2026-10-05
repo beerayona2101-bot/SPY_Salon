@@ -145,6 +145,84 @@ exports.updateAppointmentStatus = async (req, res, next) => {
   }
 };
 
+// Staff / Employee respond to Reschedule Request
+exports.respondReschedule = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { action, rejectionReason, newDate, newTime } = req.body;
+    const employeeName = req.user.name || 'Specialist';
+
+    const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { bookingId: id };
+    const appointment = await Appointment.findOne(query);
+    if (!appointment) throw ApiError.notFound('Appointment record not found');
+
+    // Ownership check: must be assigned to this specialist, any available specialist, or admin/manager
+    const specFirstName = employeeName.split(' ')[0].toLowerCase();
+    const appSpecName = (appointment.specialistName || '').toLowerCase();
+    const isAssigned = appSpecName.includes(specFirstName) || 
+                       appSpecName.includes('any available specialist') || 
+                       ['admin', 'manager', 'receptionist'].includes(req.user.role);
+
+    if (!isAssigned) {
+      throw ApiError.forbidden('You are not authorized to respond to this appointment reschedule request.');
+    }
+
+    const adminService = require('../services/adminService');
+    const updated = await adminService.respondReschedule(
+      appointment._id.toString(),
+      action || 'Approve',
+      rejectionReason,
+      {
+        name: req.user.name || 'Specialist',
+        role: req.user.role || 'employee',
+        newDate,
+        newTime
+      }
+    );
+
+    return ApiResponse.success(res, updated, `Reschedule request ${action === 'Reject' ? 'declined' : 'approved'} successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff / Employee directly Reschedule Appointment (including missed / past date / No Show)
+exports.rescheduleAppointment = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { newDate, newTime, reason } = req.body;
+    const employeeName = req.user.name || 'Specialist';
+
+    const query = mongoose.Types.ObjectId.isValid(id) ? { _id: id } : { bookingId: id };
+    const appointment = await Appointment.findOne(query);
+    if (!appointment) throw ApiError.notFound('Appointment record not found');
+
+    // Ownership check: must be assigned to this specialist, any available specialist, or admin/manager
+    const specFirstName = employeeName.split(' ')[0].toLowerCase();
+    const appSpecName = (appointment.specialistName || '').toLowerCase();
+    const isAssigned = appSpecName.includes(specFirstName) || 
+                       appSpecName.includes('any available specialist') || 
+                       ['admin', 'manager', 'receptionist'].includes(req.user.role);
+
+    if (!isAssigned) {
+      throw ApiError.forbidden('You are not authorized to reschedule this appointment.');
+    }
+
+    const adminService = require('../services/adminService');
+    const updated = await adminService.rescheduleAppointment(
+      appointment._id.toString(),
+      newDate,
+      newTime,
+      reason,
+      { name: req.user.name || 'Specialist', role: req.user.role || 'employee' }
+    );
+
+    return ApiResponse.success(res, updated, `Appointment rescheduled successfully to ${updated.appointmentDate} at ${updated.appointmentTime}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 
 // Asia/Kolkata Timezone Helpers for Attendance

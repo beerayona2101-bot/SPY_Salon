@@ -53,6 +53,7 @@ router.delete('/memberships/:id', adminController.deleteMembership);
 router.get('/appointments', adminController.getAdminAppointments);
 router.post('/appointments', validateRequest({ required: ['customerName', 'customerPhone', 'service'] }), adminController.createAdminAppointment);
 router.put('/appointments/:id/reschedule-respond', adminController.respondReschedule);
+router.put('/appointments/:id/reschedule', adminController.rescheduleAppointment);
 router.put('/appointments/:id', adminController.updateAppointmentStatus);
 router.delete('/appointments/:id', adminController.deleteAppointment);
 

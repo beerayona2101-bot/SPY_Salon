@@ -154,10 +154,20 @@ exports.requestReschedule = async (req, res, next) => {
       throw ApiError.badRequest(`Cannot request reschedule for appointment with status '${currentStatus}'.`);
     }
 
+    const { getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
+    const todayKolkata = getKolkataCurrentDateStr();
+
+    let targetDate = newDate;
+    if (!targetDate || targetDate < todayKolkata) {
+      targetDate = todayKolkata;
+    }
+
+    const targetTime = newTime || appointment.appointmentTime || '11:30 AM';
+
     appointment.rescheduleRequested = true;
     appointment.rescheduleData = {
-      requestedDate: newDate || appointment.appointmentDate,
-      requestedTime: newTime || appointment.appointmentTime,
+      requestedDate: targetDate,
+      requestedTime: targetTime,
       reason: reason || 'Customer requested date/time change',
       requestedAt: new Date().toISOString()
     };

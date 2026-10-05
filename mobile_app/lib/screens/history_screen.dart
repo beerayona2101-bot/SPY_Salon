@@ -29,7 +29,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadHistoryData({bool quiet = false}) async {
-    if (!quiet) {
+    if (!quiet && _appointments.isEmpty) {
       setState(() => _isLoading = true);
     }
 
@@ -689,10 +689,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 });
                 if (mounted) {
                   if (res['success'] == true) {
+                    setState(() {
+                      final idx = _appointments.indexWhere((a) => (a['_id'] ?? a['bookingId'] ?? '').toString() == id);
+                      if (idx != -1) {
+                        final updated = Map<String, dynamic>.from(_appointments[idx]);
+                        updated['status'] = 'Reschedule Requested';
+                        updated['rescheduleRequested'] = true;
+                        updated['rescheduleData'] = {
+                          'requestedDate': dateStr,
+                          'requestedTime': timeStr,
+                          'reason': 'Customer requested reschedule for missed appointment',
+                        };
+                        _appointments[idx] = updated;
+                      }
+                    });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Reschedule request submitted successfully! Staff will confirm shortly.')),
                     );
-                    _loadHistoryData();
+                    _loadHistoryData(quiet: true);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(res['message'] ?? 'Failed to submit reschedule request.')),

@@ -472,9 +472,41 @@ exports.respondReschedule = async (req, res, next) => {
       throw ApiError.forbidden('Unauthorized access to this appointment.');
     }
 
-    const { action, rejectionReason } = req.body;
-    const updated = await adminService.respondReschedule(req.params.id, action || 'Approve', rejectionReason);
+    const { action, rejectionReason, newDate, newTime } = req.body;
+    const updated = await adminService.respondReschedule(
+      req.params.id,
+      action || 'Approve',
+      rejectionReason,
+      {
+        name: req.user.name || 'Admin',
+        role: req.user.role || 'admin',
+        newDate,
+        newTime
+      }
+    );
     return ApiResponse.success(res, updated, `Reschedule request ${action === 'Reject' ? 'rejected' : 'approved'}`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.rescheduleAppointment = async (req, res, next) => {
+  try {
+    const app = await Appointment.findById(req.params.id);
+    if (!app) throw ApiError.notFound('Appointment not found');
+    if (req.user.role !== 'admin' && String(app.branchId) !== String(req.user.branchId)) {
+      throw ApiError.forbidden('Unauthorized access to this appointment.');
+    }
+
+    const { newDate, newTime, reason } = req.body;
+    const updated = await adminService.rescheduleAppointment(
+      req.params.id,
+      newDate,
+      newTime,
+      reason,
+      { name: req.user.name || 'Admin', role: req.user.role || 'admin' }
+    );
+    return ApiResponse.success(res, updated, `Appointment rescheduled successfully to ${updated.appointmentDate} at ${updated.appointmentTime}`);
   } catch (error) {
     next(error);
   }

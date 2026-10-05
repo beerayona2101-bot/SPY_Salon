@@ -48,25 +48,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _completeAutoPlay();
       });
-    } else {
-      _startAutoPlay();
     }
-  }
-
-  void _startAutoPlay() {
-    _autoPlayTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
-      if (!mounted || _isNavigating) return;
-
-      if (_currentPage < _onboardingData.length - 1) {
-        _pageController.nextPage(
-          duration: const Duration(milliseconds: 380),
-          curve: Curves.easeInOutCubic,
-        );
-      } else {
-        _autoPlayTimer?.cancel();
-        _completeAutoPlay();
-      }
-    });
   }
 
   void _completeAutoPlay() {
@@ -76,14 +58,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool('has_seen_onboarding', true);
-    });
+    }).catchError((_) {});
 
-    if (widget.targetDashboard != null) {
-      Navigator.pushReplacement(
-        context,
-        LuxuryPageRoute(page: widget.targetDashboard!),
-      );
-    }
+    final destination = widget.targetDashboard ?? const CustomerDashboardScreen();
+    Navigator.pushReplacement(
+      context,
+      LuxuryPageRoute(page: destination),
+    );
   }
 
   @override
@@ -95,24 +76,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _navigateToLoginOrDashboard() {
     if (_isNavigating || !mounted) return;
+    _isNavigating = true;
     _autoPlayTimer?.cancel();
 
     SharedPreferences.getInstance().then((prefs) {
       prefs.setBool('has_seen_onboarding', true);
-    });
+    }).catchError((_) {});
 
-    if (widget.targetDashboard != null) {
-      _completeAutoPlay();
-      return;
-    }
-
-    _isNavigating = true;
-
-    // After onboarding is completed or skipped by a guest user, navigate directly to CustomerDashboardScreen (Home & Services)
+    final destination = widget.targetDashboard ?? const CustomerDashboardScreen();
     Navigator.pushReplacement(
       context,
       LuxuryPageRoute(
-        page: const CustomerDashboardScreen(),
+        page: destination,
       ),
     );
   }

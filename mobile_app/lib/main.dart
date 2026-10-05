@@ -10,7 +10,11 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   FcmService.setNavigatorKey(appNavigatorKey);
-  await FcmService.initialize();
+
+  // Initialize FCM asynchronously in background so splash renders instantly
+  FcmService.initialize().catchError((e) {
+    debugPrint('[Main] FCM background init notice: $e');
+  });
 
   final themeController = await ThemeController.loadInitial();
 
@@ -23,22 +27,43 @@ void main() async {
 }
 
 class SpySalonApp extends StatelessWidget {
-  const SpySalonApp({super.key});
+  final ThemeController? themeController;
+  const SpySalonApp({super.key, this.themeController});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeController>(
-      builder: (context, themeController, child) {
-        return MaterialApp(
-          navigatorKey: appNavigatorKey,
-          title: 'Spy_Salon',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: themeController.themeMode,
-          home: const SplashScreen(),
+    return Builder(
+      builder: (ctx) {
+        ThemeController? controller;
+        try {
+          controller = Provider.of<ThemeController>(ctx, listen: true);
+        } catch (_) {
+          controller = themeController;
+        }
+
+        if (controller != null) {
+          return _buildMaterialApp(controller.themeMode);
+        }
+
+        return ChangeNotifierProvider<ThemeController>(
+          create: (_) => ThemeController(ThemeMode.dark),
+          child: Consumer<ThemeController>(
+            builder: (c, tc, _) => _buildMaterialApp(tc.themeMode),
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildMaterialApp(ThemeMode mode) {
+    return MaterialApp(
+      navigatorKey: appNavigatorKey,
+      title: 'Spy_Salon',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: mode,
+      home: const SplashScreen(),
     );
   }
 }
