@@ -7,7 +7,7 @@ import 'theme/theme_controller.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
   FcmService.setNavigatorKey(appNavigatorKey);
 
@@ -16,7 +16,7 @@ void main() async {
     debugPrint('[Main] FCM background init notice: $e');
   });
 
-  final themeController = await ThemeController.loadInitial();
+  final themeController = ThemeController();
 
   runApp(
     ChangeNotifierProvider<ThemeController>.value(
