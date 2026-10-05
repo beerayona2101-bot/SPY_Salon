@@ -1330,9 +1330,11 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
               ),
             ],
 
-            // 1. Luxury Welcome Card (Matches Home Page design)
-            _buildWelcomeCard(themeColors),
-            const SizedBox(height: 18),
+            // 1. Luxury Welcome Card (Only displayed when customer is logged in)
+            if (_isLoggedIn) ...[
+              _buildWelcomeCard(themeColors),
+              const SizedBox(height: 18),
+            ],
 
             // 2. Upcoming Appointment Live Card (if exists)
             if (nextAppointment != null) ...[
@@ -1727,8 +1729,10 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     );
   }
 
-  // --- LUXURY WELCOME BANNER CARD (Home Page Header) ---
+  // --- LUXURY WELCOME BANNER CARD (Home Page Header for Authenticated Customers) ---
   Widget _buildWelcomeCard(AppColors themeColors) {
+    if (!_isLoggedIn) return const SizedBox.shrink();
+
     final primaryColor = themeColors.primary;
     final cardBg = themeColors.cardSurface;
 
