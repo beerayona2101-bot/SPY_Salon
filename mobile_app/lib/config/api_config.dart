@@ -8,11 +8,11 @@ class ApiConfig {
   static const String productionUrl = 'https://hairsalon.speshway.site';
 
   // Workstation LAN IP discovered on local network for development
-  static const String lanIp = '192.168.1.6';
+  static const String lanIp = '192.168.1.12';
   
   static String? _activeBaseUrl;
 
-  /// Default base URL resolving local server on desktop/web/emulators and LAN on devices
+  /// Default base URL resolving local server on desktop/web and production HTTPS backend on mobile devices
   static String get defaultBaseUrl {
     if (kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
@@ -20,10 +20,8 @@ class ApiConfig {
         defaultTargetPlatform == TargetPlatform.linux) {
       return 'http://localhost:$port';
     }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:$port';
-    }
-    return 'http://$lanIp:$port';
+    // On mobile devices, connect directly to the live production server
+    return productionUrl;
   }
 
   /// Normalizes user-provided or env URL (strips trailing slashes & redundant /api/v1 suffixes)
@@ -111,21 +109,21 @@ class ApiConfig {
   static List<String> get candidateUrls {
     final list = <String>[];
     
+    // Deployed Production HTTPS Backend URL (always reachable on mobile & web)
+    list.add(productionUrl);
+
     if (_activeBaseUrl != null && _activeBaseUrl!.trim().isNotEmpty) {
       list.add(_activeBaseUrl!.trim());
     }
 
     // Local host and LAN IP endpoints for instant local development
+    list.add('http://$lanIp:$port');
     list.add('http://localhost:$port');
     list.add('http://127.0.0.1:$port');
-    list.add('http://$lanIp:$port');
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       list.add('http://10.0.2.2:$port');
     }
-
-    // Deployed Production HTTPS Backend URL
-    list.add(productionUrl);
     
     // Deduplicate maintaining insertion order
     final unique = <String>[];
