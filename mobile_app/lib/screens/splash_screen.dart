@@ -207,7 +207,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Widget build(BuildContext context) {
     final themeColors = AppColors.of(context);
     final primaryColor = themeColors.primary;
-    final roseGold = themeColors.roseSecondary;
     final bg = themeColors.deepestBackground;
 
     return Scaffold(
@@ -300,28 +299,14 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     opacity: _textFadeAnim,
                     child: SlideTransition(
                       position: _textSlideAnim,
-                      child: Column(
-                        children: [
-                          Text(
-                            'SPY SALON',
-                            style: TextStyle(
-                              color: themeColors.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 4.0,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'JUBILEE HILLS STUDIO',
-                            style: TextStyle(
-                              color: roseGold,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 2.8,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        'SPY SALON',
+                        style: TextStyle(
+                          color: themeColors.textPrimary,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 4.0,
+                        ),
                       ),
                     ),
                   ),
