@@ -131,6 +131,13 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     for (final raw in _appointments) {
       if (raw is! Map) continue;
       final appt = Map<String, dynamic>.from(raw);
+      final id = (appt['_id'] ?? appt['id'] ?? appt['bookingId'] ?? '').toString().trim();
+      final service = (appt['service'] ?? appt['serviceName'] ?? '').toString().trim();
+      final client = (appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? '').toString().trim();
+      
+      // If appointment is completely empty/corrupt, skip it
+      if (id.isEmpty && service.isEmpty && client.isEmpty) continue;
+
       final rawDate = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'];
       String dateKey = _normalizeDateString(rawDate);
       if (dateKey.isEmpty) {
@@ -947,13 +954,24 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     final cardBg = themeColors.cardSurface;
     final buttonTextColor = themeColors.buttonTextPrimary;
 
-    final id = (appt['_id'] ?? appt['id'] ?? appt['bookingId'] ?? '').toString();
-    final clientName = (appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? 'Client').toString();
-    final phone = (appt['customerPhone'] ?? appt['phone'] ?? '').toString();
-    final service = (appt['service'] ?? appt['serviceName'] ?? 'Hair Styling').toString();
+    final id = (appt['_id'] ?? appt['id'] ?? appt['bookingId'] ?? '').toString().trim();
+    String clientName = (appt['customerName'] ?? appt['name'] ?? appt['clientName'] ?? appt['user']?['name'] ?? '').toString().trim();
+    if (clientName.isEmpty) clientName = 'Valued Client';
+
+    final phone = (appt['customerPhone'] ?? appt['phone'] ?? appt['user']?['phone'] ?? '').toString().trim();
+    
+    String service = (appt['service'] ?? appt['serviceName'] ?? appt['treatment'] ?? '').toString().trim();
+    if (service.isEmpty) service = 'Salon Service';
+
     final rawDate = appt['appointmentDate'] ?? appt['date'] ?? appt['bookingDate'] ?? '';
-    final date = _normalizeDateString(rawDate);
-    final time = (appt['appointmentTime'] ?? appt['time'] ?? appt['bookingTimeFormatted'] ?? '12:00 PM').toString();
+    String date = _normalizeDateString(rawDate);
+    if (date.isEmpty) {
+      final now = DateTime.now();
+      date = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    }
+
+    String time = (appt['appointmentTime'] ?? appt['time'] ?? appt['bookingTimeFormatted'] ?? '').toString().trim();
+    if (time.isEmpty) time = '12:00 PM';
     final status = (appt['status'] ?? 'pending').toString().toLowerCase();
     final rescheduleData = appt['rescheduleData'] is Map ? (appt['rescheduleData'] as Map) : null;
     final requestedDate = (rescheduleData?['requestedDate'] ?? appt['rescheduleDate'] ?? '').toString().trim();
@@ -1366,15 +1384,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         _appointments[idx] = updated;
                       }
                     });
-                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Accepted'});
+                    final res = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Accepted'});
                     if (mounted) {
-                      if (success) {
+                      if (res['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: const Text('Appointment accepted! ✅'), backgroundColor: themeColors.success),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: const Text('Failed to accept appointment'), backgroundColor: themeColors.error),
+                          SnackBar(content: Text(res['message'] ?? 'Failed to accept appointment'), backgroundColor: themeColors.error),
                         );
                       }
                     }
@@ -1394,15 +1412,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         _appointments[idx] = updated;
                       }
                     });
-                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Rejected'});
+                    final res = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Staff_Rejected'});
                     if (mounted) {
-                      if (success) {
+                      if (res['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: const Text('Appointment declined & reassigned.'), backgroundColor: themeColors.warning),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: const Text('Failed to decline appointment'), backgroundColor: themeColors.error),
+                          SnackBar(content: Text(res['message'] ?? 'Failed to decline appointment'), backgroundColor: themeColors.error),
                         );
                       }
                     }
@@ -1423,15 +1441,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         _appointments[idx] = updated;
                       }
                     });
-                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'In Progress'});
+                    final res = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'In Progress'});
                     if (mounted) {
-                      if (success) {
+                      if (res['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: const Text('Service started! ✂️'), backgroundColor: themeColors.success),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: const Text('Failed to start service'), backgroundColor: themeColors.error),
+                          SnackBar(content: Text(res['message'] ?? 'Failed to start service'), backgroundColor: themeColors.error),
                         );
                       }
                     }
@@ -1453,15 +1471,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                         _appointments[idx] = updated;
                       }
                     });
-                    final success = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Completed', 'paymentStatus': 'Paid'});
+                    final res = await ApiService.updateEmployeeAppointmentStatus(id, {'status': 'Completed', 'paymentStatus': 'Paid'});
                     if (mounted) {
-                      if (success) {
+                      if (res['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: const Text('Service marked Completed & Paid! ✅'), backgroundColor: themeColors.success),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: const Text('Failed to complete service'), backgroundColor: themeColors.error),
+                          SnackBar(content: Text(res['message'] ?? 'Failed to complete service'), backgroundColor: themeColors.error),
                         );
                       }
                     }

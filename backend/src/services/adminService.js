@@ -866,8 +866,9 @@ class AdminService {
     }
 
     if (targetStatus === 'In Progress') {
+      const isStaffOrAdmin = ['employee', 'stylist', 'receptionist', 'barber', 'admin', 'manager'].includes((updaterInfo.role || '').toLowerCase());
       const hasStarted = hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime);
-      if (!hasStarted) {
+      if (!hasStarted && !isStaffOrAdmin) {
         throw ApiError.badRequest(
           `Cannot set appointment to In Progress before its scheduled start time (${appointment.appointmentDate} at ${appointment.appointmentTime}).`
         );
@@ -875,8 +876,9 @@ class AdminService {
     }
 
     if (targetStatus === 'Completed') {
+      const isStaffOrAdmin = ['employee', 'stylist', 'receptionist', 'barber', 'admin', 'manager'].includes((updaterInfo.role || '').toLowerCase());
       const hasStarted = hasAppointmentStarted(appointment.appointmentDate, appointment.appointmentTime);
-      if (!hasStarted) {
+      if (!hasStarted && !isStaffOrAdmin) {
         throw ApiError.badRequest(
           `Cannot mark appointment as Completed before its scheduled start time (${appointment.appointmentDate} at ${appointment.appointmentTime}).`
         );

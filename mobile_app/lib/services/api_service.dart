@@ -1062,18 +1062,28 @@ class ApiService {
   }
 
   /// Update Appointment Status (In Progress, Completed, Cancelled) & Notes
-  static Future<bool> updateEmployeeAppointmentStatus(String id, Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> updateEmployeeAppointmentStatus(String id, Map<String, dynamic> body) async {
     try {
       final response = await _requestWithRetry(
         'PUT',
         '${ApiConfig.baseUrl}/api/v1/employee/appointments/$id/status',
         body: json.encode(body),
       );
-      return response != null && response.statusCode == 200;
+      if (response != null) {
+        Map<String, dynamic> data = {};
+        try {
+          data = json.decode(response.body);
+        } catch (_) {}
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return {'success': true, 'data': data['data'] ?? data, 'message': data['message'] ?? 'Status updated successfully'};
+        }
+        return {'success': false, 'message': data['message'] ?? 'Failed to update status (${response.statusCode})'};
+      }
     } catch (e) {
       debugPrint('[ApiService] Update employee appointment error: $e');
-      return false;
+      return {'success': false, 'message': e.toString()};
     }
+    return {'success': false, 'message': 'Network connection failed.'};
   }
 
   /// Customer Request Reschedule for Appointment (including Hold/No-Show)
