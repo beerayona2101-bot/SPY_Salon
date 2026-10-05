@@ -17,24 +17,29 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _animController;
+  late AnimationController _pulseController;
   late Animation<double> _logoFadeAnim;
   late Animation<double> _logoScaleAnim;
   late Animation<double> _textFadeAnim;
   late Animation<Offset> _textSlideAnim;
+  late Animation<double> _glowAnim;
+
+  String _statusMessage = 'Initializing luxury studio...';
+  double _loadingProgress = 0.20;
 
   @override
   void initState() {
     super.initState();
 
-    // Intro entrance animation (~1200ms total)
+    // Intro entrance animation (~1000ms total)
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1000),
     );
 
-    // 1. Logo fades in and scales smoothly (0ms - 800ms)
+    // 1. Logo fades in and scales smoothly
     _logoFadeAnim = CurvedAnimation(
       parent: _animController,
       curve: const Interval(0.0, 0.65, curve: Curves.easeOut),
@@ -47,20 +52,30 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       ),
     );
 
-    // 2. Brand texts fade and slide up subtly (400ms - 1000ms)
+    // 2. Brand texts fade and slide up subtly
     _textFadeAnim = CurvedAnimation(
       parent: _animController,
-      curve: const Interval(0.35, 0.90, curve: Curves.easeIn),
+      curve: const Interval(0.30, 0.90, curve: Curves.easeIn),
     );
 
     _textSlideAnim = Tween<Offset>(
-      begin: const Offset(0.0, 0.20),
+      begin: const Offset(0.0, 0.18),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _animController,
-        curve: const Interval(0.35, 0.90, curve: Curves.easeOutCubic),
+        curve: const Interval(0.30, 0.90, curve: Curves.easeOutCubic),
       ),
+    );
+
+    // 3. Continuous subtle breathing glow for the gold emblem
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _glowAnim = Tween<double>(begin: 0.40, end: 0.90).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
     _animController.forward();
@@ -70,6 +85,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void dispose() {
     _animController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -79,12 +95,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     Widget? targetDashboard;
 
     try {
-      // Step 1: Base URL configuration
+      // Stage 1: Local environment & credentials check
       try {
         await ApiConfig.loadSavedBaseUrl().timeout(const Duration(milliseconds: 800));
       } catch (_) {}
 
-      // Step 2: Read stored authentication state and user details
       String? token;
       Map<String, dynamic>? user;
 
@@ -92,10 +107,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         token = await ApiService.getStoredToken().timeout(const Duration(milliseconds: 800));
         user = await ApiService.getStoredUser().timeout(const Duration(milliseconds: 800));
       } catch (e) {
-        debugPrint('[SplashScreen] Auth read warning: $e');
+        debugPrint('[SplashScreen] Auth read notice: $e');
       }
 
-      // Step 3: Background non-blocking network probe and sync
+      if (mounted) {
+        setState(() {
+          _loadingProgress = 0.50;
+          _statusMessage = 'Connecting to SPY Salon server...';
+        });
+      }
+
+      await Future.delayed(const Duration(milliseconds: 450));
+
+      // Stage 2: Background network discovery & realtime sync
       ApiService.checkHealth().timeout(const Duration(milliseconds: 1200)).catchError((e) {
         debugPrint('[SplashScreen] Backend health probe notice: $e');
         return <String, dynamic>{'connected': false};
@@ -109,7 +133,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         debugPrint('[SplashScreen] FCM token sync notice: $e');
       });
 
-      // Step 4: Resolve authenticated state and destination role
+      if (mounted) {
+        setState(() {
+          _loadingProgress = 0.85;
+          _statusMessage = 'Loading beauty services & stylists...';
+        });
+      }
+
+      await Future.delayed(const Duration(milliseconds: 450));
+
+      // Stage 3: Resolve role-based navigation destination
       if (token != null && token.isNotEmpty && user != null) {
         final role = (user['role'] ?? 'customer').toString().toLowerCase();
         final isAdmin = role == 'admin' || role == 'manager';
@@ -130,19 +163,32 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         isLoggedIn = false;
         targetDashboard = null;
       }
-    } catch (e) {
-      debugPrint('[SplashScreen] Initialization notice: $e');
-      isLoggedIn = false;
-      targetDashboard = null;
-    } finally {
-      // Step 5: Enforce splash duration ~1.8s (1.5–2.0s maximum)
+
+      if (mounted) {
+        setState(() {
+          _loadingProgress = 1.0;
+          _statusMessage = 'Welcome to SPY Salon ✨';
+        });
+      }
+
+      // Stage 4: Maintain smooth presentation duration (~2.2 seconds total)
       final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-      const targetSplashDuration = 1800;
+      const targetSplashDuration = 2200;
       final remainingDelay = targetSplashDuration - elapsed;
       if (remainingDelay > 0) {
         await Future.delayed(Duration(milliseconds: remainingDelay));
       }
-
+    } catch (e) {
+      debugPrint('[SplashScreen] Notice during splash initialization: $e');
+      isLoggedIn = false;
+      targetDashboard = null;
+      final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+      const targetSplashDuration = 2000;
+      final remainingDelay = targetSplashDuration - elapsed;
+      if (remainingDelay > 0) {
+        await Future.delayed(Duration(milliseconds: remainingDelay));
+      }
+    } finally {
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -193,56 +239,61 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             ),
           ),
 
-          // Central Luxury Branding
+          // Central Luxury Branding & Loading Experience
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo with Fade & Scale Animation
+                  // Logo with Fade & Scale Animation + Gold Glow Pulse
                   FadeTransition(
                     opacity: _logoFadeAnim,
                     child: ScaleTransition(
                       scale: _logoScaleAnim,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: primaryColor.withValues(alpha: 0.75),
-                            width: 2.0,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: primaryColor.withValues(alpha: 0.35),
-                              blurRadius: 30,
-                              spreadRadius: 4,
+                      child: AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, child) {
+                          return Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: primaryColor.withValues(alpha: _glowAnim.value),
+                                width: 2.2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryColor.withValues(alpha: _glowAnim.value * 0.5),
+                                  blurRadius: 32,
+                                  spreadRadius: 4,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => Center(
-                              child: Text(
-                                'S',
-                                style: TextStyle(
-                                  color: primaryColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 48,
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => Center(
+                                  child: Text(
+                                    'S',
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 48,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 26),
 
                   // Brand Text with Fade & Slide Up Animation
                   FadeTransition(
@@ -272,6 +323,81 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                           ),
                         ],
                       ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 48),
+
+                  // Elegant Luxury Horizontal Loading Progress Bar
+                  FadeTransition(
+                    opacity: _textFadeAnim,
+                    child: Container(
+                      width: 220,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: themeColors.cardBorder.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: AnimatedFractionallySizedBox(
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutCubic,
+                          widthFactor: _loadingProgress.clamp(0.05, 1.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  primaryColor.withValues(alpha: 0.7),
+                                  primaryColor,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryColor.withValues(alpha: 0.5),
+                                  blurRadius: 6,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Loading Progress Spinner & Dynamic Status Message
+                  FadeTransition(
+                    opacity: _textFadeAnim,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 13,
+                          height: 13,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.8,
+                            color: primaryColor.withValues(alpha: 0.85),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: Text(
+                            _statusMessage,
+                            key: ValueKey<String>(_statusMessage),
+                            style: TextStyle(
+                              color: themeColors.textMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
