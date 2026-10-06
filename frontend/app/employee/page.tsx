@@ -1365,7 +1365,7 @@ function EmployeeDashboardContent() {
                           queueFilter === 'All' ? 'rosegold-gradient-bg text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
-                        All Assigned ({appointments.length})
+                        All Assigned
                       </button>
                       <button
                         onClick={() => setQueueFilter('In Queue')}
@@ -1373,7 +1373,7 @@ function EmployeeDashboardContent() {
                           queueFilter === 'In Queue' ? 'bg-amber-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
-                        In Queue ({appointments.filter(isActiveQueueAppointment).length})
+                        In Queue
                       </button>
                       <button
                         onClick={() => setQueueFilter('Completed')}
@@ -1381,7 +1381,7 @@ function EmployeeDashboardContent() {
                           queueFilter === 'Completed' ? 'bg-green-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
-                        Completed ({appointments.filter(a => String(a.status).toLowerCase() === 'completed').length})
+                        Completed
                       </button>
                     </div>
                   </div>

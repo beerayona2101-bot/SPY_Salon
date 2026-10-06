@@ -1533,30 +1533,6 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // Calculate active queue counts for chips (exclude Completed, Cancelled, Rejected, No Show)
-    int countToday = 0;
-    int countUpcoming = 0;
-    int countPrevious = 0;
-
-    for (final raw in _appointments) {
-      if (raw is! Map) continue;
-      final status = raw['status']?.toString();
-      if (status == 'Completed' || status == 'Cancelled' || status == 'Staff_Rejected' || status == 'No Show') {
-        continue;
-      }
-      final rawDate = raw['appointmentDate'] ?? raw['date'] ?? raw['bookingDate'];
-      final norm = _normalizeDateString(rawDate);
-      final dt = DateTime.tryParse(norm) ?? today;
-      final diff = DateTime(dt.year, dt.month, dt.day).difference(today).inDays;
-      if (diff == 0) {
-        countToday++;
-      } else if (diff > 0) {
-        countUpcoming++;
-      } else {
-        countPrevious++;
-      }
-    }
-
     // Sort date keys: Today (priority 0) -> Upcoming ascending (priority 1) -> Previous descending (priority 2)
     final sortedKeys = grouped.keys.toList()
       ..sort((keyA, keyB) {
@@ -1665,10 +1641,10 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('All', activeCount > 0 ? 'All Dates ($activeCount)' : 'All Dates', themeColors),
-                      _buildFilterChip('Today', countToday > 0 ? 'Today ($countToday)' : 'Today', themeColors),
-                      _buildFilterChip('Upcoming', countUpcoming > 0 ? 'Upcoming ($countUpcoming)' : 'Upcoming', themeColors),
-                      _buildFilterChip('Previous', countPrevious > 0 ? 'Previous ($countPrevious)' : 'Previous', themeColors),
+                      _buildFilterChip('All', 'All Dates', themeColors),
+                      _buildFilterChip('Today', 'Today', themeColors),
+                      _buildFilterChip('Upcoming', 'Upcoming', themeColors),
+                      _buildFilterChip('Previous', 'Previous', themeColors),
                     ],
                   ),
                 ),
@@ -1717,7 +1693,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                                   onPressed: () => setState(() => _queueDateFilter = 'All'),
                                   icon: Icon(Icons.calendar_today, size: 16, color: primaryColor),
                                   label: Text(
-                                    'View All Active ($activeCount)',
+                                    'View All Dates',
                                     style: TextStyle(
                                       color: primaryColor,
                                       fontSize: 13,
