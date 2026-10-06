@@ -4,6 +4,7 @@
  */
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const Employee = require('../models/Employee');
 const Appointment = require('../models/Appointment');
 const ActivityLog = require('../models/ActivityLog');
 const Notification = require('../models/Notification');

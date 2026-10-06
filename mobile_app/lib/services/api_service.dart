@@ -978,47 +978,72 @@ class ApiService {
     String? branch,
     String? specialistName,
     String? customerEmail,
+    String? customerId,
     String? notes,
   }) async {
     try {
+      final user = await getStoredUser();
+      final effectiveCustomerId = customerId ?? user?['_id'] ?? user?['id'];
+      final effectiveEmail = (customerEmail != null && customerEmail.isNotEmpty) ? customerEmail : (user?['email'] ?? '');
+
+      final payload = <String, dynamic>{
+        'customerName': customerName,
+        'customerPhone': customerPhone,
+        'customerEmail': effectiveEmail,
+        'service': service,
+        'branch': (branch != null && branch.trim().isNotEmpty) ? branch.trim() : 'Jubilee Hills',
+        'specialistName': (specialistName != null && specialistName.trim().isNotEmpty) ? specialistName.trim() : 'Any Available Specialist',
+        'appointmentDate': appointmentDate,
+        'appointmentTime': appointmentTime,
+        'notes': notes ?? '',
+      };
+
+      if (effectiveCustomerId != null && effectiveCustomerId.toString().isNotEmpty) {
+        payload['customerId'] = effectiveCustomerId.toString();
+      }
+
+      debugPrint('[ApiService] Booking Request: Date=$appointmentDate Time=$appointmentTime Service="$service" Specialist="${payload['specialistName']}"');
+
       final response = await _requestWithRetry(
         'POST',
         ApiConfig.publicBookUrl,
-        body: json.encode({
-          'customerName': customerName,
-          'customerPhone': customerPhone,
-          'customerEmail': customerEmail ?? '',
-          'service': service,
-          'branch': (branch != null && branch.trim().isNotEmpty) ? branch.trim() : 'Jubilee Hills',
-          'specialistName': (specialistName != null && specialistName.trim().isNotEmpty) ? specialistName.trim() : 'Any Available Specialist',
-          'appointmentDate': appointmentDate,
-          'appointmentTime': appointmentTime,
-          'notes': notes ?? '',
-        }),
+        body: json.encode(payload),
       );
 
       if (response != null) {
-        final data = json.decode(response.body);
+        Map<String, dynamic> data = {};
+        try {
+          data = json.decode(response.body);
+        } catch (_) {}
+
         if (response.statusCode == 200 || response.statusCode == 201) {
-          return {'success': true, 'data': data['data'] ?? data, 'message': data['message'] ?? 'Appointment booked successfully!'};
+          final bookingData = data['data'] ?? data;
+          debugPrint('[ApiService] Booking Success: BookingId=${bookingData['bookingId']}');
+          return {
+            'success': true,
+            'data': bookingData,
+            'message': data['message'] ?? 'Appointment booked successfully!'
+          };
         } else {
-          return {'success': false, 'message': data['message'] ?? 'Booking failed'};
+          final serverMsg = data['message'] ?? data['error'] ?? 'Booking failed (${response.statusCode})';
+          debugPrint('[ApiService] Booking Failed [${response.statusCode}]: $serverMsg');
+          return {
+            'success': false,
+            'statusCode': response.statusCode,
+            'message': serverMsg
+          };
         }
       }
     } catch (e) {
-      debugPrint('[ApiService] Book appointment error: $e');
+      debugPrint('[ApiService] Book appointment network error: $e');
+      return {
+        'success': false,
+        'message': 'Network connection issue. Please check your internet connection and try again.'
+      };
     }
     return {
-      'success': true,
-      'message': 'Appointment confirmed in Demo Mode!',
-      'data': {
-        'bookingId': 'SPY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        'customerName': customerName,
-        'service': service,
-        'appointmentDate': appointmentDate,
-        'appointmentTime': appointmentTime,
-        'status': 'Confirmed',
-      }
+      'success': false,
+      'message': 'Unable to connect to the server. Please verify your connection and try again.'
     };
   }
 

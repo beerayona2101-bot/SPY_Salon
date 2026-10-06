@@ -241,6 +241,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       customerName: name,
       customerPhone: phone,
       customerEmail: widget.user?['email'],
+      customerId: widget.user?['_id'] ?? widget.user?['id'],
       service: _selectedService,
       branch: _selectedBranch,
       specialistName: _selectedSpecialist,
@@ -255,23 +256,33 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
 
-    messenger.showSnackBar(
-      SnackBar(
-        backgroundColor: res['success'] == true ? themeColors.success : themeColors.error,
-        content: Text(
-          res['success'] == true
-              ? 'Appointment booked successfully!'
-              : 'Booking Failed: ${res['message']}',
-        ),
-      ),
-    );
-
     if (res['success'] == true) {
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: themeColors.success,
+          content: Text(
+            res['message']?.toString() ?? 'Appointment booked successfully!',
+          ),
+        ),
+      );
+
       if (widget.isEmbedded) {
         widget.onBookingSuccess?.call();
       } else {
         nav.pop(true);
       }
+    } else {
+      final errorMessage = res['message']?.toString() ?? 'Failed to complete appointment booking. Please try again.';
+      messenger.showSnackBar(
+        SnackBar(
+          backgroundColor: themeColors.error,
+          content: Text(
+            errorMessage.startsWith('Booking Failed') ? errorMessage : 'Booking Failed: $errorMessage',
+          ),
+        ),
+      );
+      // Auto-refresh booked slots in case the slot was just taken by another customer
+      _refreshBookedSlots();
     }
   }
 
@@ -478,13 +489,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                         }
 
                                         return DropdownButtonFormField<String>(
+                                          isExpanded: true,
                                           initialValue: _selectedService,
                                           dropdownColor: isDark ? const Color(0xFF1E1916) : themeColors.cardSurface,
                                           style: TextStyle(color: themeColors.textPrimary),
                                           items: validTitles.map<DropdownMenuItem<String>>((title) {
                                             return DropdownMenuItem<String>(
                                               value: title,
-                                              child: Text(title),
+                                              child: Text(title, overflow: TextOverflow.ellipsis),
                                             );
                                           }).toList(),
                                           onChanged: (val) {
@@ -513,11 +525,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                               Text('Select Branch *', style: TextStyle(color: themeColors.textSecondary, fontSize: 12)),
                                               const SizedBox(height: 6),
                                               DropdownButtonFormField<String>(
+                                                isExpanded: true,
                                                 initialValue: _selectedBranch,
                                                 dropdownColor: isDark ? const Color(0xFF1E1916) : themeColors.cardSurface,
                                                 style: TextStyle(color: themeColors.textPrimary, fontSize: 13),
                                                 items: _branchOptions.map<DropdownMenuItem<String>>((b) {
-                                                  return DropdownMenuItem<String>(value: b, child: Text(b));
+                                                  return DropdownMenuItem<String>(value: b, child: Text(b, overflow: TextOverflow.ellipsis));
                                                 }).toList(),
                                                 onChanged: (val) {
                                                   if (val != null) setState(() => _selectedBranch = val);
@@ -556,6 +569,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                                                   }
 
                                                   return DropdownButtonFormField<String>(
+                                                    isExpanded: true,
                                                     initialValue: _selectedSpecialist,
                                                     dropdownColor: isDark ? const Color(0xFF1E1916) : themeColors.cardSurface,
                                                     style: TextStyle(color: themeColors.textPrimary, fontSize: 13),

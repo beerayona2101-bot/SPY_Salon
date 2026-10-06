@@ -20,6 +20,8 @@ const {
   checkSlotConflict, 
   isSpecialistOnLeave, 
   cleanSpecialistName,
+  generateSlotKeys,
+  getSlotsCoveredByAppointment,
   STANDARD_SALON_TIME_SLOTS 
 } = require('../utils/appointmentHelper');
 

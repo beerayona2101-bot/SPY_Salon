@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SPY Salon Enterprise WhatsApp Service
  * Production-ready asynchronous WhatsApp dispatch & notification management.
  * Supports Meta Cloud API, Twilio, UltraMsg, and Mock mode fallback.
@@ -572,11 +572,46 @@ const sendBroadcastWhatsAppMessage = async ({ recipients = [], message }) => {
   return { success: true, total: recipients.length, results };
 };
 
+const sendAppointmentConfirmation = async ({
+  customerName,
+  customerPhone,
+  bookingId,
+  service,
+  branch,
+  appointmentDate,
+  appointmentTime,
+  specialistName
+}) => {
+  const message = `✨ *SPY Salon — APPOINTMENT CONFIRMATION*
+
+Hello *${customerName || 'Valued Client'}*,
+
+Your appointment has been successfully confirmed at **SPY Salon**!
+
+🆔 *Booking ID:* ${bookingId}
+💇 *Service:* ${service}
+📅 *Date:* ${appointmentDate}
+⏰ *Time:* ${appointmentTime}
+👤 *Specialist:* ${specialistName || 'Assigned Specialist'}
+📍 *Location:* ${branch || 'Jubilee Hills Flagship'}
+
+📞 Contact Desk: +91 98765 43210
+✨ *SPY Salon Luxury Studio & Botanical Spa*`;
+
+  return await sendWhatsAppMessage({
+    to: customerPhone,
+    message,
+    enquiryId: `booking_${bookingId}`,
+    type: 'appointment_confirmation'
+  });
+};
+
 module.exports = {
   // Required core functions
   sendWhatsAppMessage,
   sendAdminEnquiryNotification,
   sendCustomerWhatsAppConfirmation,
+  sendAppointmentConfirmation,
   formatEnquiryMessage,
   formatCustomerConfirmationMessage,
   // Helper & status functions
