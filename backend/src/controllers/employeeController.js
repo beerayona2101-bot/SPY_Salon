@@ -242,16 +242,17 @@ const getKolkataTimeStr = (dateObj = new Date()) => {
 // Attendance clock-in
 exports.clockInAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
-    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
-    await autoCheckoutPastUnclosedShifts(employeeId);
+    const { resolveEmployeeFilter, autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
+    await autoCheckoutPastUnclosedShifts(resolved.primaryEmployeeId);
 
-    const employeeName = req.user.name;
+    const employeeId = resolved.primaryEmployeeId;
+    const employeeName = req.user.name || resolved.employeeName;
     const todayStr = getKolkataDateStr();
 
     // Prevent clock-in on approved leave dates
     const approvedLeave = await Leave.findOne({
-      $or: [{ employeeId: req.user._id }, { employee: req.user._id }],
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { $or: [{ employeeId: req.user._id }, { employee: req.user._id }] }),
       status: 'Approved',
       startDate: { $lte: todayStr },
       endDate: { $gte: todayStr }
@@ -262,7 +263,11 @@ exports.clockInAttendance = async (req, res, next) => {
     }
 
     // Prevent duplicate clock-ins and validate existing state
-    const existingLog = await Attendance.findOne({ employeeId, date: todayStr });
+    const existingLog = await Attendance.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId }),
+      date: todayStr
+    });
+
     if (existingLog) {
       if (existingLog.attendanceState === 'CLOCKED_IN') {
         throw ApiError.badRequest('You are already clocked in.');
@@ -276,34 +281,42 @@ exports.clockInAttendance = async (req, res, next) => {
 
     const now = new Date();
     const clockInTime = getKolkataTimeStr(now);
+    const empObjectId = resolved.employeeDoc ? resolved.employeeDoc._id : req.user._id;
 
-    const log = await Attendance.create({
-      employee: req.user._id,
-      employeeId,
-      employeeName,
-      date: todayStr,
-      clockIn: clockInTime,
-      clockOut: null, // MUST BE NULL while employee is working!
-      clockInTimestamp: now,
-      clockOutTimestamp: null,
-      status: 'Present',
-      attendanceState: 'CLOCKED_IN',
-      breaks: [],
-      totalBreakDuration: 0,
-      totalShiftDuration: 0,
-      effectiveWorkingDuration: 0,
-      branchId: req.user.branchId
-    });
+    try {
+      const log = await Attendance.create({
+        employee: empObjectId,
+        employeeId,
+        employeeName,
+        date: todayStr,
+        clockIn: clockInTime,
+        clockOut: null, // MUST BE NULL while employee is working!
+        clockInTimestamp: now,
+        clockOutTimestamp: null,
+        status: 'Present',
+        attendanceState: 'CLOCKED_IN',
+        breaks: [],
+        totalBreakDuration: 0,
+        totalShiftDuration: 0,
+        effectiveWorkingDuration: 0,
+        branchId: req.user.branchId || resolved.branchId
+      });
 
-    await ActivityLog.create({
-      action: 'Staff Clocked In',
-      details: `${employeeName} clocked in for shift at ${clockInTime}.`,
-      user: employeeName,
-      branchId: req.user.branchId
-    });
+      await ActivityLog.create({
+        action: 'Staff Clocked In',
+        details: `${employeeName} clocked in for shift at ${clockInTime}.`,
+        user: employeeName,
+        branchId: req.user.branchId || resolved.branchId
+      });
 
-    broadcastEvent('attendance:clock_in', { employeeName, time: clockInTime, attendanceState: 'CLOCKED_IN' });
-    return ApiResponse.created(res, log, `Successfully clocked in at ${clockInTime}`);
+      broadcastEvent('attendance:clock_in', { employeeName, time: clockInTime, attendanceState: 'CLOCKED_IN' });
+      return ApiResponse.created(res, log, `Successfully clocked in at ${clockInTime}`);
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        throw ApiError.badRequest('You have already clocked in for today!');
+      }
+      throw createErr;
+    }
   } catch (error) {
     next(error);
   }
@@ -312,10 +325,14 @@ exports.clockInAttendance = async (req, res, next) => {
 // Start Break
 exports.startBreakAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
+    const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
     const todayStr = getKolkataDateStr();
 
-    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    const log = await Attendance.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
+      date: todayStr
+    });
     if (!log) {
       throw ApiError.badRequest('No clock-in record found for today. Please clock in first.');
     }
@@ -353,7 +370,7 @@ exports.startBreakAttendance = async (req, res, next) => {
       action: 'Staff Started Break',
       details: `${req.user.name} started break at ${breakStartTime}.`,
       user: req.user.name,
-      branchId: req.user.branchId
+      branchId: req.user.branchId || resolved.branchId
     });
 
     broadcastEvent('attendance:start_break', { employeeName: req.user.name, time: breakStartTime, attendanceState: 'ON_BREAK' });
@@ -366,10 +383,14 @@ exports.startBreakAttendance = async (req, res, next) => {
 // End Break
 exports.endBreakAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
+    const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
     const todayStr = getKolkataDateStr();
 
-    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    const log = await Attendance.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
+      date: todayStr
+    });
     if (!log) {
       throw ApiError.badRequest('No clock-in record found for today.');
     }
@@ -404,7 +425,7 @@ exports.endBreakAttendance = async (req, res, next) => {
       action: 'Staff Ended Break',
       details: `${req.user.name} ended break at ${breakEndTime} (Duration: ${durationMinutes} mins).`,
       user: req.user.name,
-      branchId: req.user.branchId
+      branchId: req.user.branchId || resolved.branchId
     });
 
     broadcastEvent('attendance:end_break', { employeeName: req.user.name, time: breakEndTime, attendanceState: 'CLOCKED_IN' });
@@ -417,10 +438,14 @@ exports.endBreakAttendance = async (req, res, next) => {
 // Attendance clock-out
 exports.clockOutAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
+    const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
     const todayStr = getKolkataDateStr();
 
-    const log = await Attendance.findOne({ employeeId, date: todayStr });
+    const log = await Attendance.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
+      date: todayStr
+    });
     if (!log) {
       throw ApiError.badRequest('No clock-in record found for today.');
     }
@@ -450,7 +475,7 @@ exports.clockOutAttendance = async (req, res, next) => {
     log.attendanceState = 'CLOCKED_OUT';
 
     // Enforce 7-hour threshold (420 mins) classification
-    const { classifyAttendanceType, aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    const { classifyAttendanceType } = require('../utils/attendanceCalculator');
     log.attendanceType = classifyAttendanceType(effectiveMins);
     log.status = log.attendanceType === 'FULL_DAY' ? 'Present' : 'Half Day';
 
@@ -460,7 +485,7 @@ exports.clockOutAttendance = async (req, res, next) => {
       action: 'Staff Clocked Out',
       details: `${req.user.name} clocked out at ${clockOutTime}. Effective work: ${effectiveMins} mins (${log.attendanceType}).`,
       user: req.user.name,
-      branchId: req.user.branchId
+      branchId: req.user.branchId || resolved.branchId
     });
 
     broadcastEvent('attendance:clock_out', { employeeName: req.user.name, time: clockOutTime, attendanceState: 'CLOCKED_OUT', attendanceType: log.attendanceType });
@@ -473,10 +498,10 @@ exports.clockOutAttendance = async (req, res, next) => {
 // Get monthly attendance aggregated summary
 exports.getMonthlyAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
+    const { resolveEmployeeFilter, aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
     const { month } = req.query;
-    const { aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
-    const data = await aggregateMonthlyAttendance(employeeId, month);
+    const data = await aggregateMonthlyAttendance(resolved.primaryEmployeeId, month);
     return ApiResponse.success(res, data, 'Monthly attendance aggregated successfully');
   } catch (error) {
     next(error);
@@ -486,18 +511,18 @@ exports.getMonthlyAttendance = async (req, res, next) => {
 // Get today's attendance record
 exports.getTodayAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
-    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
-    await autoCheckoutPastUnclosedShifts(employeeId);
+    const { resolveEmployeeFilter, autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
+    await autoCheckoutPastUnclosedShifts(resolved.primaryEmployeeId);
 
     const todayStr = getKolkataDateStr();
     const log = await Attendance.findOne({
-      $or: [{ employeeId }, { employee: req.user._id }],
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { $or: [{ employeeId: resolved.primaryEmployeeId }, { employee: req.user._id }] }),
       date: todayStr
     });
 
     const approvedLeave = await Leave.findOne({
-      $or: [{ employeeId: req.user._id }, { employee: req.user._id }],
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { $or: [{ employeeId: req.user._id }, { employee: req.user._id }] }),
       status: 'Approved',
       startDate: { $lte: todayStr },
       endDate: { $gte: todayStr }
@@ -520,13 +545,13 @@ exports.getTodayAttendance = async (req, res, next) => {
 // Get personal attendance logs
 exports.getEmployeeAttendance = async (req, res, next) => {
   try {
-    const employeeId = req.user._id.toString();
-    const { autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
-    await autoCheckoutPastUnclosedShifts(employeeId);
+    const { resolveEmployeeFilter, autoCheckoutPastUnclosedShifts } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(req.user);
+    await autoCheckoutPastUnclosedShifts(resolved.primaryEmployeeId);
 
-    const list = await Attendance.find({
-      $or: [{ employeeId }, { employee: req.user._id }]
-    }).sort({ date: -1 });
+    const list = await Attendance.find(
+      resolved.filter && resolved.filter.$or ? resolved.filter : { $or: [{ employeeId: resolved.primaryEmployeeId }, { employee: req.user._id }] }
+    ).sort({ date: -1 });
     return ApiResponse.success(res, list, 'Personal attendance records retrieved');
   } catch (error) {
     next(error);
@@ -759,18 +784,22 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
     const bookingDateTime = now.toISOString();
     const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Resolve service price from Service model safely
+    // Resolve service price and duration from Service model safely
     let validatedPrice = 999;
+    let serviceDuration = 30;
+    let serviceDoc = null;
     try {
-      const serviceDoc = await Service.findOne({ name: new RegExp((service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
+      serviceDoc = await Service.findOne({ name: new RegExp((service || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') });
       if (serviceDoc) {
         validatedPrice = Number(serviceDoc.discountPrice || serviceDoc.price || 999);
+        serviceDuration = Number(serviceDoc.durationMinutes || 30);
       }
     } catch (sErr) {}
 
-    const { hasAppointmentStarted } = require('../utils/timezoneHelper');
-    const finalAppTime = appointmentTime || 'Immediate Walk-In';
-    const walkInStatus = hasAppointmentStarted(targetDateStr, finalAppTime) ? 'In Progress' : 'Pending';
+    const { hasAppointmentStarted, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+    const { generateSlotKeys } = require('../utils/appointmentHelper');
+    const walkInSpecialist = specialistName || req.user.name;
+    const computedSlotKeys = generateSlotKeys(walkInSpecialist, targetDateStr, finalAppTime, serviceDuration);
 
     const newApp = await Appointment.create({
       bookingId,
@@ -778,16 +807,25 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       customerPhone: customerPhone || '+91 98765 00000',
       customerEmail: '',
       service,
+      services: [{
+        serviceId: serviceDoc ? serviceDoc._id.toString() : null,
+        name: serviceDoc ? serviceDoc.name : service,
+        price: validatedPrice,
+        durationMinutes: serviceDuration
+      }],
+      totalDuration: serviceDuration,
       price: validatedPrice,
-      specialistName: specialistName || req.user.name,
+      finalAmount: validatedPrice,
+      specialistName: walkInSpecialist,
+      slotKeys: computedSlotKeys,
       specialistId: req.user._id ? req.user._id.toString() : null,
       employeeId: req.user._id ? req.user._id.toString() : null,
       employee: req.user._id || null,
       branch: 'Jubilee Hills Flagship',
       branchId: req.user.branchId,
       bookingDateTime,
-      bookingDate: targetDateStr,
-      bookingTimeFormatted: finalAppTime,
+      bookingDate: getKolkataCurrentDateStr(),
+      bookingTimeFormatted: getKolkataCurrentTimeStr(),
       appointmentDate: targetDateStr,
       appointmentTime: finalAppTime,
       paymentMethod: paymentMethod || 'Cash',
@@ -797,7 +835,7 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       customerId: null
     });
 
-    // Save transaction to Ledger
+    // Save transaction to Ledger (Idempotent)
     await Transaction.create({
       txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
       type: 'Credited',

@@ -71,6 +71,8 @@ router.delete('/leaves/:id', adminController.deleteLeave);
 router.get('/attendance', adminController.getAttendance);
 router.get('/attendance/report', adminController.getAttendanceReport);
 router.post('/attendance', adminController.recordAttendance);
+router.put('/attendance/:id', adminController.updateAttendance);
+router.post('/attendance/:id/clock-out', adminController.adminClockOutAttendance);
 
 // Reviews Moderation Routes
 router.get('/reviews', adminController.getReviews);

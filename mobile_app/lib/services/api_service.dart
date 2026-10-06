@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../models/attendance_model.dart';
 import 'fcm_service.dart';
 
 class ApiService {
@@ -1362,6 +1363,15 @@ class ApiService {
     return null;
   }
 
+  /// Fetch Today's Attendance as typed AttendanceModel
+  static Future<AttendanceModel?> getTodayAttendanceModel() async {
+    final raw = await getTodayAttendance();
+    if (raw != null) {
+      return AttendanceModel.fromJson(raw);
+    }
+    return null;
+  }
+
   /// Fetch Staff Attendance Log
   static Future<List<dynamic>?> getEmployeeAttendance() async {
     try {
@@ -1377,6 +1387,18 @@ class ApiService {
       debugPrint('[ApiService] Attendance fetch error: $e');
     }
     return null;
+  }
+
+  /// Fetch Staff Attendance Logs as typed AttendanceModels
+  static Future<List<AttendanceModel>> getEmployeeAttendanceModels() async {
+    final rawList = await getEmployeeAttendance();
+    if (rawList != null) {
+      return rawList
+          .whereType<Map>()
+          .map((m) => AttendanceModel.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
+    }
+    return [];
   }
 
   /// Submit Leave Request

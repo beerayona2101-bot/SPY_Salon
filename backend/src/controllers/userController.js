@@ -143,8 +143,17 @@ exports.requestReschedule = async (req, res, next) => {
     const appointment = await Appointment.findOne(query);
     if (!appointment) throw ApiError.notFound('Appointment not found');
 
-    // Ownership Authorization check
-    if (appointment.customerId && appointment.customerId !== userId && req.user.role !== 'admin') {
+    // Robust Ownership Authorization check
+    const userEmail = (req.user.email || '').toLowerCase().trim();
+    const userPhone = (req.user.phone || '').trim().replace(/\D/g, '');
+    const appCustEmail = (appointment.customerEmail || '').toLowerCase().trim();
+    const appCustPhone = (appointment.customerPhone || '').trim().replace(/\D/g, '');
+
+    const isOwner = (appointment.customerId && appointment.customerId === userId) ||
+                    (userEmail && appCustEmail && userEmail === appCustEmail) ||
+                    (userPhone.length >= 7 && appCustPhone.length >= 7 && (userPhone.endsWith(appCustPhone.slice(-10)) || appCustPhone.endsWith(userPhone.slice(-10))));
+
+    if (!isOwner && req.user.role !== 'admin') {
       throw ApiError.forbidden('You are not authorized to reschedule this appointment.');
     }
 
@@ -155,6 +164,7 @@ exports.requestReschedule = async (req, res, next) => {
     }
 
     const { getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
+    const { checkSlotConflict } = require('../utils/appointmentHelper');
     const todayKolkata = getKolkataCurrentDateStr();
 
     let targetDate = newDate;
@@ -163,6 +173,20 @@ exports.requestReschedule = async (req, res, next) => {
     }
 
     const targetTime = newTime || appointment.appointmentTime || '11:30 AM';
+    const totalDuration = appointment.totalDuration || 30;
+
+    // Check conflict for target slot if specialist is specified
+    const conflict = await checkSlotConflict({
+      appointmentDate: targetDate,
+      appointmentTime: targetTime,
+      durationMinutes: totalDuration,
+      specialistName: appointment.specialistName,
+      excludeAppointmentId: appointment._id
+    });
+
+    if (conflict.hasConflict) {
+      throw ApiError.badRequest(conflict.reason || 'Requested date and time slot is not available.');
+    }
 
     appointment.rescheduleRequested = true;
     appointment.rescheduleData = {
@@ -178,7 +202,7 @@ exports.requestReschedule = async (req, res, next) => {
       updatedBy: req.user.name || appointment.customerName,
       updatedRole: req.user.role || 'customer',
       timestamp: new Date(),
-      note: `Customer requested reschedule to ${newDate} at ${newTime}`
+      note: `Customer requested reschedule to ${targetDate} at ${targetTime}`
     });
     await appointment.save();
 
@@ -187,7 +211,7 @@ exports.requestReschedule = async (req, res, next) => {
     await notificationController.dispatchNotification(req.app, {
       role: 'admin',
       title: 'Reschedule Requested 📅',
-      message: `Client ${appointment.customerName} requested to reschedule #${appointment.bookingId} to ${newDate} at ${newTime}.`,
+      message: `Client ${appointment.customerName} requested to reschedule #${appointment.bookingId} to ${targetDate} at ${targetTime}.`,
       type: 'booking',
       bookingId: appointment.bookingId,
       appointmentId: appointment._id.toString()
@@ -196,7 +220,7 @@ exports.requestReschedule = async (req, res, next) => {
     // Audit Log Entry
     await ActivityLog.create({
       action: 'Reschedule Requested',
-      details: `${appointment.customerName} requested reschedule for #${appointment.bookingId} to ${newDate} at ${newTime}.`,
+      details: `${appointment.customerName} requested reschedule for #${appointment.bookingId} to ${targetDate} at ${targetTime}.`,
       user: appointment.customerName,
       branchId: appointment.branchId
     });
@@ -219,8 +243,17 @@ exports.cancelAppointment = async (req, res, next) => {
     const appointment = await Appointment.findOne(query);
     if (!appointment) throw ApiError.notFound('Appointment not found');
 
-    // Ownership Authorization check
-    if (appointment.customerId && appointment.customerId !== userId && req.user.role !== 'admin') {
+    // Robust Ownership Authorization check
+    const userEmail = (req.user.email || '').toLowerCase().trim();
+    const userPhone = (req.user.phone || '').trim().replace(/\D/g, '');
+    const appCustEmail = (appointment.customerEmail || '').toLowerCase().trim();
+    const appCustPhone = (appointment.customerPhone || '').trim().replace(/\D/g, '');
+
+    const isOwner = (appointment.customerId && appointment.customerId === userId) ||
+                    (userEmail && appCustEmail && userEmail === appCustEmail) ||
+                    (userPhone.length >= 7 && appCustPhone.length >= 7 && (userPhone.endsWith(appCustPhone.slice(-10)) || appCustPhone.endsWith(userPhone.slice(-10))));
+
+    if (!isOwner && req.user.role !== 'admin') {
       throw ApiError.forbidden('You are not authorized to cancel this appointment.');
     }
 
@@ -230,6 +263,7 @@ exports.cancelAppointment = async (req, res, next) => {
     }
 
     appointment.status = 'Cancelled';
+    appointment.slotKeys = [];
     appointment.cancellationReason = reason || 'Cancelled by customer';
     appointment.statusHistory.push({
       fromStatus: currentStatus,

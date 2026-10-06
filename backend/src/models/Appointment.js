@@ -74,10 +74,11 @@ const appointmentSchema = new mongoose.Schema({
     razorpay_signature: String
   },
   branchId: { type: String, default: null },
-  customerId: { type: String, default: null }
+  customerId: { type: String, default: null },
+  slotKeys: [{ type: String }]
 }, { timestamps: true });
 
-// Performance Database Indexes
+// Performance & Concurrency Database Indexes
 appointmentSchema.index({ appointmentDate: -1, status: 1 });
 appointmentSchema.index({ specialistName: 1, appointmentDate: 1, appointmentTime: 1 });
 appointmentSchema.index({ customerPhone: 1 });
@@ -86,6 +87,18 @@ appointmentSchema.index({ branch: 1 });
 appointmentSchema.index({ branchId: 1 });
 appointmentSchema.index({ customerId: 1 });
 appointmentSchema.index({ createdAt: -1 });
+
+// Atomic Slot Lock Unique Index: Prevents simultaneous double-booking of same specialist and slot
+appointmentSchema.index(
+  { slotKeys: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['Pending', 'Confirmed', 'Staff_Accepted', 'In Progress', 'Completed', 'Rescheduled', 'Reschedule Requested'] },
+      slotKeys: { $type: 'string' }
+    }
+  }
+);
 
 module.exports = mongoose.model('Appointment', appointmentSchema);
 

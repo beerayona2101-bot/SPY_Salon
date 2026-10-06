@@ -17,6 +17,83 @@ const SALON_HOLIDAYS = [
   { date: '2026-11-08', title: 'Diwali Gala Festival' }
 ];
 
+// Standard 9-hour shift duration in minutes (540 minutes)
+const STANDARD_SHIFT_MINUTES = 540;
+
+/**
+ * Resolves both User and Employee document IDs across the database
+ * to ensure 100% data consistency between Employee and Admin queries.
+ * @param {string | object} employeeIdentifier
+ * @returns {Promise<object>}
+ */
+const resolveEmployeeFilter = async (employeeIdentifier) => {
+  const mongoose = require('mongoose');
+  const Employee = require('../models/Employee');
+  const User = require('../models/User');
+
+  const allIds = new Set();
+  let employeeDoc = null;
+  let userDoc = null;
+
+  if (!employeeIdentifier) return { filter: {}, allIds: [], employeeDoc: null, userDoc: null };
+
+  if (typeof employeeIdentifier === 'object' && employeeIdentifier !== null) {
+    if (employeeIdentifier._id) allIds.add(String(employeeIdentifier._id));
+    if (employeeIdentifier.employeeId) allIds.add(String(employeeIdentifier.employeeId));
+    if (employeeIdentifier.email) {
+      const email = String(employeeIdentifier.email).toLowerCase().trim();
+      employeeDoc = await Employee.findOne({ email });
+      userDoc = await User.findOne({ email });
+    }
+  } else {
+    const strId = String(employeeIdentifier).trim();
+    allIds.add(strId);
+
+    if (mongoose.Types.ObjectId.isValid(strId)) {
+      employeeDoc = await Employee.findById(strId);
+      userDoc = await User.findById(strId);
+
+      if (employeeDoc && !userDoc && employeeDoc.email) {
+        userDoc = await User.findOne({ email: employeeDoc.email.toLowerCase().trim() });
+      } else if (userDoc && !employeeDoc && userDoc.email) {
+        employeeDoc = await Employee.findOne({ email: userDoc.email.toLowerCase().trim() });
+      }
+    } else if (strId.includes('@')) {
+      const email = strId.toLowerCase();
+      employeeDoc = await Employee.findOne({ email });
+      userDoc = await User.findOne({ email });
+    } else if (strId.startsWith('EMP-')) {
+      employeeDoc = await Employee.findOne({ empCode: new RegExp(`^${strId}$`, 'i') });
+      if (employeeDoc?.email) {
+        userDoc = await User.findOne({ email: employeeDoc.email.toLowerCase().trim() });
+      }
+    }
+  }
+
+  if (employeeDoc?._id) allIds.add(String(employeeDoc._id));
+  if (userDoc?._id) allIds.add(String(userDoc._id));
+
+  const idList = Array.from(allIds).filter(Boolean);
+  const orConditions = [];
+
+  idList.forEach(id => {
+    orConditions.push({ employeeId: id });
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      orConditions.push({ employee: id });
+    }
+  });
+
+  return {
+    filter: orConditions.length > 0 ? { $or: orConditions } : {},
+    allIds: idList,
+    employeeDoc,
+    userDoc,
+    primaryEmployeeId: userDoc?._id ? String(userDoc._id) : (employeeDoc?._id ? String(employeeDoc._id) : idList[0]),
+    employeeName: employeeDoc?.name || userDoc?.name || 'Staff Member',
+    branchId: employeeDoc?.branchId || userDoc?.branchId || null
+  };
+};
+
 /**
  * Classifies effective working minutes into FULL_DAY or HALF_DAY
  * @param {number} effectiveWorkingMinutes 
@@ -72,7 +149,7 @@ const calculate9HourClockOut = (clockInTimeStr, clockInTimestamp) => {
  * Auto check-out past shifts that were not checked out by employees before midnight.
  * Assigns exactly 9 hours working time (540 minutes).
  */
-const autoCheckoutPastUnclosedShifts = async (employeeId = null) => {
+const autoCheckoutPastUnclosedShifts = async (employeeIdentifier = null) => {
   try {
     const todayKolkataStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
@@ -81,13 +158,11 @@ const autoCheckoutPastUnclosedShifts = async (employeeId = null) => {
       attendanceState: { $ne: 'CLOCKED_OUT' }
     };
 
-    if (employeeId) {
-      const mongoose = require('mongoose');
-      const queryEmpId = String(employeeId);
-      const isObjectId = mongoose.Types.ObjectId.isValid(queryEmpId);
-      query.$or = isObjectId
-        ? [{ employeeId: queryEmpId }, { employee: queryEmpId }]
-        : [{ employeeId: queryEmpId }];
+    if (employeeIdentifier) {
+      const resolved = await resolveEmployeeFilter(employeeIdentifier);
+      if (resolved.filter && resolved.filter.$or) {
+        query.$or = resolved.filter.$or;
+      }
     }
 
     const unclosedShifts = await Attendance.find(query);
@@ -123,12 +198,13 @@ const autoCheckoutPastUnclosedShifts = async (employeeId = null) => {
 
 /**
  * Computes monthly attendance summary and date-by-date breakdown
- * @param {string} employeeId 
+ * @param {string | object} employeeIdentifier 
  * @param {string} [yearMonthStr] e.g. "2026-09"
  * @returns {Promise<object>}
  */
-const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
-  await autoCheckoutPastUnclosedShifts(employeeId);
+const aggregateMonthlyAttendance = async (employeeIdentifier, yearMonthStr) => {
+  await autoCheckoutPastUnclosedShifts(employeeIdentifier);
+  const resolved = await resolveEmployeeFilter(employeeIdentifier);
   const todayKolkataStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
   
   let targetYearMonth = yearMonthStr;
@@ -141,14 +217,7 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
   const startDateStr = `${targetYearMonth}-01`;
   const endDateStr = `${targetYearMonth}-${totalDaysInMonth < 10 ? '0' + totalDaysInMonth : totalDaysInMonth}`;
 
-  // Fetch database records for this employee & date range
-  const mongoose = require('mongoose');
-  const queryEmpId = String(employeeId);
-  const isObjectId = mongoose.Types.ObjectId.isValid(queryEmpId);
-
-  const empFilter = isObjectId
-    ? { $or: [{ employeeId: queryEmpId }, { employee: queryEmpId }] }
-    : { employeeId: queryEmpId };
+  const empFilter = resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: String(employeeIdentifier) };
 
   const attendanceLogs = await Attendance.find({
     ...empFilter,
@@ -172,6 +241,9 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
   let inProgressDaysCount = 0;
   let totalEffectiveWorkingMinutes = 0;
   let totalBreakMinutes = 0;
+  let totalOvertimeMinutes = 0;
+  let totalOvertimeTimes = 0;
+  let lateArrivalCount = 0;
 
   for (let d = 1; d <= totalDaysInMonth; d++) {
     const dayStr = d < 10 ? `0${d}` : `${d}`;
@@ -200,6 +272,7 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
     let clockOut = null;
     let effectiveMins = 0;
     let breakMins = 0;
+    let overtimeMins = 0;
 
     if (attLog) {
       clockIn = attLog.clockIn || null;
@@ -216,6 +289,13 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
 
         totalEffectiveWorkingMinutes += effectiveMins;
         totalBreakMinutes += breakMins;
+
+        // Calculate dynamic Overtime beyond standard shift (540m / 9h)
+        if (effectiveMins > STANDARD_SHIFT_MINUTES) {
+          overtimeMins = effectiveMins - STANDARD_SHIFT_MINUTES;
+          totalOvertimeMinutes += overtimeMins;
+          totalOvertimeTimes++;
+        }
       } else if (isToday && attLog.attendanceState !== 'CLOCKED_OUT') {
         dayCategory = 'IN_PROGRESS';
         statusLabel = attLog.attendanceState === 'ON_BREAK' ? 'On Break' : 'Working Today';
@@ -230,6 +310,12 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
           if (dayCategory === 'FULL_DAY') fullDaysCount++;
           else halfDaysCount++;
           totalEffectiveWorkingMinutes += effectiveMins;
+
+          if (effectiveMins > STANDARD_SHIFT_MINUTES) {
+            overtimeMins = effectiveMins - STANDARD_SHIFT_MINUTES;
+            totalOvertimeMinutes += overtimeMins;
+            totalOvertimeTimes++;
+          }
         } else {
           dayCategory = 'ABSENT';
           statusLabel = 'Absent';
@@ -272,6 +358,7 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
       clockOut,
       effectiveWorkingMinutes: effectiveMins,
       totalBreakMinutes: breakMins,
+      overtimeMinutes: overtimeMins,
       breaks: attLog ? attLog.breaks : []
     });
   }
@@ -281,10 +368,11 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
   const workingMinsRem = totalEffectiveWorkingMinutes % 60;
   const breakHoursInt = Math.floor(totalBreakMinutes / 60);
   const breakMinsRem = totalBreakMinutes % 60;
+  const overtimeHoursDec = Number((totalOvertimeMinutes / 60).toFixed(1));
 
   return {
     month: targetYearMonth,
-    employeeId: queryEmpId,
+    employeeId: resolved.primaryEmployeeId,
     totalDaysInMonth,
     summary: {
       fullDaysCount,
@@ -298,7 +386,10 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
       totalEffectiveWorkingMinutes,
       totalEffectiveWorkingHoursFormatted: `${workingHoursInt}h ${workingMinsRem}m`,
       totalBreakMinutes,
-      totalBreakHoursFormatted: `${breakHoursInt}h ${breakMinsRem}m`
+      totalBreakHoursFormatted: `${breakHoursInt}h ${breakMinsRem}m`,
+      totalOvertimeMinutes,
+      totalOvertimeHoursFormatted: `${overtimeHoursDec}h`,
+      totalOvertimeTimes
     },
     dailyBreakdown
   };
@@ -306,6 +397,8 @@ const aggregateMonthlyAttendance = async (employeeId, yearMonthStr) => {
 
 module.exports = {
   FULL_DAY_MINUTES_THRESHOLD,
+  STANDARD_SHIFT_MINUTES,
+  resolveEmployeeFilter,
   classifyAttendanceType,
   autoCheckoutPastUnclosedShifts,
   aggregateMonthlyAttendance

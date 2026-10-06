@@ -474,20 +474,33 @@ function EmployeeDashboardContent() {
 
   const fetchEmployeeData = async () => {
     try {
-      const [appRes, leaveRes, attRes, payRes] = await Promise.all([
+      const [appRes, leaveRes, attRes, payRes, todayAttRes] = await Promise.all([
         apiFetch(`${API_BASE_URL}/employee/appointments`).then(r => r.json()).catch(() => ({ data: [] })),
         apiFetch(`${API_BASE_URL}/employee/leaves`).then(r => r.json()).catch(() => ({ data: [] })),
         apiFetch(`${API_BASE_URL}/employee/attendance`).then(r => r.json()).catch(() => ({ data: [] })),
-        apiFetch(`${API_BASE_URL}/employee/payrolls`).then(r => r.json()).catch(() => ({ data: [] }))
+        apiFetch(`${API_BASE_URL}/employee/payrolls`).then(r => r.json()).catch(() => ({ data: [] })),
+        apiFetch(`${API_BASE_URL}/employee/attendance/today`).then(r => r.json()).catch(() => ({ data: null }))
       ]);
 
       if (appRes.data) setAppointments(appRes.data);
       if (leaveRes.data) setLeaves(leaveRes.data);
-      if (attRes.data) {
-        setAttendance(attRes.data);
+      if (attRes.data) setAttendance(attRes.data);
+
+      const todayLog = todayAttRes?.data;
+      if (todayLog) {
+        if (todayLog.isOnApprovedLeave || todayLog.attendanceState === 'ON_LEAVE') {
+          setShiftStatus('ON_LEAVE');
+        } else if (todayLog.attendanceState) {
+          setShiftStatus(todayLog.attendanceState);
+        } else if (todayLog.clockOut) {
+          setShiftStatus('CLOCKED_OUT');
+        } else if (todayLog.clockIn) {
+          setShiftStatus('CLOCKED_IN');
+        } else {
+          setShiftStatus('NOT_CLOCKED_IN');
+        }
+      } else {
         const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-        
-        // Check if employee has an Approved leave for today
         const approvedLeaveToday = (leaveRes.data || []).find((l: any) => 
           l.status === 'Approved' && l.startDate <= todayStr && l.endDate >= todayStr
         );
@@ -495,7 +508,7 @@ function EmployeeDashboardContent() {
         if (approvedLeaveToday) {
           setShiftStatus('ON_LEAVE');
         } else {
-          const todayRecords = attRes.data.filter((a: any) => a.date === todayStr);
+          const todayRecords = (attRes.data || []).filter((a: any) => a.date === todayStr);
           if (todayRecords.length > 0) {
             const mostRecent = todayRecords[0];
             if (mostRecent.attendanceState) {
@@ -510,6 +523,7 @@ function EmployeeDashboardContent() {
           }
         }
       }
+
       if (payRes.data) setPayrolls(payRes.data);
     } catch (e) {
       console.error(e);
@@ -929,8 +943,16 @@ function EmployeeDashboardContent() {
     );
   }
 
+  const isActiveQueueAppointment = (a: any) => {
+    if (!a || !a.status) return false;
+    const s = String(a.status).trim().toLowerCase();
+    return s !== 'completed' && s !== 'cancelled' && s !== 'staff_rejected' && s !== 'no show' && s !== 'no_show' && s !== 'noshow';
+  };
+
+  const activeQueueCount = appointments.filter(isActiveQueueAppointment).length;
+
   const navMenuItems = [
-    { id: 'queue', label: "Today's Service Queue", icon: Scissors, badge: appointments.length },
+    { id: 'queue', label: "Today's Service Queue", icon: Scissors, badge: activeQueueCount > 0 ? activeQueueCount : null },
     { id: 'calendar', label: 'My Calendar', icon: Calendar, badge: null },
     { id: 'clockin', label: 'Clock-In & Attendance', icon: CheckSquare, badge: null },
     { id: 'payrolls', label: 'My Salary Slips & Payouts', icon: FileText, badge: payrolls.length },
@@ -1326,7 +1348,7 @@ function EmployeeDashboardContent() {
                   <div className="p-4 rounded-2xl bg-dark-900/90 border border-white/5 space-y-1">
                     <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider block">In Queue / Remaining</span>
                     <span className="text-2xl font-serif font-bold text-rosegold-400 block">
-                      {appointments.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length} In Queue ⏱️
+                      {appointments.filter(isActiveQueueAppointment).length} In Queue ⏱️
                     </span>
                     <span className="text-[10px] text-purple-300 block font-mono">Pending Next Service</span>
                   </div>
@@ -1351,7 +1373,7 @@ function EmployeeDashboardContent() {
                           queueFilter === 'In Queue' ? 'bg-amber-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
-                        In Queue ({appointments.filter(a => a.status !== 'Completed' && a.status !== 'Cancelled').length})
+                        In Queue ({appointments.filter(isActiveQueueAppointment).length})
                       </button>
                       <button
                         onClick={() => setQueueFilter('Completed')}
@@ -1359,7 +1381,7 @@ function EmployeeDashboardContent() {
                           queueFilter === 'Completed' ? 'bg-green-500 text-dark-900' : 'text-gray-400 hover:text-white'
                         }`}
                       >
-                        Completed ({appointments.filter(a => a.status === 'Completed').length})
+                        Completed ({appointments.filter(a => String(a.status).toLowerCase() === 'completed').length})
                       </button>
                     </div>
                   </div>
@@ -1367,8 +1389,8 @@ function EmployeeDashboardContent() {
                   <span className="text-[11px] font-mono text-gray-400">
                     Showing {
                       appointments.filter(a => {
-                        if (queueFilter === 'Completed') return a.status === 'Completed';
-                        if (queueFilter === 'In Queue') return a.status !== 'Completed' && a.status !== 'Cancelled';
+                        if (queueFilter === 'Completed') return String(a.status).toLowerCase() === 'completed';
+                        if (queueFilter === 'In Queue') return isActiveQueueAppointment(a);
                         return true;
                       }).length
                     } assigned clients
@@ -1380,8 +1402,8 @@ function EmployeeDashboardContent() {
               <div className="space-y-4">
                 {appointments
                   .filter(a => {
-                    if (queueFilter === 'Completed') return a.status === 'Completed';
-                    if (queueFilter === 'In Queue') return a.status !== 'Completed' && a.status !== 'Cancelled';
+                    if (queueFilter === 'Completed') return String(a.status).toLowerCase() === 'completed';
+                    if (queueFilter === 'In Queue') return isActiveQueueAppointment(a);
                     return true;
                   })
                   .map((app) => (

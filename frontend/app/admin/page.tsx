@@ -979,6 +979,58 @@ function AdminDashboardContent() {
     });
   };
 
+  const [attActionLoading, setAttActionLoading] = useState<string | null>(null);
+
+  const handleAdminMarkAttendance = async (report: any) => {
+    if (attActionLoading) return;
+    setAttActionLoading(report.employeeId || report.name);
+    try {
+      const res = await apiFetch(`${API_BASE_URL}/admin/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeId: report.employeeId,
+          employeeName: report.name,
+          branchId: report.branchId
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || `Marked today's attendance for ${report.name} 🟢`, 'success');
+        fetchAdminData();
+      } else {
+        showToast(data.message || 'Failed to record attendance', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error recording attendance', 'error');
+    } finally {
+      setAttActionLoading(null);
+    }
+  };
+
+  const handleAdminClockOut = async (report: any) => {
+    if (attActionLoading) return;
+    setAttActionLoading(report.employeeId || report.name);
+    try {
+      const targetId = report.todayLog?._id || report.employeeId;
+      const res = await apiFetch(`${API_BASE_URL}/admin/attendance/${targetId}/clock-out`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || `Clocked out ${report.name} successfully 🔴`, 'success');
+        fetchAdminData();
+      } else {
+        showToast(data.message || 'Failed to clock out staff', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Error clocking out staff', 'error');
+    } finally {
+      setAttActionLoading(null);
+    }
+  };
+
   const fetchAdminData = async () => {
     try {
       const [anaRes, empRes, custRes, srvRes, appRes, leaveRes, revRes, payRes, actRes, notifRes, txnRes, attReportRes, enqRes, membRes, membPlansRes] = await Promise.all([
@@ -4698,15 +4750,30 @@ function AdminDashboardContent() {
 
                       <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
                         <span className="text-[11px] text-gray-400">
-                          Today's Status: <strong className="text-green-400 font-mono">{report.lastStatus || 'Present 🟢'}</strong>
+                          Today's Status: <strong className="text-green-400 font-mono">{report.lastStatus || 'Not Checked In'}</strong>
                         </span>
 
-                        <button
-                          onClick={() => showToast(`Marked today's attendance for ${report.name} as Present 🟢`, 'success')}
-                          className="px-3 py-1.5 rounded-xl bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 font-bold text-[11px] hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer"
-                        >
-                          Mark Today's Log ✍️
-                        </button>
+                        {report.lastStatus?.includes('Present') || report.lastStatus?.includes('On Break') ? (
+                          <button
+                            onClick={() => handleAdminClockOut(report)}
+                            disabled={attActionLoading === (report.employeeId || report.name)}
+                            className="px-3 py-1.5 rounded-xl bg-red-500/20 text-red-300 border border-red-500/40 font-bold text-[11px] hover:bg-red-500 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {attActionLoading === (report.employeeId || report.name) ? 'Clocking Out...' : 'Clock Out Staff 🔴'}
+                          </button>
+                        ) : report.lastStatus === 'Not Checked In' ? (
+                          <button
+                            onClick={() => handleAdminMarkAttendance(report)}
+                            disabled={attActionLoading === (report.employeeId || report.name)}
+                            className="px-3 py-1.5 rounded-xl bg-rosegold-500/15 text-rosegold-300 border border-rosegold-500/30 font-bold text-[11px] hover:bg-rosegold-500 hover:text-dark-900 transition-all cursor-pointer disabled:opacity-50"
+                          >
+                            {attActionLoading === (report.employeeId || report.name) ? 'Marking...' : 'Mark Today\'s Log ✍️'}
+                          </button>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 border border-green-500/30 text-[10px] font-bold">
+                            Shift Completed ✅
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

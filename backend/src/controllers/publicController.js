@@ -15,6 +15,13 @@ const Offer = require('../models/Offer');
 const enquiryService = require('../services/enquiryService');
 const guestBookingService = require('../services/guestBookingService');
 const { isPastDateTimeKolkata, getKolkataCurrentDateStr } = require('../utils/timezoneHelper');
+const { 
+  getBookedSlotsForDateAndSpecialist, 
+  checkSlotConflict, 
+  isSpecialistOnLeave, 
+  cleanSpecialistName,
+  STANDARD_SALON_TIME_SLOTS 
+} = require('../utils/appointmentHelper');
 
 const DEFAULT_GALLERY_ITEMS = [
   { id: '1', title: 'Balayage Blonde Transformation', category: 'Hair', url: '' },
@@ -119,29 +126,14 @@ const time24ToMinutes = (timeStr) => {
 };
 
 // Verify if a specialist is available at a given date/time slot
-const verifySpecialistAvailability = async (specialist, date, timeSlot) => {
+const verifySpecialistAvailability = async (specialist, date, timeSlot, durationMinutes = 30) => {
   if (!specialist) return { available: true };
   if (specialist.status === 'Inactive') return { available: false, reason: 'Specialist account is currently inactive.' };
   
-  const specIdStr = specialist._id ? specialist._id.toString() : null;
-  const specEmpId = specialist.employeeId ? String(specialist.employeeId) : null;
-  const specEmail = specialist.email ? String(specialist.email).toLowerCase().trim() : null;
   const specName = specialist.name ? String(specialist.name).trim() : '';
 
-  // 1. Check approved leave overlaying requested date (support YYYY-MM-DD date range checks)
-  const leaveQuery = {
-    status: 'Approved',
-    startDate: { $lte: date },
-    endDate: { $gte: date },
-    $or: [
-      ...(specName ? [{ employeeName: new RegExp(specName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }] : []),
-      ...(specIdStr ? [{ employeeId: specIdStr }] : []),
-      ...(specEmpId ? [{ employeeId: specEmpId }] : []),
-      ...(specEmail ? [{ employeeEmail: specEmail }] : [])
-    ]
-  };
-
-  const leaveConflict = await Leave.findOne(leaveQuery);
+  // 1. Check approved leave overlaying requested date
+  const leaveConflict = await isSpecialistOnLeave(date, specialist);
   if (leaveConflict) {
     return { 
       available: false, 
@@ -149,18 +141,16 @@ const verifySpecialistAvailability = async (specialist, date, timeSlot) => {
     };
   }
 
-  // 2. Check overlapping booked appointment (exclude Cancelled and Staff_Rejected)
-  const cleanSpecFirst = specName.split('(')[0].trim().split(/\s+/)[0];
-  if (cleanSpecFirst) {
-    const appointmentConflict = await Appointment.findOne({
-      specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
-      appointmentDate: date,
-      appointmentTime: timeSlot,
-      status: { $nin: ['Cancelled', 'Staff_Rejected'] }
-    });
-    if (appointmentConflict) {
-      return { available: false, reason: 'Specialist already has an appointment booked at this date and time slot.' };
-    }
+  // 2. Check overlapping booked appointment
+  const conflict = await checkSlotConflict({
+    appointmentDate: date,
+    appointmentTime: timeSlot,
+    durationMinutes,
+    specialistName: specName
+  });
+
+  if (conflict.hasConflict) {
+    return { available: false, reason: conflict.reason };
   }
 
   return { available: true };
@@ -319,39 +309,12 @@ exports.getOffers = async (req, res) => {
 exports.getBookedSlots = async (req, res) => {
   try {
     const { date, specialist } = req.query;
-    let query = { status: { $nin: ['Cancelled', 'Staff_Rejected'] } };
-
-    if (date) {
-      query.appointmentDate = date;
-    }
-
-    if (specialist && specialist !== 'Any Available Specialist') {
-      const cleanName = specialist.split('(')[0].trim();
-      query.specialistName = { $regex: new RegExp(cleanName, 'i') };
-    }
-
-    const matches = await Appointment.find(query);
-    const bookedTimeSlots = matches.map(a => a.appointmentTime);
-    
-    // If requested date is today's date in Asia/Kolkata, also mark past slots as unavailable
-    const todayStr = getKolkataCurrentDateStr();
-    if (date === todayStr) {
-      const standardSlots = [
-        '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
-        '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM', '02:00 PM', '02:30 PM',
-        '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM', '05:00 PM', '05:30 PM',
-        '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'
-      ];
-      for (const slot of standardSlots) {
-        if (isPastDateTimeKolkata(todayStr, slot) && !bookedTimeSlots.includes(slot)) {
-          bookedTimeSlots.push(slot);
-        }
-      }
-    }
+    const targetDate = date || getKolkataCurrentDateStr();
+    const bookedTimeSlots = await getBookedSlotsForDateAndSpecialist(targetDate, specialist);
 
     return res.status(200).json({
       success: true,
-      date: date || 'All',
+      date: targetDate,
       specialist: specialist || 'All',
       bookedSlots: bookedTimeSlots
     });
@@ -546,23 +509,6 @@ exports.bookAppointment = async (req, res) => {
       });
     }
 
-    // Final availability / double-booking check immediately before appointment creation
-    if (chosenSpecialist && chosenSpecialist !== 'Any Available Specialist') {
-      const cleanSpecFirst = chosenSpecialist.split('(')[0].trim().split(/\s+/)[0];
-      const conflictCheck = await Appointment.findOne({
-        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
-        appointmentDate,
-        appointmentTime,
-        status: { $nin: ['Cancelled', 'Staff_Rejected'] }
-      });
-      if (conflictCheck) {
-        return res.status(409).json({
-          success: false,
-          message: 'Sorry, this slot is no longer available. Please select another time.'
-        });
-      }
-    }
-
     const reqPkg = req.body.packageTier || req.body.packageName || null;
     const packageTierVal = (reqPkg && reqPkg !== 'No Package' && reqPkg !== 'null' && reqPkg !== 'undefined') ? reqPkg : null;
 
@@ -628,11 +574,29 @@ exports.bookAppointment = async (req, res) => {
           durationMinutes: dbSrv ? (dbSrv.durationMinutes || 30) : Number(addS.durationMinutes || 30)
         });
       }
+      totalDurationMins += additionalServicesToSave.reduce((sum, s) => sum + (s.durationMinutes || 30), 0);
     } else if (servicesToSave.length > 1) {
       additionalServicesToSave = servicesToSave.slice(1);
     }
 
+    // Final duration-aware availability / double-booking check immediately before appointment creation
+    if (chosenSpecialist && chosenSpecialist !== 'Any Available Specialist') {
+      const conflict = await checkSlotConflict({
+        appointmentDate,
+        appointmentTime,
+        durationMinutes: totalDurationMins,
+        specialistName: chosenSpecialist
+      });
+      if (conflict.hasConflict) {
+        return res.status(409).json({
+          success: false,
+          message: conflict.reason || 'Sorry, this slot is no longer available. Please select another time.'
+        });
+      }
+    }
+
     const finalBillingAmount = req.body.price ? Number(req.body.price) : serverCalculatedPrice;
+    const computedSlotKeys = generateSlotKeys(chosenSpecialist, appointmentDate, appointmentTime, totalDurationMins);
 
     const newAppointment = await Appointment.create({
       bookingId,
@@ -650,6 +614,7 @@ exports.bookAppointment = async (req, res) => {
       price: finalBillingAmount,
       finalAmount: finalBillingAmount,
       specialistName: chosenSpecialist,
+      slotKeys: computedSlotKeys,
       bookingDateTime,
       bookingDate: bookingDateStr,
       bookingTimeFormatted: bookingTimeFormattedStr,
@@ -819,6 +784,12 @@ exports.bookAppointment = async (req, res) => {
       data: newAppointment
     });
   } catch (error) {
+    if (error.code === 11000 || (error.message && (error.message.includes('slotKeys') || error.message.includes('E11000')))) {
+      return res.status(409).json({
+        success: false,
+        message: 'Sorry, this time slot has just been booked by another customer. Please select another time.'
+      });
+    }
     return res.status(500).json({ success: false, message: 'Failed to complete appointment booking.', error: error.message });
   }
 };

@@ -21,6 +21,7 @@ const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 const { broadcastEvent } = require('../utils/socket');
 const { parseKolkataDateTime, isPastDateTimeKolkata, hasAppointmentStarted, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+const { checkSlotConflict, isSpecialistOnLeave, cleanSpecialistName, generateSlotKeys } = require('../utils/appointmentHelper');
 
 
 class AdminService {
@@ -776,6 +777,19 @@ class AdminService {
       adminTotalDuration = serviceDoc ? (serviceDoc.durationMinutes || 30) : 30;
     }
 
+    // Check slot availability and specialist approved leave
+    if (assignedSpecialist && assignedSpecialist !== 'Any Available Specialist' && !appTime.toLowerCase().includes('walk-in')) {
+      const conflict = await checkSlotConflict({
+        appointmentDate: appDate,
+        appointmentTime: appTime,
+        durationMinutes: adminTotalDuration,
+        specialistName: assignedSpecialist
+      });
+      if (conflict.hasConflict) {
+        throw ApiError.conflict(conflict.reason || 'Selected date and time slot is unavailable.');
+      }
+    }
+
     const appStatus = payload.status 
       ? (payload.status.toLowerCase() === 'confirmed' ? 'Confirmed' : payload.status.toLowerCase() === 'pending' ? 'Pending' : payload.status)
       : 'Confirmed';
@@ -791,6 +805,7 @@ class AdminService {
       price: txnAmount,
       finalAmount: txnAmount,
       specialistName: assignedSpecialist,
+      slotKeys: generateSlotKeys(assignedSpecialist, appDate, appTime, adminTotalDuration),
       appointmentDate: appDate,
       appointmentTime: appTime,
       bookingDateTime: now,
@@ -804,20 +819,23 @@ class AdminService {
       customerId: customer ? customer._id.toString() : null
     });
 
-    try {
-      await Transaction.create({
-        txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-        type: 'Credited',
-        category: 'Appointment Booking',
-        description: `Customer Appointment #${bookingId} - ${newApp.customerName} (${newApp.service})`,
-        amount: txnAmount,
-        paymentMethod: payload.paymentMethod || 'UPI',
-        status: 'Completed',
-        date: new Date().toISOString(),
-        branchId: payload.branchId || null
-      });
-    } catch (txnErr) {
-      console.warn('[adminService] Transaction creation notice:', txnErr.message);
+    if (payload.paymentStatus === 'Paid' || appStatus === 'Completed') {
+      try {
+        await Transaction.create({
+          txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+          appointmentId: newApp._id.toString(),
+          type: 'Credited',
+          category: 'Appointment Booking',
+          description: `Customer Appointment #${bookingId} - ${newApp.customerName} (${newApp.service})`,
+          amount: txnAmount,
+          paymentMethod: payload.paymentMethod || 'UPI',
+          status: 'Completed',
+          date: new Date().toISOString(),
+          branchId: payload.branchId || null
+        });
+      } catch (txnErr) {
+        console.warn('[adminService] Transaction creation notice:', txnErr.message);
+      }
     }
 
     try {
@@ -832,6 +850,7 @@ class AdminService {
     }
 
     broadcastEvent('appointment:created', { appointment: newApp });
+    broadcastEvent('appointment:new', { appointment: newApp });
 
     return newApp;
   }
@@ -900,12 +919,16 @@ class AdminService {
       }
     };
 
-    if (paymentStatus) {
-      updateDoc.paymentStatus = paymentStatus;
+    const effectivePaymentStatus = paymentStatus || (targetStatus === 'Completed' ? 'Paid' : appointment.paymentStatus);
+    if (effectivePaymentStatus) {
+      updateDoc.paymentStatus = effectivePaymentStatus;
     }
 
-    if (updaterInfo.specialistName) {
+    if (['Cancelled', 'Staff_Rejected', 'No Show'].includes(targetStatus)) {
+      updateDoc.slotKeys = [];
+    } else if (updaterInfo.specialistName) {
       updateDoc.specialistName = updaterInfo.specialistName;
+      updateDoc.slotKeys = generateSlotKeys(updaterInfo.specialistName, appointment.appointmentDate, appointment.appointmentTime, appointment.totalDuration || 30);
     }
 
     const updated = await Appointment.findOneAndUpdate(
@@ -917,6 +940,48 @@ class AdminService {
     if (!updated) {
       const fresh = await Appointment.findById(id);
       throw ApiError.conflict(`Concurrent update conflict: Appointment status was already changed by another session (Current: ${fresh?.status || 'Unknown'}).`);
+    }
+
+    // Synchronize Financial Ledger (Idempotent Transaction Creation on Completion/Paid)
+    if (targetStatus === 'Completed' || effectivePaymentStatus === 'Paid') {
+      try {
+        const existingTxn = await Transaction.findOne({
+          $or: [
+            { appointmentId: updated._id.toString() },
+            { description: { $regex: updated.bookingId } }
+          ]
+        });
+
+        if (!existingTxn) {
+          const billingAmount = Number(updated.finalAmount || updated.price || 0);
+          await Transaction.create({
+            txnId: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
+            appointmentId: updated._id.toString(),
+            type: 'Credited',
+            category: 'Appointment Booking',
+            description: `Appointment Service #${updated.bookingId} - ${updated.customerName} (${updated.service})`,
+            amount: billingAmount,
+            paymentMethod: updated.paymentMethod || 'Cash',
+            status: 'Completed',
+            date: new Date().toISOString(),
+            branchId: updated.branchId || null
+          });
+        }
+      } catch (txnErr) {
+        console.warn('[adminService] Ledger transaction sync error:', txnErr.message);
+      }
+    } else if (targetStatus === 'Cancelled' || targetStatus === 'Staff_Rejected') {
+      try {
+        await Transaction.updateMany(
+          {
+            appointmentId: updated._id.toString(),
+            status: 'Pending'
+          },
+          { status: 'Failed' }
+        );
+      } catch (cancelTxnErr) {
+        console.warn('[adminService] Cancel transaction sync error:', cancelTxnErr.message);
+      }
     }
 
     await this.createActivityLog({
@@ -955,7 +1020,6 @@ class AdminService {
 
       let newTime = updaterInfo.newTime || appointment.rescheduleData?.requestedTime || appointment.appointmentTime || '11:30 AM';
 
-      // CRITICAL CHECK FOR PREVIOUS / PAST DATES & TIMES:
       // If the selected newDate is today, but newTime has ALREADY passed earlier today:
       if (newDate === todayKolkata && hasAppointmentStarted(newDate, newTime)) {
         const nowKolkata = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
@@ -982,24 +1046,24 @@ class AdminService {
         }
       }
 
-      // Re-check slot availability for newDate and newTime before confirming reschedule
-      if (appointment.specialistName && appointment.specialistName !== 'Any Available Specialist') {
-        const cleanSpecFirst = appointment.specialistName.split('(')[0].trim().split(/\s+/)[0];
-        const conflictCheck = await Appointment.findOne({
-          _id: { $ne: appointment._id },
-          specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
-          appointmentDate: newDate,
-          appointmentTime: newTime,
-          status: { $nin: ['Cancelled', 'No Show', 'Staff_Rejected'] }
-        });
-        if (conflictCheck) {
-          throw ApiError.badRequest(`Requested slot (${newDate} at ${newTime}) is already occupied for ${appointment.specialistName}.`);
-        }
+      // Duration-aware slot and approved leave conflict check before confirming reschedule
+      const dur = appointment.totalDuration || 30;
+      const conflict = await checkSlotConflict({
+        appointmentDate: newDate,
+        appointmentTime: newTime,
+        durationMinutes: dur,
+        specialistName: appointment.specialistName,
+        excludeAppointmentId: appointment._id
+      });
+
+      if (conflict.hasConflict) {
+        throw ApiError.badRequest(conflict.reason || `Requested slot (${newDate} at ${newTime}) is already occupied.`);
       }
 
       appointment.appointmentDate = newDate;
       appointment.appointmentTime = newTime;
       appointment.status = 'Confirmed';
+      appointment.slotKeys = generateSlotKeys(appointment.specialistName, newDate, newTime, dur);
       appointment.rescheduleRequested = false;
       appointment.rescheduleData = null;
       appointment.statusHistory.push({
@@ -1077,7 +1141,7 @@ class AdminService {
   }
 
   /**
-   * Directly reschedule any appointment (especially missed / past date / No Show appointments)
+   * Directly reschedule any appointment (including missed / past date / No Show appointments)
    */
   async rescheduleAppointment(id, newDate, newTime, reason, updaterInfo = {}) {
     const appointment = await Appointment.findById(id);
@@ -1115,19 +1179,18 @@ class AdminService {
       }
     }
 
-    // Check slot availability for new slot
-    if (appointment.specialistName && appointment.specialistName !== 'Any Available Specialist') {
-      const cleanSpecFirst = appointment.specialistName.split('(')[0].trim().split(/\s+/)[0];
-      const conflictCheck = await Appointment.findOne({
-        _id: { $ne: appointment._id },
-        specialistName: { $regex: new RegExp(cleanSpecFirst, 'i') },
-        appointmentDate: targetDate,
-        appointmentTime: targetTime,
-        status: { $nin: ['Cancelled', 'No Show', 'Staff_Rejected'] }
-      });
-      if (conflictCheck) {
-        throw ApiError.badRequest(`Requested slot (${targetDate} at ${targetTime}) is already occupied for ${appointment.specialistName}.`);
-      }
+    // Check duration-aware slot and leave conflict
+    const dur = appointment.totalDuration || 30;
+    const conflict = await checkSlotConflict({
+      appointmentDate: targetDate,
+      appointmentTime: targetTime,
+      durationMinutes: dur,
+      specialistName: appointment.specialistName,
+      excludeAppointmentId: appointment._id
+    });
+
+    if (conflict.hasConflict) {
+      throw ApiError.badRequest(conflict.reason || `Requested slot (${targetDate} at ${targetTime}) is already occupied.`);
     }
 
     const oldDate = appointment.appointmentDate;
@@ -1137,6 +1200,7 @@ class AdminService {
     appointment.appointmentDate = targetDate;
     appointment.appointmentTime = targetTime;
     appointment.status = 'Confirmed';
+    appointment.slotKeys = generateSlotKeys(appointment.specialistName, targetDate, targetTime, dur);
     appointment.rescheduleRequested = false;
     appointment.rescheduleData = null;
     appointment.statusHistory.push({

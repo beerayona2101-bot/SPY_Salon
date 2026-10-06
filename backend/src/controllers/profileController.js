@@ -222,9 +222,20 @@ exports.bookPackageSession = async (req, res, next) => {
     const pkg = user.packages.find(p => p.packageId === packageId);
     if (!pkg) throw ApiError.notFound('Subscribed package not found');
 
-    if (pkg.status !== 'Active' || pkg.remainingSessions <= 0) {
-      throw ApiError.badRequest('No remaining sessions left on this package subscription.');
+    const { isPastDateTimeKolkata, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+    const { generateSlotKeys, checkSlotConflict } = require('../utils/appointmentHelper');
+
+    if (isPastDateTimeKolkata(appointmentDate, appointmentTime)) {
+      throw ApiError.badRequest('Please select a future appointment date and time for your package session.');
     }
+
+    // Resolve service doc to extract duration
+    let serviceDoc = await Service.findOne({
+      name: new RegExp((pkg.serviceIncluded || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
+      isActive: { $ne: false }
+    });
+    const srvDuration = serviceDoc ? (serviceDoc.durationMinutes || 30) : 30;
+    const srvPrice = serviceDoc ? (serviceDoc.discountPrice || serviceDoc.price || 0) : 0;
 
     // Decrement sessions
     pkg.usedSessions += 1;
@@ -238,16 +249,31 @@ exports.bookPackageSession = async (req, res, next) => {
     // Create Booking Appointment record in MongoDB
     const bookingId = `SPY-PKG-${Math.floor(10000 + Math.random() * 90000)}`;
     const branchDoc = await Branch.findOne({ name: new RegExp(branchName || 'Jubilee Hills', 'i') });
-    
-    await Appointment.create({
+    const chosenSpecialist = 'Any Available Specialist';
+    const computedSlotKeys = generateSlotKeys(chosenSpecialist, appointmentDate, appointmentTime, srvDuration);
+
+    const newAppointment = await Appointment.create({
       bookingId,
       customerName: user.name,
       customerPhone: user.phone,
       customerEmail: user.email,
       service: pkg.serviceIncluded,
-      specialistName: 'Any Available Specialist',
+      services: [{
+        serviceId: serviceDoc ? serviceDoc._id.toString() : null,
+        name: pkg.serviceIncluded,
+        price: srvPrice,
+        durationMinutes: srvDuration
+      }],
+      totalDuration: srvDuration,
+      price: 0,
+      finalAmount: 0,
+      specialistName: chosenSpecialist,
+      slotKeys: computedSlotKeys,
       appointmentDate,
       appointmentTime,
+      bookingDateTime: new Date(),
+      bookingDate: getKolkataCurrentDateStr(),
+      bookingTimeFormatted: getKolkataCurrentTimeStr(),
       paymentMethod: 'Package Credits',
       paymentStatus: 'Paid',
       status: 'Confirmed',

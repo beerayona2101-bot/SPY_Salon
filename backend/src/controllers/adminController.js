@@ -728,8 +728,21 @@ exports.deleteLeave = async (req, res, next) => {
 exports.getAttendance = async (req, res, next) => {
   try {
     const branchId = req.user.role === 'admin' ? req.query.branchId : req.user.branchId;
-    const filter = branchId ? { branchId } : {};
-    const attendance = await Attendance.find(filter).sort({ date: -1 });
+    const { employeeId, date } = req.query;
+    let filter = branchId ? { branchId } : {};
+
+    if (date) filter.date = date;
+    if (employeeId) {
+      const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+      const resolved = await resolveEmployeeFilter(employeeId);
+      if (resolved.filter && resolved.filter.$or) {
+        filter = { ...filter, ...resolved.filter };
+      } else {
+        filter.employeeId = employeeId;
+      }
+    }
+
+    const attendance = await Attendance.find(filter).sort({ date: -1, createdAt: -1 });
     return ApiResponse.success(res, attendance, 'Attendance records retrieved');
   } catch (error) {
     next(error);
@@ -742,18 +755,18 @@ exports.getAttendanceReport = async (req, res, next) => {
     const filter = branchId ? { branchId } : {};
     
     const { month } = req.query;
-    const { aggregateMonthlyAttendance } = require('../utils/attendanceCalculator');
+    const { aggregateMonthlyAttendance, resolveEmployeeFilter } = require('../utils/attendanceCalculator');
     
     const employees = await Employee.find(filter).sort({ createdAt: 1 });
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     
     const report = await Promise.all(employees.map(async (emp, index) => {
-      const empIdStr = emp._id.toString();
-      const monthlyData = await aggregateMonthlyAttendance(empIdStr, month);
+      const resolved = await resolveEmployeeFilter(emp);
+      const monthlyData = await aggregateMonthlyAttendance(resolved.primaryEmployeeId, month);
       const summary = monthlyData.summary;
 
-      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       const todayLog = await Attendance.findOne({
-        $or: [{ employeeId: empIdStr }, { employee: emp._id }],
+        ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
         date: todayStr
       });
 
@@ -768,6 +781,7 @@ exports.getAttendanceReport = async (req, res, next) => {
         name: emp.name,
         avatar: emp.avatar,
         specialties: emp.specialties,
+        branchId: emp.branchId || null,
         salonOpenedDays: monthlyData.totalDaysInMonth,
         workedDays: summary.attendanceEquivalent,
         fullDays: summary.fullDaysCount,
@@ -776,6 +790,8 @@ exports.getAttendanceReport = async (req, res, next) => {
         leaveDays: summary.leaveDaysCount,
         weeklyOffDays: summary.weeklyOffDaysCount,
         holidayDays: summary.holidayDaysCount,
+        otHours: summary.totalOvertimeHoursFormatted || '0h',
+        otTimes: summary.totalOvertimeTimes || 0,
         workingHours: summary.totalEffectiveWorkingHoursFormatted,
         breakHours: summary.totalBreakHoursFormatted,
         attendancePercentage: attendancePct,
@@ -785,7 +801,8 @@ exports.getAttendanceReport = async (req, res, next) => {
               : todayLog.attendanceState === 'ON_BREAK'
               ? `On Break (${todayLog.clockIn})`
               : `Present (${todayLog.clockIn} - Working)`) 
-          : 'Not Checked In'
+          : 'Not Checked In',
+        todayLog: todayLog || null
       };
     }));
 
@@ -797,24 +814,230 @@ exports.getAttendanceReport = async (req, res, next) => {
 
 exports.recordAttendance = async (req, res, next) => {
   try {
-    const branchId = req.user.role === 'admin' ? req.body.branchId : req.user.branchId;
-    const now = new Date();
-    const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
-    const clockInTime = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+    const { employeeId, employeeName, branchId, date, clockInTime } = req.body;
+    if (!employeeId && !employeeName) {
+      throw ApiError.badRequest('Employee ID or Employee Name is required to mark attendance.');
+    }
 
-    const newLog = await Attendance.create({
-      date: todayStr,
-      clockIn: clockInTime,
-      clockOut: null, // MUST BE NULL while employee is working!
-      clockInTimestamp: now,
-      clockOutTimestamp: null,
-      status: 'Present',
-      attendanceState: 'CLOCKED_IN',
-      employeeName: req.body.employeeName || 'Staff Member',
-      employeeId: req.body.employeeId || `emp_${Date.now()}`,
-      branchId
+    const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+    const resolved = await resolveEmployeeFilter(employeeId || employeeName);
+
+    if (!resolved.employeeDoc && !resolved.userDoc) {
+      throw ApiError.notFound(`Employee record '${employeeId || employeeName}' not found in database.`);
+    }
+
+    const empStatus = (resolved.employeeDoc?.status || resolved.userDoc?.status || 'Active');
+    if (empStatus === 'Inactive') {
+      throw ApiError.badRequest('Cannot mark attendance for an inactive employee.');
+    }
+
+    const now = new Date();
+    const todayStr = date ? String(date).trim() : now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    const formattedClockIn = clockInTime || now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Check approved leave
+    const approvedLeave = await Leave.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
+      status: 'Approved',
+      startDate: { $lte: todayStr },
+      endDate: { $gte: todayStr }
     });
-    return ApiResponse.created(res, newLog, 'Clock-in recorded');
+
+    if (approvedLeave) {
+      throw ApiError.badRequest(`Attendance Blocked: ${resolved.employeeName} is on approved leave on ${todayStr} (${approvedLeave.startDate} to ${approvedLeave.endDate}).`);
+    }
+
+    // Prevent duplicate attendance
+    const existingLog = await Attendance.findOne({
+      ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: resolved.primaryEmployeeId }),
+      date: todayStr
+    });
+
+    if (existingLog) {
+      throw ApiError.badRequest(`Attendance has already been recorded for ${resolved.employeeName} on ${todayStr} (${existingLog.clockIn || 'Logged'} - ${existingLog.attendanceState}).`);
+    }
+
+    const finalBranchId = branchId || resolved.branchId || req.user.branchId || null;
+    const empObjectId = resolved.employeeDoc ? resolved.employeeDoc._id : (resolved.userDoc ? resolved.userDoc._id : null);
+
+    try {
+      const newLog = await Attendance.create({
+        employee: empObjectId,
+        employeeId: resolved.primaryEmployeeId,
+        employeeName: resolved.employeeName,
+        date: todayStr,
+        clockIn: formattedClockIn,
+        clockOut: null,
+        clockInTimestamp: now,
+        clockOutTimestamp: null,
+        status: 'Present',
+        attendanceState: 'CLOCKED_IN',
+        attendanceType: 'NOT_FINALIZED',
+        breaks: [],
+        totalBreakDuration: 0,
+        totalShiftDuration: 0,
+        effectiveWorkingDuration: 0,
+        branchId: finalBranchId
+      });
+
+      await ActivityLog.create({
+        action: 'Admin Marked Attendance',
+        details: `Admin ${req.user.name} recorded attendance for ${resolved.employeeName} on ${todayStr} at ${formattedClockIn}.`,
+        user: req.user.name,
+        branchId: finalBranchId
+      });
+
+      broadcastEvent('attendance:clock_in', { employeeName: resolved.employeeName, time: formattedClockIn, attendanceState: 'CLOCKED_IN' });
+      return ApiResponse.created(res, newLog, `Attendance marked successfully for ${resolved.employeeName}`);
+    } catch (createErr) {
+      if (createErr.code === 11000) {
+        throw ApiError.badRequest(`Attendance has already been recorded for ${resolved.employeeName} on ${todayStr}.`);
+      }
+      throw createErr;
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { clockIn, clockOut, breaks, status } = req.body;
+    const log = await Attendance.findById(id);
+    if (!log) throw ApiError.notFound('Attendance record not found');
+
+    if (clockIn !== undefined && clockIn !== null) {
+      log.clockIn = clockIn;
+    }
+    if (clockOut !== undefined) {
+      log.clockOut = clockOut || null;
+    }
+    if (Array.isArray(breaks)) {
+      log.breaks = breaks.map(b => ({
+        start: b.start,
+        end: b.end || null,
+        startTimestamp: b.startTimestamp ? new Date(b.startTimestamp) : new Date(),
+        endTimestamp: b.endTimestamp ? new Date(b.endTimestamp) : null,
+        duration: Number(b.duration) || 0
+      }));
+      log.totalBreakDuration = log.breaks.reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+    }
+
+    // Recalculate durations server-side
+    const { classifyAttendanceType } = require('../utils/attendanceCalculator');
+    if (log.clockIn && log.clockOut) {
+      const parseTimeToMinutes = (tStr) => {
+        if (!tStr) return 0;
+        const [time, modifier] = String(tStr).trim().split(/\s+/);
+        let [h, m] = time.split(':').map(Number);
+        if (modifier === 'PM' && h < 12) h += 12;
+        if (modifier === 'AM' && h === 12) h = 0;
+        return h * 60 + (m || 0);
+      };
+
+      const inMins = parseTimeToMinutes(log.clockIn);
+      const outMins = parseTimeToMinutes(log.clockOut);
+      const totalShift = outMins >= inMins ? (outMins - inMins) : (1440 - inMins + outMins);
+
+      const totalBreaks = log.breaks.reduce((sum, b) => sum + (Number(b.duration) || 0), 0);
+      const effective = Math.max(0, totalShift - totalBreaks);
+
+      log.totalShiftDuration = totalShift;
+      log.totalBreakDuration = totalBreaks;
+      log.effectiveWorkingDuration = effective;
+      log.attendanceState = 'CLOCKED_OUT';
+      log.attendanceType = classifyAttendanceType(effective);
+      log.status = status || (log.attendanceType === 'FULL_DAY' ? 'Present' : 'Half Day');
+    } else if (log.clockIn && !log.clockOut) {
+      log.attendanceState = 'CLOCKED_IN';
+      log.attendanceType = 'NOT_FINALIZED';
+      log.status = status || 'Present';
+    }
+
+    await log.save();
+
+    await ActivityLog.create({
+      action: 'Admin Corrected Attendance',
+      details: `Admin ${req.user.name} adjusted attendance for ${log.employeeName} on ${log.date}.`,
+      user: req.user.name,
+      branchId: log.branchId
+    });
+
+    broadcastEvent('attendance:updated', log);
+    return ApiResponse.success(res, log, `Attendance record for ${log.employeeName} updated successfully`);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.adminClockOutAttendance = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const mongoose = require('mongoose');
+
+    let log = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      log = await Attendance.findById(id);
+    }
+    if (!log) {
+      const { resolveEmployeeFilter } = require('../utils/attendanceCalculator');
+      const resolved = await resolveEmployeeFilter(id);
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      log = await Attendance.findOne({
+        ...(resolved.filter && resolved.filter.$or ? resolved.filter : { employeeId: id }),
+        date: todayStr
+      });
+    }
+
+    if (!log) throw ApiError.notFound('Active attendance record not found for clock-out.');
+    if (log.attendanceState === 'CLOCKED_OUT') {
+      throw ApiError.badRequest(`Shift for ${log.employeeName} has already been completed (${log.clockIn} - ${log.clockOut}).`);
+    }
+
+    const now = new Date();
+    const clockOutTime = req.body.clockOutTime || now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Close any active break
+    if (log.breaks && log.breaks.length > 0) {
+      log.breaks.forEach(b => {
+        if (!b.end) {
+          b.end = clockOutTime;
+          b.endTimestamp = now;
+          const startMs = b.startTimestamp ? new Date(b.startTimestamp).getTime() : now.getTime();
+          b.duration = Math.max(1, Math.round((now.getTime() - startMs) / 60000));
+        }
+      });
+    }
+
+    log.clockOut = clockOutTime;
+    log.clockOutTimestamp = now;
+
+    const clockInMs = log.clockInTimestamp ? new Date(log.clockInTimestamp).getTime() : now.getTime();
+    const totalShiftMins = Math.max(0, Math.round((now.getTime() - clockInMs) / 60000));
+    const totalBreakMins = log.breaks.reduce((acc, b) => acc + (Number(b.duration) || 0), 0);
+    const effectiveMins = Math.max(0, totalShiftMins - totalBreakMins);
+
+    log.totalShiftDuration = totalShiftMins;
+    log.totalBreakDuration = totalBreakMins;
+    log.effectiveWorkingDuration = effectiveMins;
+    log.attendanceState = 'CLOCKED_OUT';
+
+    const { classifyAttendanceType } = require('../utils/attendanceCalculator');
+    log.attendanceType = classifyAttendanceType(effectiveMins);
+    log.status = log.attendanceType === 'FULL_DAY' ? 'Present' : 'Half Day';
+
+    await log.save();
+
+    await ActivityLog.create({
+      action: 'Admin Clocked Out Staff',
+      details: `Admin ${req.user.name} clocked out ${log.employeeName} at ${clockOutTime}. Effective work: ${effectiveMins} mins.`,
+      user: req.user.name,
+      branchId: log.branchId
+    });
+
+    broadcastEvent('attendance:clock_out', { employeeName: log.employeeName, time: clockOutTime, attendanceState: 'CLOCKED_OUT', attendanceType: log.attendanceType });
+    return ApiResponse.success(res, log, `Successfully clocked out ${log.employeeName} at ${clockOutTime} (${log.attendanceType})`);
   } catch (error) {
     next(error);
   }

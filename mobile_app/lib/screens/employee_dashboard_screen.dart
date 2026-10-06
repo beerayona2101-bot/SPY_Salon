@@ -125,11 +125,23 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     }
   }
 
-  Map<String, List<Map<String, dynamic>>> _getGroupedAppointments() {
+  bool _isActiveQueueAppointment(dynamic raw) {
+    if (raw is! Map) return false;
+    final status = (raw['status'] ?? '').toString().trim().toLowerCase();
+    return status != 'completed' &&
+           status != 'cancelled' &&
+           status != 'staff_rejected' &&
+           status != 'no show' &&
+           status != 'no_show' &&
+           status != 'noshow';
+  }
+
+  Map<String, List<Map<String, dynamic>>> _getGroupedAppointments({bool activeOnly = true}) {
     final Map<String, List<Map<String, dynamic>>> groups = {};
 
     for (final raw in _appointments) {
       if (raw is! Map) continue;
+      if (activeOnly && !_isActiveQueueAppointment(raw)) continue;
       final appt = Map<String, dynamic>.from(raw);
       final id = (appt['_id'] ?? appt['id'] ?? appt['bookingId'] ?? '').toString().trim();
       final service = (appt['service'] ?? appt['serviceName'] ?? '').toString().trim();
@@ -664,7 +676,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   }
 
   Widget _buildStaffBottomNav(AppColors themeColors) {
-    final activeQueueCount = _appointments.where((a) => a['status'] != 'Completed' && a['status'] != 'Cancelled').length;
+    final activeQueueCount = _appointments.where((a) => _isActiveQueueAppointment(a)).length;
 
     final navItems = [
       const SpySalonNavItem(
@@ -1513,21 +1525,25 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
     final primaryColor = themeColors.primary;
     final cardBg = themeColors.cardSurface;
     final buttonTextColor = themeColors.buttonTextPrimary;
-    final activeCount = _appointments.where((a) => a['status'] != 'Completed' && a['status'] != 'Cancelled').length;
+    final activeCount = _appointments.where((a) => _isActiveQueueAppointment(a)).length;
 
-    // Date grouping & filtering
-    final grouped = _getGroupedAppointments();
+    // Date grouping & filtering (active queue only)
+    final grouped = _getGroupedAppointments(activeOnly: true);
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // Calculate counts for chips
+    // Calculate active queue counts for chips (exclude Completed, Cancelled, Rejected, No Show)
     int countToday = 0;
     int countUpcoming = 0;
     int countPrevious = 0;
 
     for (final raw in _appointments) {
       if (raw is! Map) continue;
+      final status = raw['status']?.toString();
+      if (status == 'Completed' || status == 'Cancelled' || status == 'Staff_Rejected' || status == 'No Show') {
+        continue;
+      }
       final rawDate = raw['appointmentDate'] ?? raw['date'] ?? raw['bookingDate'];
       final norm = _normalizeDateString(rawDate);
       final dt = DateTime.tryParse(norm) ?? today;
@@ -1649,10 +1665,10 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      _buildFilterChip('All', 'All Dates (${_appointments.length})', themeColors),
-                      _buildFilterChip('Today', 'Today ($countToday)', themeColors),
-                      _buildFilterChip('Upcoming', 'Upcoming ($countUpcoming)', themeColors),
-                      _buildFilterChip('Previous', 'Previous ($countPrevious)', themeColors),
+                      _buildFilterChip('All', activeCount > 0 ? 'All Dates ($activeCount)' : 'All Dates', themeColors),
+                      _buildFilterChip('Today', countToday > 0 ? 'Today ($countToday)' : 'Today', themeColors),
+                      _buildFilterChip('Upcoming', countUpcoming > 0 ? 'Upcoming ($countUpcoming)' : 'Upcoming', themeColors),
+                      _buildFilterChip('Previous', countPrevious > 0 ? 'Previous ($countPrevious)' : 'Previous', themeColors),
                     ],
                   ),
                 ),
@@ -1701,7 +1717,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                                   onPressed: () => setState(() => _queueDateFilter = 'All'),
                                   icon: Icon(Icons.calendar_today, size: 16, color: primaryColor),
                                   label: Text(
-                                    'View All Dates (${_appointments.length})',
+                                    'View All Active ($activeCount)',
                                     style: TextStyle(
                                       color: primaryColor,
                                       fontSize: 13,
@@ -2074,28 +2090,102 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                       final date = log['date'] ?? '';
                       final clockIn = log['clockIn'] ?? '—';
                       final clockOut = log['clockOut'] ?? '—';
-                      final status = log['status'] ?? 'Present';
+                      final status = (log['attendanceType'] == 'FULL_DAY' || log['status'] == 'Present')
+                          ? 'FULL DAY'
+                          : (log['attendanceType'] == 'HALF_DAY' || log['status'] == 'Half Day')
+                              ? 'HALF DAY'
+                              : (log['status'] ?? 'PRESENT').toString().toUpperCase();
+                      final totalBreaks = (log['totalBreakDuration'] as num?)?.toInt() ?? 0;
+                      final effectiveWork = (log['effectiveWorkingDuration'] as num?)?.toInt() ?? 0;
+                      final breaksList = log['breaks'] is List ? (log['breaks'] as List) : [];
 
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: themeColors.cardBorder)),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: themeColors.cardBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(date, style: TextStyle(color: themeColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 2),
-                                Text('In: $clockIn  •  Out: $clockOut', style: TextStyle(color: themeColors.textMuted, fontSize: 11)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: (status == 'FULL DAY' || status == 'PRESENT') ? themeColors.successSoft : themeColors.warningSoft,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: (status == 'FULL DAY' || status == 'PRESENT') ? themeColors.success : themeColors.warning,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
                               ],
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: themeColors.successSoft, borderRadius: BorderRadius.circular(8)),
-                              child: Text(status.toUpperCase(), style: TextStyle(color: themeColors.success, fontSize: 10, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Icon(Icons.login, size: 13, color: themeColors.success),
+                                const SizedBox(width: 4),
+                                Text('In: $clockIn', style: TextStyle(color: themeColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
+                                const SizedBox(width: 14),
+                                Icon(Icons.logout, size: 13, color: themeColors.error),
+                                const SizedBox(width: 4),
+                                Text('Out: $clockOut', style: TextStyle(color: themeColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w600)),
+                              ],
                             ),
+                            if (breaksList.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: themeColors.cardSurfaceElevated,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ...breaksList.asMap().entries.map((entry) {
+                                      final bIdx = entry.key + 1;
+                                      final b = entry.value;
+                                      final bStart = b['start'] ?? '';
+                                      final bEnd = b['end'] ?? 'In Progress';
+                                      final bDur = b['duration'] != null ? ' (${b['duration']}m)' : '';
+                                      return Padding(
+                                        padding: const EdgeInsets.only(bottom: 2),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.free_breakfast, size: 11, color: themeColors.warning),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Break $bIdx: $bStart → $bEnd$bDur',
+                                              style: TextStyle(color: themeColors.textMuted, fontSize: 10, fontFamily: 'monospace'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
+                                    if (totalBreaks > 0)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          'Total Breaks: ${totalBreaks}m  •  Effective: ${effectiveWork}m (${(effectiveWork / 60).toStringAsFixed(1)}h)',
+                                          style: TextStyle(color: themeColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       );
