@@ -75,6 +75,10 @@ const appointmentSchema = new mongoose.Schema({
   },
   branchId: { type: String, default: null },
   customerId: { type: String, default: null },
+  specialistId: { type: String, default: null },
+  employeeId: { type: String, default: null },
+  employee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  isWalkIn: { type: Boolean, default: false },
   slotKeys: [{ type: String }]
 }, { timestamps: true });
 

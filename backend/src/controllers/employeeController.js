@@ -777,12 +777,19 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       throw ApiError.badRequest('Customer name and service are required');
     }
 
+    const { getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
+    const { generateSlotKeys } = require('../utils/appointmentHelper');
+
     const bookingId = `SPY-WI-${Math.floor(100000 + Math.random() * 900000)}`;
-    const todayStr = new Date().toISOString().split('T')[0];
-    const targetDateStr = appointmentDate ? appointmentDate.trim() : todayStr;
+    const targetDateStr = appointmentDate ? appointmentDate.trim() : getKolkataCurrentDateStr();
+    // Use the provided time, or default to current Kolkata time for immediate walk-ins
+    const finalAppTime = (appointmentTime && appointmentTime.trim()) ? appointmentTime.trim() : getKolkataCurrentTimeStr();
+    // Walk-ins are immediately in progress; if the date is today treat as In Progress, else Confirmed
+    const todayStr = getKolkataCurrentDateStr();
+    const walkInStatus = targetDateStr === todayStr ? 'In Progress' : 'Confirmed';
+
     const now = new Date();
     const bookingDateTime = now.toISOString();
-    const bookingTimeFormattedStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // Resolve service price and duration from Service model safely
     let validatedPrice = 999;
@@ -796,8 +803,6 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       }
     } catch (sErr) {}
 
-    const { hasAppointmentStarted, getKolkataCurrentDateStr, getKolkataCurrentTimeStr } = require('../utils/timezoneHelper');
-    const { generateSlotKeys } = require('../utils/appointmentHelper');
     const walkInSpecialist = specialistName || req.user.name;
     const computedSlotKeys = generateSlotKeys(walkInSpecialist, targetDateStr, finalAppTime, serviceDuration);
 
@@ -831,6 +836,7 @@ exports.createEmployeeWalkIn = async (req, res, next) => {
       paymentMethod: paymentMethod || 'Cash',
       paymentStatus: 'Paid',
       status: walkInStatus,
+      isWalkIn: true,
       notes: notes || 'Direct Walk-In Client added by Stylist Desk.',
       customerId: null
     });
