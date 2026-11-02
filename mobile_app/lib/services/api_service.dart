@@ -1731,22 +1731,11 @@ class ApiService {
   }
 
   /// Fetch notifications for the current user
+  /// Identity is resolved server-side from the JWT in the Authorization header.
   static Future<Map<String, dynamic>> getNotifications({int limit = 25}) async {
     try {
-      final user = await getStoredUser();
-      final queryParams = <String, String>{'limit': limit.toString()};
-      if (user != null) {
-        final role = (user['role'] ?? 'customer').toString().toLowerCase();
-        queryParams['role'] = role;
-        if (user['_id'] != null || user['id'] != null) {
-          queryParams['userId'] = (user['_id'] ?? user['id']).toString();
-        }
-        if (user['email'] != null && user['email'].toString().isNotEmpty) {
-          queryParams['email'] = user['email'].toString();
-        }
-      }
       final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/notifications')
-          .replace(queryParameters: queryParams);
+          .replace(queryParameters: {'limit': limit.toString()});
       final response = await _requestWithRetry('GET', uri.toString());
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -1760,23 +1749,13 @@ class ApiService {
   }
 
   /// Fetch unread notification count for the current user
+  /// Identity is resolved server-side from the JWT in the Authorization header.
   static Future<int> getUnreadNotificationCount() async {
     try {
-      final user = await getStoredUser();
-      final queryParams = <String, String>{};
-      if (user != null) {
-        final role = (user['role'] ?? 'customer').toString().toLowerCase();
-        queryParams['role'] = role;
-        if (user['_id'] != null || user['id'] != null) {
-          queryParams['userId'] = (user['_id'] ?? user['id']).toString();
-        }
-        if (user['email'] != null && user['email'].toString().isNotEmpty) {
-          queryParams['email'] = user['email'].toString();
-        }
-      }
-      final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/notifications/unread')
-          .replace(queryParameters: queryParams);
-      final response = await _requestWithRetry('GET', uri.toString());
+      final response = await _requestWithRetry(
+        'GET',
+        '${ApiConfig.baseUrl}/api/v1/notifications/unread',
+      );
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         final payload = data['data'] ?? data;

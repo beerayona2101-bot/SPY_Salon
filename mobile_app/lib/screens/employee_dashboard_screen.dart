@@ -816,8 +816,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
                       constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                       child: Text(
                         _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: themeColors.buttonTextPrimary,
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),

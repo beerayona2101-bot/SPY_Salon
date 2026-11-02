@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
-import '../theme/app_colors.dart';
 import '../screens/notification_screen.dart';
 
 @pragma('vm:entry-point')
@@ -255,9 +254,8 @@ class FcmService {
       debugPrint('[FCM Service] Navigating based on notification payload type: "$type"');
 
       final navigatorState = _navigatorKey?.currentState;
-      final context = _navigatorKey?.currentContext;
 
-      if (navigatorState == null || context == null) {
+      if (navigatorState == null) {
         debugPrint('[FCM Service] Navigator not ready; cannot navigate for notification type: "$type"');
         return;
       }
@@ -266,39 +264,12 @@ class FcmService {
         case 'appointment':
         case 'booking':
         case 'reminder':
-          // Show a SnackBar AND navigate to NotificationScreen
-          if (context.mounted) {
-            final colors = AppColors.of(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Appointment Details...',
-                  style: TextStyle(color: colors.buttonTextPrimary),
-                ),
-                backgroundColor: colors.goldPrimary,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
           navigatorState.push(
             MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
           break;
         case 'leave':
         case 'attendance':
-          if (context.mounted) {
-            final colors = AppColors.of(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Staff Management...',
-                  style: TextStyle(color: colors.buttonTextPrimary),
-                ),
-                backgroundColor: colors.roseSecondary,
-                duration: const Duration(seconds: 3),
-              ),
-            );
-          }
           navigatorState.push(
             MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
