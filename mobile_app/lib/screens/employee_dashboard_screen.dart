@@ -6,6 +6,7 @@ import '../services/realtime_service.dart';
 import '../theme/app_colors.dart';
 import 'customer_dashboard_screen.dart';
 import 'login_screen.dart';
+import 'notification_screen.dart';
 import 'settings_screen.dart';
 import '../utils/payslip_pdf_generator.dart';
 import '../widgets/payslip_document_widget.dart';
@@ -34,6 +35,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   String _shiftStatus = 'NOT_CLOCKED_IN'; // NOT_CLOCKED_IN, CLOCKED_IN, ON_BREAK, CLOCKED_OUT, ON_LEAVE
   bool _isAttendanceProcessing = false;
   String _queueDateFilter = 'All'; // 'All', 'Today', 'Upcoming', 'Previous'
+
+  int _unreadNotificationCount = 0;
 
   static const List<String> _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   static const List<String> _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -179,6 +182,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
       if (mounted) setState(() {});
     });
     _loadStaffData();
+    _loadUnreadCount();
 
     RealtimeService().joinRoom('room:employee');
 
@@ -193,6 +197,8 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
         _debounceTimer = Timer(const Duration(milliseconds: 350), () {
           if (mounted) _loadStaffData(quiet: true);
         });
+      } else if (event.name == 'notification:new' || event.name == 'notifications:updated') {
+        _loadUnreadCount();
       }
     });
   }
@@ -215,8 +221,16 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
   }
 
   /// Load authenticated staff member data from Backend REST API
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await ApiService.getUnreadNotificationCount();
+      if (mounted) setState(() => _unreadNotificationCount = count);
+    } catch (e) {
+      debugPrint('[EmployeeDashboardScreen] loadUnreadCount error: $e');
+    }
+  }
+
   Future<void> _loadStaffData({bool quiet = false}) async {
-    // Only show full-screen spinner on cold start when there is no data yet
     if (!quiet && _appointments.isEmpty && _attendance.isEmpty) {
       setState(() => _isLoading = true);
     }
@@ -776,6 +790,43 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen>
             ],
           ),
           actions: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.notifications_outlined, color: themeColors.textPrimary),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                    );
+                    _loadUnreadCount();
+                  },
+                ),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE57373),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               margin: const EdgeInsets.only(right: 4),

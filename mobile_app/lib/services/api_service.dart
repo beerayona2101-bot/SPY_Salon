@@ -1729,4 +1729,116 @@ class ApiService {
     }
     return null;
   }
+
+  /// Fetch notifications for the current user
+  static Future<Map<String, dynamic>> getNotifications({int limit = 25}) async {
+    try {
+      final user = await getStoredUser();
+      final queryParams = <String, String>{'limit': limit.toString()};
+      if (user != null) {
+        final role = (user['role'] ?? 'customer').toString().toLowerCase();
+        queryParams['role'] = role;
+        if (user['_id'] != null || user['id'] != null) {
+          queryParams['userId'] = (user['_id'] ?? user['id']).toString();
+        }
+        if (user['email'] != null && user['email'].toString().isNotEmpty) {
+          queryParams['email'] = user['email'].toString();
+        }
+      }
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/notifications')
+          .replace(queryParameters: queryParams);
+      final response = await _requestWithRetry('GET', uri.toString());
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final list = data['data'] ?? data;
+        return {'success': true, 'data': list is List ? list : []};
+      }
+    } catch (e) {
+      debugPrint('[ApiService] getNotifications error: $e');
+    }
+    return {'success': false, 'data': []};
+  }
+
+  /// Fetch unread notification count for the current user
+  static Future<int> getUnreadNotificationCount() async {
+    try {
+      final user = await getStoredUser();
+      final queryParams = <String, String>{};
+      if (user != null) {
+        final role = (user['role'] ?? 'customer').toString().toLowerCase();
+        queryParams['role'] = role;
+        if (user['_id'] != null || user['id'] != null) {
+          queryParams['userId'] = (user['_id'] ?? user['id']).toString();
+        }
+        if (user['email'] != null && user['email'].toString().isNotEmpty) {
+          queryParams['email'] = user['email'].toString();
+        }
+      }
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/notifications/unread')
+          .replace(queryParameters: queryParams);
+      final response = await _requestWithRetry('GET', uri.toString());
+      if (response != null && response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final payload = data['data'] ?? data;
+        return (payload['unreadCount'] ?? 0) as int;
+      }
+    } catch (e) {
+      debugPrint('[ApiService] getUnreadNotificationCount error: $e');
+    }
+    return 0;
+  }
+
+  /// Mark a single notification as read by its id
+  static Future<bool> markNotificationRead(String id) async {
+    try {
+      final response = await _requestWithRetry(
+        'PATCH',
+        '${ApiConfig.baseUrl}/api/v1/notifications/read/$id',
+      );
+      return response != null && response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] markNotificationRead error: $e');
+    }
+    return false;
+  }
+
+  /// Mark all notifications as read for the current user
+  static Future<bool> markAllNotificationsRead() async {
+    try {
+      final user = await getStoredUser();
+      final body = <String, dynamic>{};
+      if (user != null) {
+        body['role'] = (user['role'] ?? 'customer').toString().toLowerCase();
+        if (user['_id'] != null || user['id'] != null) {
+          body['userId'] = (user['_id'] ?? user['id']).toString();
+        }
+        if (user['email'] != null && user['email'].toString().isNotEmpty) {
+          body['email'] = user['email'].toString();
+        }
+      }
+      final response = await _requestWithRetry(
+        'PATCH',
+        '${ApiConfig.baseUrl}/api/v1/notifications/read-all',
+        body: json.encode(body),
+      );
+      return response != null && response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] markAllNotificationsRead error: $e');
+    }
+    return false;
+  }
+
+  /// Delete a notification by its id
+  static Future<bool> deleteNotification(String id) async {
+    try {
+      final response = await _requestWithRetry(
+        'DELETE',
+        '${ApiConfig.baseUrl}/api/v1/notifications/$id',
+      );
+      return response != null && response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[ApiService] deleteNotification error: $e');
+    }
+    return false;
+  }
 }

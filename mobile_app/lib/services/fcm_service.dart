@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'api_service.dart';
 import '../theme/app_colors.dart';
+import '../screens/notification_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -85,7 +86,7 @@ class FcmService {
 
   /// Initialize Local Notifications Plugin for Foreground Alerts
   static Future<void> _initLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings('@drawable/ic_notification');
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -180,7 +181,7 @@ class FcmService {
       channelDescription: 'Important notifications for appointments, bookings, and salon updates.',
       importance: Importance.high,
       priority: Priority.high,
-      icon: '@mipmap/ic_launcher',
+      icon: '@drawable/ic_notification',
     );
 
     const darwinDetails = DarwinNotificationDetails(
@@ -253,16 +254,21 @@ class FcmService {
       final type = (data['type'] ?? data['screen'] ?? '').toString().toLowerCase();
       debugPrint('[FCM Service] Navigating based on notification payload type: "$type"');
 
+      final navigatorState = _navigatorKey?.currentState;
       final context = _navigatorKey?.currentContext;
-      if (context == null) return;
+
+      if (navigatorState == null || context == null) {
+        debugPrint('[FCM Service] Navigator not ready; cannot navigate for notification type: "$type"');
+        return;
+      }
 
       final colors = AppColors.of(context);
-      // Routing logic based on payload data type
+
       switch (type) {
         case 'appointment':
         case 'booking':
         case 'reminder':
-          // Existing screens handle detailed view or dashboard tab switching
+          // Show a SnackBar AND navigate to NotificationScreen
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -270,8 +276,11 @@ class FcmService {
                 style: TextStyle(color: colors.buttonTextPrimary),
               ),
               backgroundColor: colors.goldPrimary,
-              duration: const Duration(seconds: 4),
+              duration: const Duration(seconds: 3),
             ),
+          );
+          navigatorState.push(
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
           break;
         case 'leave':
@@ -283,20 +292,16 @@ class FcmService {
                 style: TextStyle(color: colors.buttonTextPrimary),
               ),
               backgroundColor: colors.roseSecondary,
-              duration: const Duration(seconds: 4),
+              duration: const Duration(seconds: 3),
             ),
+          );
+          navigatorState.push(
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
           break;
         default:
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Notification received',
-                style: TextStyle(color: colors.textPrimary),
-              ),
-              backgroundColor: colors.cardSurface,
-              duration: const Duration(seconds: 3),
-            ),
+          navigatorState.push(
+            MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
           break;
       }

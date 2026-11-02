@@ -10,6 +10,7 @@ import '../widgets/spy_salon_bottom_navigation.dart';
 import 'book_appointment_screen.dart';
 import 'history_screen.dart';
 import 'login_screen.dart';
+import 'notification_screen.dart';
 import 'settings_screen.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
@@ -36,6 +37,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
   String _searchQuery = '';
   String _selectedCategory = 'All';
   String? _preselectedService;
+
+  int _unreadNotificationCount = 0;
 
   bool get _isLoggedIn {
     if (_user == null) return false;
@@ -114,6 +117,7 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
     _loadCachedUserData();
     _loadCachedLandingSettings();
     _loadCustomerData(quiet: true);
+    _loadUnreadCount();
 
     RealtimeService().joinRoom('room:customer');
 
@@ -136,6 +140,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
           event.name == 'offers_updated' ||
           event.name == 'app:fallback_sync') {
         _loadCustomerData(quiet: true);
+      } else if (event.name == 'notification:new' || event.name == 'notifications:updated') {
+        _loadUnreadCount();
       }
     });
   }
@@ -149,6 +155,15 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await ApiService.getUnreadNotificationCount();
+      if (mounted) setState(() => _unreadNotificationCount = count);
+    } catch (e) {
+      debugPrint('[CustomerDashboardScreen] loadUnreadCount error: $e');
+    }
   }
 
   Future<void> _loadCachedLandingSettings() async {
@@ -1180,6 +1195,43 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
             overflow: TextOverflow.ellipsis,
           ),
           actions: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.notifications_outlined, color: themeColors.textPrimary),
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                    );
+                    _loadUnreadCount();
+                  },
+                ),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE57373),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        _unreadNotificationCount > 99 ? '99+' : _unreadNotificationCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             if (!_isLoggedIn) ...[
               // For Guest Users: Sign In Button
               Padding(
