@@ -48,7 +48,7 @@ function ResetPasswordPageInner() {
     if (res.success) {
       setSuccessMessage(res.message);
       setTimeout(() => {
-        router.push('/book');
+        router.push('/login');
       }, 1500);
     } else {
       setErrorMessage(res.message);

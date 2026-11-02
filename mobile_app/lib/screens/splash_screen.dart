@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../config/api_config.dart';
 import '../services/api_service.dart';
@@ -89,6 +90,22 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     super.dispose();
   }
 
+  /// Returns true if the JWT [token] has passed its `exp` claim.
+  /// Returns true (expired) on any parse failure so we conservatively refresh.
+  bool _isJwtExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      // JWT payload is base64url-encoded (no padding).
+      final normalized = base64Url.normalize(parts[1]);
+      final payload = json.decode(utf8.decode(base64Url.decode(normalized)));
+      if (payload is Map && payload['exp'] is int) {
+        return DateTime.now().millisecondsSinceEpoch >= (payload['exp'] as int) * 1000;
+      }
+    } catch (_) {}
+    return true;
+  }
+
   Future<void> _initializeApp() async {
     final startTime = DateTime.now();
     bool isLoggedIn = false;
@@ -152,12 +169,35 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           await ApiService.clearSession().catchError((_) {});
           isLoggedIn = false;
           targetDashboard = null;
-        } else if (isStaff) {
-          isLoggedIn = true;
-          targetDashboard = const EmployeeDashboardScreen();
         } else {
-          isLoggedIn = true;
-          targetDashboard = const CustomerDashboardScreen();
+          // Check whether the stored access token is expired. If it is, attempt
+          // a silent refresh before deciding on navigation to avoid loading a
+          // dashboard that immediately fires 401s on every API call.
+          bool tokenValid = !_isJwtExpired(token);
+          if (!tokenValid) {
+            debugPrint('[SplashScreen] Stored access token is expired. Attempting silent refresh...');
+            try {
+              tokenValid = await ApiService.tryRefreshToken()
+                  .timeout(const Duration(seconds: 6));
+            } catch (e) {
+              debugPrint('[SplashScreen] Token refresh failed: $e');
+              tokenValid = false;
+            }
+          }
+
+          if (!tokenValid) {
+            // Refresh failed — clear stale session and fall back to onboarding.
+            debugPrint('[SplashScreen] Token refresh unsuccessful. Clearing session.');
+            await ApiService.clearSession().catchError((_) {});
+            isLoggedIn = false;
+            targetDashboard = null;
+          } else if (isStaff) {
+            isLoggedIn = true;
+            targetDashboard = const EmployeeDashboardScreen();
+          } else {
+            isLoggedIn = true;
+            targetDashboard = const CustomerDashboardScreen();
+          }
         }
       } else {
         isLoggedIn = false;

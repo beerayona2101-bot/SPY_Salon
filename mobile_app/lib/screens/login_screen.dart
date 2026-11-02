@@ -139,6 +139,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _showSnackBar('Please enter a valid phone number (at least 10 digits)');
       return;
     }
+    if (!['6', '7', '8', '9'].contains(cleanPhone[0])) {
+      _showSnackBar('Please enter a valid Indian mobile number (must start with 6, 7, 8, or 9)');
+      return;
+    }
 
     if (password != confirmPassword) {
       _showSnackBar('Passwords do not match');

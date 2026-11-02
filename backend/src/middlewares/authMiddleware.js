@@ -1,6 +1,16 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
+// Fail hard at startup if JWT_SECRET is not configured — prevents falling back to a
+// public constant that would allow arbitrary token forgery in a misconfigured environment.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    'FATAL: JWT_SECRET environment variable is not set. ' +
+    'Set a strong random secret in your .env file before starting the server.'
+  );
+}
+
 // Protect routes - JWT verification & Session Validation
 exports.protect = async (req, res, next) => {
   let token;
@@ -19,8 +29,7 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    const secret = process.env.JWT_SECRET || 'spysalon_super_secret_jwt_key_2026';
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -59,8 +68,7 @@ exports.optionalAuth = async (req, res, next) => {
 
   if (token) {
     try {
-      const secret = process.env.JWT_SECRET || 'spysalon_super_secret_jwt_key_2026';
-      const decoded = jwt.verify(token, secret);
+      const decoded = jwt.verify(token, JWT_SECRET);
       const user = await User.findById(decoded.id);
 
       if (user && user.status !== 'Inactive') {

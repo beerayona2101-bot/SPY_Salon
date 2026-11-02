@@ -228,6 +228,9 @@ function LoginPageInner() {
                   {fieldErrors.email && (
                     <span className="text-[11px] text-red-400 block mt-1">{fieldErrors.email}</span>
                   )}
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Customers: use your email. Employees: use your staff code (e.g. EMP-1001).
+                  </p>
                 </div>
 
                 {/* Password Field */}

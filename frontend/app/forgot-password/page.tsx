@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
       setErrorMessage('Please enter the 6-digit OTP code sent to your email.');
       return;
     }
-    if (!password || password.length < 4) {
-      setErrorMessage('Password must be at least 4 characters long.');
+    if (!password || password.length < 6) {
+      setErrorMessage('Password must be at least 6 characters long.');
       return;
     }
     if (password !== confirmPassword) {
