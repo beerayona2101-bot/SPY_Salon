@@ -150,11 +150,25 @@ class FcmService {
     });
 
     // C. Initial Message Listener (Tapped notification when app was completely terminated)
+    //    Delayed to allow SplashScreen auth resolution to complete before navigating.
+    //    Navigation is guarded: only proceeds when an authenticated session exists.
     FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
       if (message != null) {
         debugPrint('[FCM Service] App launched from terminated state via notification: ${message.data}');
-        Future.delayed(const Duration(milliseconds: 1200), () {
-          handleNotificationNavigation(message.data);
+        // Wait for the splash/auth routing flow (~2.5s) before navigating so
+        // the navigator and dashboard are mounted and the user is authenticated.
+        Future.delayed(const Duration(milliseconds: 2800), () async {
+          try {
+            final token = await ApiService.getStoredToken();
+            if (token == null || token.isEmpty) {
+              // Not authenticated — do not expose the notification screen.
+              debugPrint('[FCM Service] Cold-launch notification navigation skipped: user not authenticated.');
+              return;
+            }
+            handleNotificationNavigation(message.data);
+          } catch (e) {
+            debugPrint('[FCM Service] Cold-launch auth guard error: $e');
+          }
         });
       }
     });

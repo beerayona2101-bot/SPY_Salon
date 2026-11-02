@@ -141,3 +141,64 @@ Dashboard AppBar (Customer + Employee)
 | `google-services.json` presence | `[VERIFIED BY INSPECTION]` — file exists |
 | Background + terminated push delivery | `[REQUIRES RUNTIME TESTING]` — requires physical device and live Firebase project |
 | Unread badge count accuracy | `[REQUIRES RUNTIME TESTING]` — depends on backend `/api/v1/notifications/unread` endpoint response |
+
+---
+
+## H. Final Cleanup Pass (Non-Blocking Findings — Now Resolved)
+
+Three non-blocking findings from the second review pass were resolved through direct source-code changes. No workflow agent was used for this pass.
+
+### H1. PII in `markAllNotificationsRead` POST body — FIXED
+
+**File:** `mobile_app/lib/services/api_service.dart`
+
+The `markAllNotificationsRead` method was sending `userId`, `email`, and `role` in the POST request body. Although body params are not logged the same way as URL query params, this was inconsistent with the JWT-only identity pattern used everywhere else in the file and leaked PII to the backend unnecessarily.
+
+**Fix:** Removed all user-identity fields from the body. The method now sends an empty JSON object `{}`. The backend endpoint (`PATCH /api/v1/notifications/read-all`) now has the `protect` middleware applied and resolves user identity exclusively from `req.user` (set by JWT verification).
+
+### H2. Cold-launch `getInitialMessage` auth guard — FIXED
+
+**File:** `mobile_app/lib/services/fcm_service.dart`
+
+The previous implementation navigated to `NotificationScreen` after a 1200ms delay on cold launch without checking whether a valid session existed. This could navigate unauthenticated users (e.g. after logout, token expiry, or first install) directly to a protected screen.
+
+**Fix:** The delay was increased to 2800ms to allow the full SplashScreen auth-resolution flow (~2.2s) to complete. Before calling `handleNotificationNavigation`, the code now reads the stored JWT token. If no valid token exists, navigation is skipped and a debug message is logged. If authenticated, navigation proceeds normally. Foreground and background notification handling is unaffected.
+
+### H3. `Colors.transparent` in read notification tile — FIXED
+
+**File:** `mobile_app/lib/screens/notification_screen.dart`
+
+Read notification tiles used `Colors.transparent` as the background color, which is a hardcoded Flutter constant outside the `AppColors` design system.
+
+**Fix:** Replaced with `themeColors.cardSurface`, which correctly reflects the card surface color for both dark and light themes. Unread tiles continue to use `primaryColor.withValues(alpha: 0.06)` unchanged.
+
+### H4. Backend: notification identity derived from JWT — FIXED (security)
+
+**Files:** `backend/src/routes/notificationRoutes.js`, `backend/src/controllers/notificationController.js`
+
+The `GET /api/v1/notifications`, `GET /api/v1/notifications/unread`, and `PATCH /api/v1/notifications/read-all` endpoints were not protected by auth middleware and accepted `userId`, `email`, and `role` as client-supplied parameters. This allowed any client to query any user's notifications by supplying a different `userId` or `email`.
+
+**Fix:**
+- Added `protect` middleware to `GET /`, `GET /unread`, and `PATCH /read-all` routes.
+- Updated `getNotifications`, `getUnreadCount`, and `markAllAsRead` controllers to derive user identity exclusively from `req.user` (set by the verified JWT). Client-supplied identity fields are ignored.
+- Role-based query logic (admin/employee/customer) now uses `req.user.role` instead of a client-supplied `role` query param, preventing privilege escalation.
+
+---
+
+## G. Verification Status (Updated)
+
+| Finding | Status | Method |
+|---------|--------|--------|
+| Notification icon (monochrome drawable + manifest) | ✅ Fixed | Source-code inspection |
+| `handleNotificationNavigation` crashes (ScaffoldMessenger on navigator context) | ✅ Fixed | Source-code inspection |
+| `Colors.white` badge text — theme token | ✅ Fixed | Source-code inspection |
+| `getNotifications` / `getUnreadNotificationCount` PII in GET query params | ✅ Fixed | Source-code inspection |
+| `markAllNotificationsRead` PII in POST body | ✅ Fixed | Source-code inspection |
+| Cold-launch navigation without auth guard | ✅ Fixed | Source-code inspection |
+| `Colors.transparent` read tile background | ✅ Fixed | Source-code inspection |
+| Backend GET/unread/read-all routes now require JWT auth | ✅ Fixed | Source-code inspection |
+| Firebase push delivery to physical Android device | ⚠️ Requires runtime/device testing | Cannot verify without device |
+| Background/terminated notification tap navigation | ⚠️ Requires runtime/device testing | Cannot verify without device |
+| FCM token generation on device | ⚠️ Requires runtime/device testing | Cannot verify without device |
+| Android 13+ POST_NOTIFICATIONS permission dialog | ⚠️ Requires runtime/device testing | Cannot verify without device |
+| `google-services.json` validity against Firebase project | ⚠️ Requires Firebase Console verification | File exists; credentials not inspected |

@@ -1781,24 +1781,14 @@ class ApiService {
     return false;
   }
 
-  /// Mark all notifications as read for the current user
+  /// Mark all notifications as read for the current user.
+  /// Identity is resolved server-side from the JWT in the Authorization header.
   static Future<bool> markAllNotificationsRead() async {
     try {
-      final user = await getStoredUser();
-      final body = <String, dynamic>{};
-      if (user != null) {
-        body['role'] = (user['role'] ?? 'customer').toString().toLowerCase();
-        if (user['_id'] != null || user['id'] != null) {
-          body['userId'] = (user['_id'] ?? user['id']).toString();
-        }
-        if (user['email'] != null && user['email'].toString().isNotEmpty) {
-          body['email'] = user['email'].toString();
-        }
-      }
       final response = await _requestWithRetry(
         'PATCH',
         '${ApiConfig.baseUrl}/api/v1/notifications/read-all',
-        body: json.encode(body),
+        body: json.encode(<String, dynamic>{}),
       );
       return response != null && response.statusCode == 200;
     } catch (e) {

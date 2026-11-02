@@ -163,19 +163,21 @@ exports.unregisterDeviceToken = async (req, res, next) => {
 // GET /api/v1/notifications
 exports.getNotifications = async (req, res, next) => {
   try {
-    const { role = 'all', userId, email } = req.query;
-    const cleanEmail = email ? String(email).toLowerCase().trim() : null;
-    
-    // If unauthenticated guest request without userId/email, return only public notifications
-    const isGuest = (role === 'guest' || role === 'user') && !userId && !cleanEmail;
+    // Identity is resolved from the verified JWT (req.user set by protect middleware).
+    // Client-supplied userId/email/role query params are intentionally ignored to
+    // prevent cross-user data access.
+    const user = req.user;
+    const userId = user ? String(user._id || user.id) : null;
+    const email = user ? (user.email ? String(user.email).toLowerCase().trim() : null) : null;
+    const role = user ? (user.role || 'customer').toString().toLowerCase() : 'public';
 
     let query = {};
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'manager') {
       query = { $or: [{ role: 'admin' }, { role: 'all' }] };
-    } else if (role === 'employee') {
+    } else if (role === 'employee' || role === 'stylist' || role === 'receptionist' || role === 'barber') {
       const empConditions = [];
-      if (userId) empConditions.push({ userId: String(userId) });
-      if (cleanEmail) empConditions.push({ email: cleanEmail });
+      if (userId) empConditions.push({ userId });
+      if (email) empConditions.push({ email });
 
       query = {
         $or: [
@@ -183,13 +185,11 @@ exports.getNotifications = async (req, res, next) => {
           { role: 'employee', userId: null, email: null }
         ]
       };
-    } else if (isGuest) {
-      query = { role: 'public' };
     } else {
-      // Customer / User profile notifications strictly for this customer
+      // Customer / authenticated user: only their notifications + broadcast (role: 'all')
       const targetConditions = [];
-      if (userId) targetConditions.push({ userId: String(userId) });
-      if (cleanEmail) targetConditions.push({ email: cleanEmail });
+      if (userId) targetConditions.push({ userId });
+      if (email) targetConditions.push({ email });
 
       if (targetConditions.length > 0) {
         query = {
@@ -202,7 +202,7 @@ exports.getNotifications = async (req, res, next) => {
         query = { role: 'public' };
       }
     }
-    
+
     const limitNum = Math.min(parseInt(req.query.limit) || 25, 50);
     const list = await Notification.find(query)
       .select('notificationId userId email role title message type icon priority isRead link bookingId appointmentId leaveRequestId reviewId enquiryId createdAt')
@@ -219,28 +219,28 @@ exports.getNotifications = async (req, res, next) => {
 // GET /api/v1/notifications/unread
 exports.getUnreadCount = async (req, res, next) => {
   try {
-    const { role = 'all', userId, email } = req.query;
-    const cleanEmail = email ? String(email).toLowerCase().trim() : null;
-    const isGuest = (role === 'guest' || role === 'user') && !userId && !cleanEmail;
+    // Identity is resolved from the verified JWT (req.user set by protect middleware).
+    const user = req.user;
+    const userId = user ? String(user._id || user.id) : null;
+    const email = user ? (user.email ? String(user.email).toLowerCase().trim() : null) : null;
+    const role = user ? (user.role || 'customer').toString().toLowerCase() : 'public';
 
     let query = { isRead: false };
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'manager') {
       query.$or = [{ role: 'admin' }, { role: 'all' }];
-    } else if (role === 'employee') {
+    } else if (role === 'employee' || role === 'stylist' || role === 'receptionist' || role === 'barber') {
       const empConditions = [];
-      if (userId) empConditions.push({ userId: String(userId) });
-      if (cleanEmail) empConditions.push({ email: cleanEmail });
+      if (userId) empConditions.push({ userId });
+      if (email) empConditions.push({ email });
 
       query.$or = [
         ...(empConditions.length > 0 ? empConditions : []),
         { role: 'employee', userId: null, email: null }
       ];
-    } else if (isGuest) {
-      query.role = 'public';
     } else {
       const targetConditions = [];
-      if (userId) targetConditions.push({ userId: String(userId) });
-      if (cleanEmail) targetConditions.push({ email: cleanEmail });
+      if (userId) targetConditions.push({ userId });
+      if (email) targetConditions.push({ email });
 
       if (targetConditions.length > 0) {
         query.$or = [
@@ -251,7 +251,7 @@ exports.getUnreadCount = async (req, res, next) => {
         query.role = 'public';
       }
     }
-    
+
     const count = await Notification.countDocuments(query);
     return ApiResponse.success(res, { unreadCount: count }, 'Unread count fetched');
   } catch (error) {
@@ -301,16 +301,21 @@ exports.markAsRead = async (req, res, next) => {
 // PATCH /api/v1/notifications/read-all
 exports.markAllAsRead = async (req, res, next) => {
   try {
-    const { role = 'all', userId, email } = req.body || req.query;
+    // Identity is resolved from the verified JWT (req.user set by protect middleware).
+    // Client-supplied body fields are intentionally ignored.
+    const user = req.user;
+    const userId = user ? String(user._id || user.id) : null;
+    const email = user ? (user.email ? String(user.email).toLowerCase().trim() : null) : null;
+    const role = user ? (user.role || 'customer').toString().toLowerCase() : null;
 
     const targetConditions = [];
-    if (userId) targetConditions.push({ userId: String(userId) });
-    if (email) targetConditions.push({ email: String(email).toLowerCase().trim() });
+    if (userId) targetConditions.push({ userId });
+    if (email) targetConditions.push({ email });
 
     let query = { isRead: false };
-    if (role === 'admin') {
+    if (role === 'admin' || role === 'manager') {
       query.$or = [{ role: 'admin' }, { role: 'all' }];
-    } else if (role === 'employee') {
+    } else if (role === 'employee' || role === 'stylist' || role === 'receptionist' || role === 'barber') {
       query.$or = [
         ...(targetConditions.length > 0 ? targetConditions : []),
         { role: 'employee', userId: null, email: null }

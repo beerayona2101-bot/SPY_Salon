@@ -267,7 +267,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: Container(
         color: isUnread
             ? primaryColor.withValues(alpha: 0.06)
-            : Colors.transparent,
+            : themeColors.cardSurface,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
