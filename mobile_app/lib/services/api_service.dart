@@ -1780,7 +1780,7 @@ class ApiService {
       if (response != null && response.statusCode == 200) {
         final data = json.decode(response.body);
         final payload = data['data'] ?? data;
-        return (payload['unreadCount'] ?? 0) as int;
+        return (payload['unreadCount'] ?? 0).toInt();
       }
     } catch (e) {
       debugPrint('[ApiService] getUnreadNotificationCount error: $e');

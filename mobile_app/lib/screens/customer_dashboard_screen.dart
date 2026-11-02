@@ -1214,8 +1214,8 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen>
                     top: 8,
                     child: Container(
                       padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE57373),
+                      decoration: BoxDecoration(
+                        color: themeColors.error,
                         shape: BoxShape.circle,
                       ),
                       constraints: const BoxConstraints(minWidth: 16, minHeight: 16),

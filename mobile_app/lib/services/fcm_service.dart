@@ -262,39 +262,43 @@ class FcmService {
         return;
       }
 
-      final colors = AppColors.of(context);
-
       switch (type) {
         case 'appointment':
         case 'booking':
         case 'reminder':
           // Show a SnackBar AND navigate to NotificationScreen
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Appointment Details...',
-                style: TextStyle(color: colors.buttonTextPrimary),
+          if (context.mounted) {
+            final colors = AppColors.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Appointment Details...',
+                  style: TextStyle(color: colors.buttonTextPrimary),
+                ),
+                backgroundColor: colors.goldPrimary,
+                duration: const Duration(seconds: 3),
               ),
-              backgroundColor: colors.goldPrimary,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+            );
+          }
           navigatorState.push(
             MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
           break;
         case 'leave':
         case 'attendance':
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Staff Management...',
-                style: TextStyle(color: colors.buttonTextPrimary),
+          if (context.mounted) {
+            final colors = AppColors.of(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  data['title'] != null ? '${data['title']}: ${data['body'] ?? ''}' : 'Opening Staff Management...',
+                  style: TextStyle(color: colors.buttonTextPrimary),
+                ),
+                backgroundColor: colors.roseSecondary,
+                duration: const Duration(seconds: 3),
               ),
-              backgroundColor: colors.roseSecondary,
-              duration: const Duration(seconds: 3),
-            ),
-          );
+            );
+          }
           navigatorState.push(
             MaterialPageRoute(builder: (_) => const NotificationScreen()),
           );
